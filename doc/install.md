@@ -17,12 +17,12 @@
 
 ## 安装JDK
 
-### 安装
+	* 安装
 
 	安装Sun JDK1.6或以上版本, 根据机器是32位还是64位选择正确的jdk版本
 	此框架未在JDK 7或以上版本下编译测试过, 如有需要可自行解决兼容性问题
 
-### 设置好JAVA_HOME和PATH环境变量
+	* 设置好JAVA_HOME和PATH环境变量
 
 	JAVA_HOME 配置为JDK安装目录
 	PATH中增加JDK安装目录下的bin目录为查找路径
@@ -36,18 +36,18 @@
 
 ## 安装scala
 
-### 下载 
+	* 下载 
 
 	官网下载地址: http://www.scala-lang.org/download/all.html
 
 	建议下载 2.10.x(x>=2)的版本, 此框架仅在2.10.2版本下做过完整测试
 	此框架未在scala 2.11.x或更高版本下测试过, 如有需要可自行解决兼容性问题
 
-### 安装
+	* 安装
 
 	scala安装包为一个zip包，直接解压到目标目录后就可使用
 
-### 设置SCALA_HOME和PATH环境变量
+	* 设置SCALA_HOME和PATH环境变量
 
 	SCALA_HOME 配置为scala安装目录
 	PATH中增加scala安装目录下的bin目录为查找路径
@@ -91,14 +91,14 @@
 
 ## 启动/停止服务
 
-### 在linux下：
+	* 在linux下：
 
 	service start 启动服务
 	service stop 停止服务
 	service runtest 发送接口测试指令
 	service help 帮助
 
-### 在windows下：
+	* 在windows下：
 
 	service 启动服务, 按Ctrl+C停止服务
 	service runtest 发送接口测试指令
@@ -128,9 +128,9 @@
 
 ## 说明
 		
-* 只是源码编译环境的一个精简版, 使用相同的service脚本来启动停止服务
-* 去除了所有运行时不需要的目录和文件, 只保留必需的目录
-* 没有build编译脚本，compose_conf下的流程文件会在启动时自动进行编译
+	* 只是源码编译环境的一个精简版, 使用相同的service脚本来启动停止服务
+	* 去除了所有运行时不需要的目录和文件, 只保留必需的目录
+	* 没有build编译脚本，compose_conf下的流程文件会在启动时自动进行编译
 
 # <a name="jars">框架依赖的jar包说明</a>
 
