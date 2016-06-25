@@ -26,14 +26,14 @@
 
 ### 下载 
 
-	[官网下载](http://www.scala-lang.org/download/all.html)
+	dd [官网下载](http://www.scala-lang.org/download/all.html)
 
 	建议下载 2.10.x(x>=2)的版本, 此框架仅在2.10.2版本下做过完整测试
 	此框架未在scala 2.11.x或更高版本下测试过, 如有需要可自行解决兼容性问题
 
 ### 安装
 
-	scala安装包为一个zip包，直接解压后就可使用
+	scala安装包为一个zip包，直接解压到目标目录后就可使用
 
 ### 设置SCALA_HOME和PATH环境变量:
 
@@ -45,7 +45,7 @@
 	    export SCALA_HOME=/usr/local/scala-2.10.2
 	    export PATH=$SCALA_HOME/bin:$PATH
 
-    cd /usr/local/scala-2.10.2/bin && chmod 755 *
+    为脚本增加可执行权限: cd /usr/local/scala-2.10.2/bin && chmod 755 *
 
 	在命令行下运行scala -version, 若配置正确会显示版本信息
 
