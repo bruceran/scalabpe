@@ -178,7 +178,7 @@
        *)  如果想限制接收反向调用的IP，可通过<ReverseIp>...来进行配置
 
 
-# 错误码，错误信息支持配置
+# 错误码/错误描述配置
 
     <ErrorCodeCfg localCacheServiceId="xxx">
       <Service serviceId="999" resultCodeField="resultCode" resultMsgField="resultMsg"/>
@@ -203,12 +203,21 @@
     <QuartzCfg>
       <Cron serviceId="999" msgId="2">0/2 * * * * ?</Cron>
       <Repeat serviceId="999" msgId="1" startDelay="1" repeatInterval="1"/>
+      <Init serviceId="999" msgId="206" repeatInterval="10"/>
     </QuartzCfg>
 
     按服务号消息号定义定时任务：
+
     方式1) 用Cron表达式，定时调用该服务号该消息号
     方式2) 用Repeat表达式，指定初始间隔秒数和后续每次间隔秒数
-    调用接口时无入参，也不等待返回值；建议：实现该消息的流程一开始就reply(0)
+
+    调用Cron,Repeat消息不等待返回值，实现这些消息的流程可以在一开始就reply(0)
+
+    方式3) 用Init表达式，和Repeat的区别是框架会在启动的时候调用Init消息，
+           直到所有Init消息收到错误码0才会继续启动, 如失败，会每隔10秒重新调用该方法
+   
+   调用Init消息会等待返回值，实现流程需注意只有成功再返回0
+   Init消息可用于启动时加载数据库里的配置数据到内存，提供比本地缓存(LocalCache)更灵活的加载方式
 
 # 远程SOS服务配置
 
@@ -233,7 +242,6 @@
     timerInterval="100" 内部超时定时器的间隔时间，默认为100，表示100毫秒
     reconnectInterval="1" 连接断开后的重连间隔时间，默认为1，表示1秒
 
-
 # 本地缓存服务（进程内缓存)配置
 
     <ConfigDb>
@@ -247,15 +255,15 @@
 
     缓存文件格式为 list_xxx,  xxx为服务号， 文件格式为，一行表示一个配置项, 字段之间用\t分隔
 
-    jvmdbbroker里支持只使用本地文件，这时配置可简化为
+    若只使用预定义好的本地文件做配置，不读数据库，配置可简化为
 
     <ConfigDb>
       <ServiceId>100</ServiceId>
     </ConfigDb>
 
-    这种情况要求本地的 list_服务号 文件必须存在
+    这种情况要求项目根目录下的 list_100 文件必须存在
 
-    任何invoke接口访问本地缓存服务，都不会发生线程切换，invoke()形式上是通过callback继续执行，syncedInvoke()则是用返回值返回
+    任何invoke接口访问本地缓存服务，都不会发生线程切换
 
     服务描述文件区别:
 
@@ -273,6 +281,60 @@
 
       sql select结果的顺序必须和 code 顺序一一对应, 不看名字，只看顺序;
       sql select结果的顺序和get方法的入参顺序无关;
+
+# MemCache服务配置
+
+    <CacheThreadNum>2</CacheThreadNum>
+    <CacheWriteThreadNum>1</CacheWriteThreadNum>
+
+    CacheThreadNum 为默认的读线程数 get  getanddelete getandcas 使用
+    CacheWriteThreadNum 为默认的写线程数 set delete 使用
+
+    每一个CacheSosList节点都会启动独立的2个线程池，一个读，一个写；而不是共用线程池
+
+    <CacheSosList readThreadNum="2" writeThreadNum="5">
+        <ServiceId>990,45612</ServiceId>
+        <ServerAddr>10.241.37.37:11211</ServerAddr>
+        <ServerAddr>10.241.37.37:11211</ServerAddr>
+        ...
+    </CacheSosList>
+
+    readThreadNum="2" writeThreadNum="5" 若未配置，则用默认值; 默认节点未配置则为1
+
+    3种模式：
+
+      ArrayHash模式: 数据hash后取余定位服务器，数据只有1份；
+      ConHash模式: 数据用一致性hash算法，数据只有1份；
+      Master/Slave模式：数据写2份；
+
+      如果只配置了1个ServerAddr，且未指定ConHash,ArrayHash, 为ArrayHash方式
+      如果配置了2个ServerAddr，且未指定ConHash,ArrayHash, 为Master/Slave模式；
+      如果超过2个ServerAddr，且未指定ConHash,ArrayHash, 为ArrayHash方式
+      如果指定了 <ConHash/> 或 <ArrayHash/> 则为指定模式
+
+    服务描述文件区别:
+
+      特殊的code:
+
+        exptime_type固定为10000，其 default 属性为该缓存的缓存超时时间，单位为秒
+        code < 10000 为 key，可以有多个
+        code > 10000 为 value, 可以有多个
+
+      <message name="get" id="1">  id必须为1, name没有限制
+      <message name="set" id="2">  id必须为2, name没有限制
+      <message name="delete" id="3">  id必须为3, name没有限制
+      <message name="getanddelete" id="4"> id必须为4, name没有限制
+      <message name="incrby" id="6"> id必须为6, name没有限制
+      <message name="decrby" id="7"> id必须为7, name没有限制
+
+    写入缓存中时:
+
+      key为BPE服务号_key1_key2_key3_...
+      value为value1^_^value2^_^value3^_^...
+
+      key,value的顺序和服务描述文件里的requestParameter,responseParameter里field的顺序无关，只和code大小相关
+
+    在编写服务描述文件的  requestParameter,responseParameter 时，field 顺序不要紧， 但建议和code顺序保持一致。
 
 # Redis服务配置
 
@@ -982,60 +1044,6 @@
       domainName 域名
       contextPath url的根一级目录
       urlArgs 静态文件的url参数，默认为?, 通过配置为不同值，如?v1, ?v2可强制客户端所有js,css,html失效重新从服务器下载最新版本
-
-# MemCache服务配置
-
-    <CacheThreadNum>2</CacheThreadNum>
-    <CacheWriteThreadNum>1</CacheWriteThreadNum>
-
-    CacheThreadNum 为默认的读线程数 get  getanddelete getandcas 使用
-    CacheWriteThreadNum 为默认的写线程数 set delete 使用
-
-    每一个CacheSosList节点都会启动独立的2个线程池，一个读，一个写；而不是共用线程池
-
-		<CacheSosList readThreadNum="2" writeThreadNum="5">
-		    <ServiceId>990,45612</ServiceId>
-				<ServerAddr>10.241.37.37:11211</ServerAddr>
-				<ServerAddr>10.241.37.37:11211</ServerAddr>
-				...
-		</CacheSosList>
-
-    readThreadNum="2" writeThreadNum="5" 若未配置，则用默认值; 默认节点未配置则为1
-
-    3种模式：
-
-      ArrayHash模式: 数据hash后取余定位服务器，数据只有1份；
-      ConHash模式: 数据用一致性hash算法，数据只有1份；
-      Master/Slave模式：数据写2份；
-
-      如果只配置了1个ServerAddr，且未指定ConHash,ArrayHash, 为ArrayHash方式
-      如果配置了2个ServerAddr，且未指定ConHash,ArrayHash, 为Master/Slave模式；
-      如果超过2个ServerAddr，且未指定ConHash,ArrayHash, 为ArrayHash方式
-      如果指定了 <ConHash/> 或 <ArrayHash/> 则为指定模式
-
-    服务描述文件区别:
-
-      特殊的code:
-
-        exptime_type固定为10000，其 default 属性为该缓存的缓存超时时间，单位为秒
-        code < 10000 为 key，可以有多个
-        code > 10000 为 value, 可以有多个
-
-      <message name="get" id="1">  id必须为1, name没有限制
-      <message name="set" id="2">  id必须为2, name没有限制
-      <message name="delete" id="3">  id必须为3, name没有限制
-      <message name="getanddelete" id="4"> id必须为4, name没有限制
-      <message name="incrby" id="6"> id必须为6, name没有限制
-      <message name="decrby" id="7"> id必须为7, name没有限制
-
-    写入缓存中时:
-
-      key为BPE服务号_key1_key2_key3_...
-      value为value1^_^value2^_^value3^_^...
-
-      key,value的顺序和服务描述文件里的requestParameter,responseParameter里field的顺序无关，只和code大小相关
-
-    在编写服务描述文件的  requestParameter,responseParameter 时，field 顺序不要紧， 但建议和code顺序保持一致。
 
 # 消息队列配置
 
