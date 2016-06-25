@@ -16,7 +16,7 @@
     testcasefile 不传则默认为 testcase/default.txt文件
 
     runtest 工具默认将请求发给本机，端口取自 config.xml中的<SapPort>节点;
-	如config.xml中配置了<TestServerAddr>host:port</TestServerAddr>, runtest工具会读此配置并发送给TestServerAddr
+	如config.xml中配置了<TestServerAddr>host:port</TestServerAddr>, runtest工具会读此配置并发送到该地址
 
 ## testcasefile 文件格式定义
 
@@ -89,8 +89,8 @@
 
 ## 插件的日志输出
 
-	框架源码中很多插件的日志是以debug级别输出到log/all.log文件中
-	由于log/all.log默认是info级别，日志实际并不会输出，若要看到这些日志需调整为debug级别
+	框架源码中很多插件的日志是以debug级别输出, 由于log/all.log默认是info级别，
+    日志实际并不会输出，若要看到这些日志需调整为debug级别
 
     查看DB请求的SQL和实际参数，需设置<logger name="jvmdbbroker.plugin.DbClient" level="debug" ...
 
@@ -100,24 +100,20 @@
 
     查看AHT请求和响应原始内容，需设置<logger name="jvmdbbroker.plugin.http.HttpClientImpl" level="debug" ...
 
-#框架使用到的错误码
+# 框架使用到的错误码
 
-    建议直接通过ResultCodes.xxx 来直接引用jvmdbbroker里的错误码；
+* 错误码分类
 
-    如参考源码，该类在jvmdbbroker  src/core.scala里
+    编解码错误 -10242400
+    网络错误  -10242404
+    服务或消息未找到 -10242405
+    队列满或队列阻塞引起的超时 -10242488
+    内部错误 -10242500
+    超时  -10242504
 
-    流程中可能用到的错误码主要是：
+    缓存中数据未找到 -10245404
 
-    ResultCodes.CACHE_NOT_FOUND = -10245404  缓存中找不到该KEY时返回此错误 (memcache,redis,localcache)找不到key都返回此错误码
-
-    对于数据库查询，判断是否存在应该是 检查错误码为0时且rowcount==0来判断, 错误码<0则是有异常
-
-    其它类错误一般不需要硬编码，jvmdbbroker 内主要用到的就是几个错误码：
-
-      超时  -10242504
-      网络错误 -10242404
-      队列满或开始处理请求时发现请求已超时 -10242488
-      内部错误 -10242500
-      编解码错误 -10242400
-      服务或消息未找到 -10242405
-
+* 所有的错误码都在 src/core.scala/ResultCodes 类里进行定义
+* 框架里将所有出现的错误码都归类到上述错误码之一
+* 对于数据库查询未找到匹配数据的情况，不会返回错误，而是返回0； 
+  流程中应根据rowcount是否为0来判断是否有匹配数据
