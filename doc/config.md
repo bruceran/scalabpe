@@ -338,8 +338,6 @@
 
     服务描述文件区别:
 
-    兼容MemCache服务, 参考MemCache服务配置
-
     a) 特殊的code:
 
         code < 10000 为 key，可以有多个
@@ -455,7 +453,7 @@
 
       服务描述文件，KEY,VALUE格式和memcache一样
 
-      额外支持几个消息:
+      Redis除了支持MemCache的所有消息，还额外支持几个消息:
 
       <message name="sget" id="10"> id必须为10, name没有限制
       <message name="sadd" id="11"> id必须为11, name没有限制
@@ -529,7 +527,9 @@
 
 ## 耗时SQL语句输出阀值
 
-    <LongTimeSql>500</LongTimeSql> 耗时SQL配置参数，默认为500毫秒，超过此阀值的sql将被以WARN级别输出到日志文件中,便于定位db性能问题
+    <LongTimeSql>500</LongTimeSql> 
+
+    耗时SQL配置参数，默认为500毫秒，超过此阀值的sql将被以WARN级别输出到日志文件中,便于定位db性能问题
 
 ## 消息定义语法
 
