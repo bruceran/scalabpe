@@ -7,8 +7,7 @@
 
 ## [Release Notes](doc/releasenotes.md) 
 
-	ScalaBPE core release notes
-	ScalaBPE plugins release notes
+	版本变更说明
 
 ## [安装指南](doc/install.md) 
 
