@@ -124,16 +124,16 @@
 
 # 框架依赖的jar包说明
 
-## 必须的jar包
+## 必须包含的jar包
 
 	* scalabpe核心包和插件包
 
 	scalabpe-core-1.1.x.jar
 	scalabpe-plugins-1.1.x.jar
 
-	* 基于文件的本地队列
+	* 本地队列
 
-	billing-queue-1.1.1.jar
+	billing-queue-1.1.1.jar  源码见另一项目 [billing-queue](https://github.com/bruceran/billing-queue)
 
 	* 核心依赖包
 
