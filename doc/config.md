@@ -30,13 +30,13 @@
 
 # 对外提供服务的TCP端口
 
-  `<SapPort>9898</SapPort>`
+    <SapPort>9898</SapPort>
 
   如设置为0，则表示不需要对外启动sos，只作为一个job服务
 
 # 管理HTTP端口
 
-  `<CohPort>9899</CohPort>`
+    <CohPort>9899</CohPort>
 
   如设置为0，则表示不需要管理功能
 
@@ -49,7 +49,7 @@
 
 # 异步流程引擎使用的线程数
 
-  `<ThreadNum>4</ThreadNum>`
+    <ThreadNum>4</ThreadNum>
 
   对异步流程引擎，4个线程足够
 
@@ -69,48 +69,49 @@
 
 # 异步日志
 
-  `<ReportUrl>http://api.monitor.sdo.com/stat_more_actions.php</ReportUrl>`
+    <ReportUrl>http://api.monitor.sdo.com/stat_more_actions.php</ReportUrl>
+    <DetailReportUrl>http://api.monitor.sdo.com/stat_pages.php</DetailReportUrl>
+    <DetailReportServiceId>320,321,...</DetailReportServiceId>
 
-    ReportUrl用于报告服务总体情况：连接数，请求数，不分服务消息，这个数据上报作用不大, 如未配置，则不报
-    ReportUrl上报对应的日志数据在request_summary.log文件中
+  ReportUrl用于报告服务总体情况：连接数，请求数，不分服务消息，这个数据上报作用不大, 如未配置，则不报
+  ReportUrl上报对应的日志数据在request_summary.log文件中
 
-  `<DetailReportUrl>http://api.monitor.sdo.com/stat_pages.php</DetailReportUrl>`
-  `<DetailReportServiceId>320,321,...</DetailReportServiceId>`
+  DetailReportUrl用于报告对外服务和子服务的请求数（成功，失败），耗时角度的统计数据, 如未配置，则不报
+  DetailReportUrl上报对应的日志数据在request_stat.log文件(对外服务)和sos_stat.log文件(子服务)中
 
-    DetailReportUrl用于报告对外服务和子服务的请求数（成功，失败），耗时角度的统计数据, 如未配置，则不报
-    DetailReportUrl上报对应的日志数据在request_stat.log文件(对外服务)和sos_stat.log文件(子服务)中
+  ** 若未配置 ReportUrl DetailReportUrl 则不进行上报 **
 
-    DetailReportServiceId用来控制需要上报哪些服务号的统计数字到监控系统，此参数不影响打日志；如未配置，则全部都上报
+  DetailReportServiceId用来控制需要上报哪些服务号的统计数字到监控系统，此参数不影响打日志；如未配置，则全部都上报
 
-  `<AsyncLogThreadNum>1</AsyncLogThreadNum>`
+    <AsyncLogThreadNum>1</AsyncLogThreadNum>
 
-    AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设置
+  AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设置
 
-    上报数据给监控系统时如果出现网络错误会重试，每次间隔5秒钟，最多重试2次。如果超时，不重试。
+  上报数据给监控系统时如果出现网络错误会重试，每次间隔5秒钟，最多重试2次。如果超时，不重试。
 
-  `<AsyncLogWithFieldName>true</AsyncLogWithFieldName>`
+    <AsyncLogWithFieldName>true</AsyncLogWithFieldName>
 
-    在打印输入参数和输出参数的日志时，是否在值的前面输出参数名称；输出参数名称可方便查看数据； 默认为true
+  在打印输入参数和输出参数的日志时，是否在值的前面输出参数名称；输出参数名称可方便查看数据； 默认为true
 
-  `<AsyncLogArray>1</AsyncLogArray>`
+    <AsyncLogArray>1</AsyncLogArray>
 
-    用于控制对数组类型日志打印前几条数据，默认为1, 只打印数组的第一条
+  用于控制对数组类型日志打印前几条数据，默认为1, 只打印数组的第一条
 
-  `<AsyncLogPasswordFields>password,pass_word</AsyncLogPasswordFields>`
+    <AsyncLogPasswordFields>password,pass_word</AsyncLogPasswordFields>
 
-    配置日志中要隐藏实际值的字段，配置了该字段，在request log, csos log中将会以 *** 代替实际值, 多个配置值用逗号分隔
-    也可以使用此参数来隐藏lob类型字段的日志，否则日志可能会很长
+  配置日志中要隐藏实际值的字段，配置了该字段，在request log, csos log中将会以 *** 代替实际值, 多个配置值用逗号分隔
+  也可以使用此参数来隐藏lob类型字段的日志，否则日志可能会很长
 
     <AsyncLogDispatch defaultTarget="999.28">
           <Item serviceId="999" msgId="27" target="999.28"/>
     </AsyncLogDispatch>
 
-    其中msgId可用*代替匹配所有消息; target可不配置，则取defaultTarget默认值
-    可转发给本地服务或远程服务；为避免消息丢失，可在服务描述文件将消息设为必达消息, isAck="true"
-    目标消息的服务描述文件要求：
-      serviceId 服务号
-      msgId 消息号
-      kvarray string array, 请求，响应，流程变量
+  其中msgId可用*代替匹配所有消息; target可不配置，则取defaultTarget默认值
+  可转发给本地服务或远程服务；为避免消息丢失，可在服务描述文件将消息设为必达消息, isAck="true"
+  目标消息的服务描述文件要求：
+    serviceId 服务号
+    msgId 消息号
+    kvarray string array, 请求，响应，流程变量
 
 # 流程里可使用的KEY/VALUE配置参数设置
 
