@@ -24,26 +24,30 @@
 
 ## 安装scala
 
-[Scala官网下载页](http://www.scala-lang.org/download/all.html)
+### 下载 
 
-* 安装 scala 2.10.2
+	[官网下载](http://www.scala-lang.org/download/all.html)
 
-		scala安装包scala-2.10.2.zip为一个zip包，直接解压后就可使用
+	建议下载 2.10.x(x>=2)的版本, 此框架仅在2.10.2版本下做过完整测试
+	此框架未在scala 2.11.x或更高版本下测试过, 如有需要可自行解决兼容性问题
 
-* 设置好SCALA_HOME和PATH环境变量:
+### 安装
 
-		SCALA_HOME 配置为scala安装目录
-		PATH中增加scala安装目录下的bin目录为查找路径
+	scala安装包为一个zip包，直接解压后就可使用
 
-		linux下示例：
-	    编辑.bash_profile
-		    export SCALA_HOME=/usr/local/scala-2.10.2
-		    export PATH=$SCALA_HOME/bin:$PATH
+### 设置SCALA_HOME和PATH环境变量:
 
-	    cd /usr/local/scala-2.10.2/bin && chmod 755 *
+	SCALA_HOME 配置为scala安装目录
+	PATH中增加scala安装目录下的bin目录为查找路径
 
-* 在命令行下运行scala -version, 若配置正确会显示版本信息
-* 此框架未在scala 2.11.x或以上版本下编译测试过, 如有需要可自行解决兼容性问题
+	linux下示例：
+    编辑.bash_profile
+	    export SCALA_HOME=/usr/local/scala-2.10.2
+	    export PATH=$SCALA_HOME/bin:$PATH
+
+    cd /usr/local/scala-2.10.2/bin && chmod 755 *
+
+	在命令行下运行scala -version, 若配置正确会显示版本信息
 
 # ScalaBPE框架源码编译环境配置
 
@@ -86,7 +90,7 @@
 	service 启动服务, 按Ctrl+C停止服务
 	service runtest 发送接口测试指令
 
-	注：windows下的service脚本只用于开发人员使用，只能在控制台使用，不能作为服务，正式部署建议使用linux脚本，或自己打包成service
+	windows下的service脚本是个简化脚本，只适用于开发人员使用
 
 ## 编译src/目录下的源码
 
