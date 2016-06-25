@@ -10,7 +10,7 @@
 
 [异步流程引擎线程数](#threadnum)
 
-[同步线程池配置](#cyncedflowcfg)
+[同步线程池配置](#syncedflowcfg)
 
 [异步日志配置](#asynclog)
 
@@ -143,17 +143,17 @@
 
     此线程数用于配置框架内部的异步流程引擎，对一般负载不是特别高的系统，4个线程已足够
 
-# <a name="cyncedflowcfg">同步线程池配置</a>
+# <a name="syncedflowcfg">同步线程池配置</a>
 
-    所有异步流程都共用<ThreadNum>4</ThreadNum>配置项，所以不允许在线程内发生阻塞
-    某些特殊情况下，线程内会发生阻塞，如调用支持事务的同步db服务，长时间处理文件，等
-    对这些特殊消息可以额外配置线程池, 避免影响阻塞异步流程线程池
+    所有异步流程都共用<ThreadNum>n</ThreadNum>配置项，所以不允许在线程内发生阻塞
+    某些特殊情况下，线程内会发生阻塞，如调用支持事务的同步db服务，长时间计算，长时间进行IO处理等
+    对这些特殊消息应额外配置线程池, 避免影响阻塞异步流程线程池
 
     <SyncedFlowCfg  threadNum="n">
       <ServiceId>999.3,999.4</ServiceId>
     </SyncedFlowCfg>
 
-    threadNum: 指定该线程池的线程数, 若未配置则默认等于<ThreadNum>4</ThreadNum>里的值
+    threadNum: 指定该线程池的线程数, 若未配置则默认等于<ThreadNum>n</ThreadNum>里的值
 
     此配置为消息级别，用逗号隔开多个消息，可指定对应的消息使用一个独立的线程池;
     如需将该服务的所有消息都加入此独立线程池，可使用serviceid.*表示
