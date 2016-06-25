@@ -1,0 +1,17 @@
+//$service999.queryUserInfo
+
+//#receive
+
+  val userId = req.s("userId")
+  if( userId == null ) {
+  	reply(-100)
+  	return
+  }
+
+  val u = Users.map.getOrElse(userId,null)
+  if( u == null ) {
+  	reply(-101)
+  	return
+  }
+
+  reply(0, "*" -> u)

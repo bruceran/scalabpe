@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<parameters>
+
+    <ThreadNum>8</ThreadNum>
+
+    <SapPort>6210</SapPort>
+    <CohPort>7210</CohPort>
+
+    <AsyncLogWithFieldName>true</AsyncLogWithFieldName>
+
+    <HttpServerCfg port="8088" devMode="1">
+
+        <UrlMapping>
+            <Item>test/queryUserInfo,999,1</Item>
+            <Item>test/updateUserInfo,999,2</Item>
+        </UrlMapping>
+
+    </HttpServerCfg>
+
+</parameters>
+

@@ -1,0 +1,198 @@
+
+1.1.0 (20160623)
+================
+
+* (06/17)开源版本
+* (06/23)mq连接密码解密算法移到so文件中
+* (06/23)去除对billing-dal的依赖，不再支持masterslavedatasource
+* (06/23)去除对billing-util包的依赖
+
+1.0.12 (20160616)
+================
+
+* (06/16)httpserver输出302时，增加content-length: 0
+* (05/25)访问https的时候设置http host header, 如果是https协议将443端口从host去掉，否则某些服务器会返回404错误
+* (05/17)QuartzBean支持Init节点来配置启动时要成功完成的调用，可用来加载配置数据，若配置数据未成功加载，则服务不对对外打开
+
+1.0.11 (20160506)
+================
+
+* (05/06)增加MailActor插件，可以用来发邮件
+* (05/04)扩展包头支持httpType, responsefilter支持req参数
+* (04/20)aht plugin支持RawHttpRequestPlugin，用于生成二进制内容作为post内容，比如上传文件
+* (04/20)httpserver plugin支持文件上传功能
+* (04/15)memcache/redis插件，对value原来只允许string或int, 改为允许struct，array int ,array string array struct
+* (04/12)httpserver插件，request参数支持几个特殊key: requestUri, queryString, contentType, contentData，对应http请求的未经解析的原始值
+* (04/01)db插件，增加对$xxx 替换类值的注入检查，不允许注入类的关键字: script|exec|select|update|delete|insert|create|alter|drop|truncate
+* (03/23)httpserver 如果输出参数中有redirectUrl302 则取该值做服务端重定向
+* (03/23)httpserver插件，可配置logUserAgent, 是否在日志中输出UserAgent
+* (03/23)httpserver插件，对url mapping项，增加encodeRequest选项，若设置为0，则不做编码转换, 流程处理需特别注意参数类型，可能和服务描述文件不一致
+* (03/23)httpserver插件，对url mapping项，增加bodyOnly选项，若设置为1，则只输出avenue的body部分作为json串返回，而不是标准hps的json串格式
+* (03/17)修改httpserver支持restful形式的参数，path中的值可以解析为参数，如配置/path/:a/:b可解析/path/12/34为a=12,b=34 ,目前最多支持2个参数
+* (03/16)修改httpserver支持jsonp调用
+* (02/25)修改httpserver 文件缓存路径问题，未使用全路径，会造成冲突
+* (02/14)服务描述文件增加对defaultValue, validator, encoder的支持
+* (02/14)httpserver插件sessionId cookie支持httponly
+
+1.0.10 (20160111)
+================
+
+* (01/11)本地队列插件允许按消息配置重发次数和超时时间
+* (01/04)memcached插件exptime允许设置超过30天的有效期，会自动转换为绝对时间
+* (01/04)redis插件exptime允许为0，表示数据不过期
+* (01/04)redis插件支持集合操作：sadd,sremove,sget，适用于风控中累计去重后值的个数，如设备数，绑卡数等
+* (12/25)模板名可根据输出参数的templateName动态调整
+* (12/22)httpserver将原始请求的content打印到all.log中便于排查问题
+* (12/18)httpserver优化：控制访问目录，优化日志，内部代码重构
+* (12/16)httpserver优化
+* (12/10)httpserver增加对静态文件和模板文件的支持,模板文件可以有2种格式：simple和velocity格式
+* (12/08)修改aht插件解析xml的错误,该错误在2/16支持webservice调用时引入
+* (10/13)调整源码位置，将actor_soc移到core包
+* (10/13)增加httpserver包，兼容hps的基本功能,参考manual
+
+1.0.9 (20150708)
+================
+
+* (07/08)aht插件支持DELETE, HEAD, PUT; 支持往http请求中插入自定义的header项(要求code>10000,且key以header_开头)
+* (05/05)db插件增加sql server sp调用的支持, 语句前后可以有{}， 用法：{?=CALL sp_deliver_voucher_gen(:a, :b, :c)}
+* (05/05)增加jtds sqlserver驱动支持
+* (05/04)增加localcache refresh时的try catch
+* (04/10)memcached/redis插件的服务描述文件中，exptime之前不能按接口传递，现在改为所有更新接口都支持传exptime参数来每个值指定不同的数据过期时间
+* (03/24)aht get方法调用如果最后一个字符是&, 去掉&
+* (03/20)db插件增加sp调用的支持,用法：?=CALL sp_deliver_voucher_gen(:a, :b, :c)
+    ?=call表示是一个返回查询结果的存储过程; call表示是一个不返回查询结果仅做更新的存储过程；
+    暂不支持取out参数
+* (02/16)aht插件增加对webservice调用的支持,用法：
+
+    config.xml 在Method为POST, RequestContentType为text/xml时，则进入web service调用模式
+
+        aht插件不使用第三方webservice库来调用远程服务，而是直接拼出符合要求的xml发给远程webservice服务
+
+        WSNs 请求中所有用到的namespace定义 n1=v1 n2=v2形式，用空格隔开多个定义，第一个namespace也作为方法节点的namespace, 默认节点用default表示
+        WSReqSuffix 请求根节点的后缀，全名为方法名+后缀, 此值一般和方法名一样，不用配置, 此节点的ns为WsNs的第一个值
+        WSResSuffix 响应根节点的后缀，全名为方法名+后缀，此值一般是Response, 此节点的ns为WsNs的第一个值
+        WSWrapNs 请求和响应包装节点对应的namespace, default表示默认namespace, 也可不配置
+        WSReqWrap 请求包装节点的名称，可为空串, 此值可能随每个方法不一样，比如arg0等
+        WSResWrap 响应包装节点的名称，可为空串, 此值可能随每个方法不一样，比如return等
+        WSSOAPAction 方法对应的soapaction，有些webservice需要配置此值，有些不需要, 此值可能随每个方法不一样
+
+      webservice的服务描述文件
+
+        每个field都可以额外指定一个ns参数来指定namespace, 可以为空
+        如果field名称是用.分隔，表示是嵌套xml; 如需指定ns, 必须为每个级别指定ns，如key为a.b, 则ns为"ns1.ns2", 若为*表示用默认namespace
+        方法名，field名都和xml一一对应，大小写必须一致
+        参数的顺序和xml的顺序一致，如果错乱会导致服务端返回500错误
+
+        webservice调用目前只支持简单的String,Int类型，不支持数组和结构体类型
+
+* (01/26)Scala List对象使用优化，不应在循环体内通过下标方式访问List数据; cache和db有个别地方调整
+* (01/26)db插件增加全局的<LongTimeSql>配置参数，默认为500毫秒，超过此阀值的sql将被以WARN级别输出到日志文件中,便于定位db性能问题
+* (01/26)memcached,redis插件内部优化: master/slave模式和c++版保持一致，容错方式优化，getcas接口删除
+    memcached,redis配置节点新增配置属性：
+        failOver 节点不可用是否自动切换到可用节点，默认为true；如果是false则直接返回错误不切换
+        errorCountToSwitch 连续多少错误后切换到备用节点; 对memcache插件非主备模式不使用，由xmemcached组件内部自行控制; 默认为50
+    xmemcached组件升级为xmemcached-2.0.0.jar,否则无法编译新增的incrBy接口
+* (01/21)memcached,redis插件增加incrBy和decrBy接口支持，要求值只能是整数，不支持多值
+* (01/21)线程池的队列大小统一从100000修改为20000
+* (01/21)localcache插件支持一个key对应一组配置，新增getarray,getall接口
+* (01/19)修改db插件query操作时SimpleDateFormat对象在多线程访问时format可能出错的问题
+* (01/11)将quartz插件的默认字符集从gbk改成utf-8，如果有通过quartz发带中文网络请求，而接收方不支持gbk就会受影响
+
+1.0.8 (20141121)
+================
+
+* db插件,sql语句中可使用类似 :xxx 的 $xxx 这样的串，区别是 $xxx 会被扩展为完整的SQL， 而:xxx则是被替换为?后以prepareStatement方式执行;
+  同时，原来支持的 $dyncmicSql 不再是一个特殊关键字，可以换成其它名称;
+  $xxx 这种适合 where state in ( 1,2,3 ) 这种，可设置sql为 state in ($states), 传入的states为"1,2,3"字符串，这种无法用:states来实现；
+  对于mysql里的分页控制 limit startrow,rows 也可设置为 $startrow,$rows; 如果用:startrow,:rows, 需将对应的入参的columnType设置为number
+* db插件，连接串配置的用户名密码允许为空串
+* db插件，分表类型可在接口这一级别定义
+* soc插件，默认的最大包长改为2M
+* db插件，增加sqlserver jdbc driver支持
+* db插件，解析select 查询字段名可从 tablename.fieldname 中得到 fieldname
+* db插件，删除sql长度检查
+* ConnLocalQueueActor插件，修改bug: 某些情况下队列中已经处理过的数据可能未被执行commit操作,导致队列中仍然存在，在重启服务后数据会重新从队列中取出处理
+* 检查所有线程池的execute(runnable)未catch的地方加上catch避免异常情况下线程被杀掉
+
+1.0.7 (20140904)
+================
+
+* 修改SOC Actor，支持反向调用
+
+* db select sql 结果字段自动映射有bug, 如果查询结果列包含函数且函数里有逗号，比如dateform(aaa,'xxxx') aaa会导致列名解析错误，无法自动映射
+* db sql 里的 placeholder增加下划线支持
+* 返回结果名称rowcount, row_count都映射为返回的行数
+* db actor里sql语句不再要求每行一个SQL, SQL可以跨越多行，增加可读性
+* db actor里查询结果映射到结构体或结构体数组调整：
+       老版本要求查询结果列的顺序和结构体定义的数据是一一对应的，可读性不好，也不容易理解
+       此版本调整为：按查询结果名称和结构体的key做对应，不区分大小写，如果结构体中的key找不到对应的结果列，启动的时候就会报错
+
+       !!! 注意，升级时需注意，此调整和老版本不兼容，如果有使用结构体的时候需重启一次试试,重启如无报错表明是兼容的，无需调整
+
+* 修复aht插件配置使用 <MsgId>-1</MsgId> 默认配置项功能里指定NeedSignature和CharSet无效的bug
+* aht插件对返回的json支持解析为struct,string array, int array, struct array
+
+1.0.6 (201400805)
+================
+
+* 增加ConnLocalQueueCfg插件，此插件兼容LocalQueueCfg 但额外增加参数 concurrentNum="20" 用来控制每个队列允许的并发数量
+* localqueue 插件允许通过 threadNum="2" 属性来指定线程数量
+* 修改db插件连mysql wait_timeout问题, 国际版碰到
+* 修改db插件输出sql查询debug日志时没有将值打印出来的bug
+* 将localqueue的默认字符集设置为utf-8, 否则通过soc访问c++版本bpe会出现乱码
+
+1.0.5 (20140404)
+================
+
+* 修改cache插件取配置参数的代码： readThreadNum writeThreadNum 2个配置参数应该是属性，而不是子节点
+* 修改本地队列插件 indexDir 不能使用绝对路径的bug
+* 修改billing-queue: short -> int 转换bug；
+		注意：billing-queue 对每个写入字段最多只能支持到unsigned short个字节，超过会丢失数据
+		      jvmdbbroker的本地队列使用billing-queue，也有此限制
+* 修改db插件，支持columnType="number" 用在mysql里select a from b limit 0,n  如n需要为动态，需设置服务描述文件对应的值的columnType="number"
+* 修改db插件 解析分表 $tableIdx $hashNum 时的一个bug
+
+1.0.4 (20140303)
+================
+
+* 修复同步db插件对array int, array string类型转换问题: 未做类型转换，会导致 ls,li时出类型错误
+* aht插件服务描述文件除了10000,10001，其它code都不作为特殊值(原来>=10000都是特殊值，不会做编码)
+* aht插件支持 https协议
+
+1.0.3 (20140207)
+================
+
+* localqueue通知时增加x_maxSendTimes参数
+* 修改db plugin打日志缺失值的bug
+
+1.0.2 (20131212)
+================
+
+* 将plugin/http/nettyhttpclient改到core包下
+* MqActor,MqReceiver支持序列化和反序列化插件
+
+1.0.1 (20131210)
+================
+
+* 修复aht响应头里如果没有 content-type 会出系统错误的bug
+* 兼容aht原有实现：如果服务描述文件中带了 signatureKey 配置但实际未传值，那还是会使用config.xml中配置的signatureKey
+* 插件启动时如果发现配置文件中的服务号不存在服务描述文件报错 (SOS服务不检查)
+* 同步虚拟函数插件, 用来以后直接支持xml的服务描述文件
+* MqReceiver插件
+
+1.0.0 (20131120)
+================
+
+* 初始版本
+* SOS插件
+* DB插件
+* memcached插件
+* redis插件
+* 进程内DB缓存插件
+* MQ发送插件
+* quartz定时任务Bean类型插件
+* 错误码转换responsefilter类型插件
+* AHT插件
+* 支持事务的同步DB插件
+* 本地持久化队列插件
+* 参考jvmdbbroker.plugins.conf

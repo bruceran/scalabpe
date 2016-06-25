@@ -1,0 +1,196 @@
+
+pidfile="scalabpe.pid"
+cd `dirname $0`
+pid=`cat $pidfile 2>/dev/null`
+APPLICATION_NAME=`pwd | sed 's,^\(.*/\)\?\([^/]*\),\2,'`
+
+consolelog="/opt/logs/$APPLICATION_NAME/log/console.log"
+mkdir -p /opt/logs/$APPLICATION_NAME/log/
+touch $consolelog
+
+is64=`java -version 2>&1|grep 64-Bit|wc -l`
+if [ $is64 = "1" ]; then
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./lib/linux-jdk64
+chmod +x ./lib/linux-jdk64/*
+else
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./lib/linux-jdk32
+chmod +x ./lib/linux-jdk32/*
+fi
+
+check_running()
+{
+	if [ -z "$pid" ]; then
+		return 0
+	fi
+
+	fid=`ps aux|grep 'jvmdbbroker.core.Main' | grep MainGenericRunner  | awk '{print $2}' | grep "^$pid$"`
+
+	if [ -z "$fid" ]; then
+		return 0
+	fi
+
+	return 1
+}
+
+start_app()
+{
+		if [ -f dev_mode ]; then
+			echo "---- dev mode, running in console, press CTRL+C to stop ----"
+			mkdir -p temp/classes
+			env JAVA_OPTS="-Xmx256M -Xms128M -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "lib/*:temp/classes:." jvmdbbroker.core.Main
+			exit 0
+		fi
+
+		check_running
+		running=$?
+
+		if [ $running = "1" ]; then
+			echo "scalabpe is already running, pid=$pid"
+			exit 0
+		fi
+
+		rm -f $pidfile
+		rm -f $consolelog
+		mkdir -p temp/classes
+
+		echo -n "starting scalabpe"
+
+		env JAVA_OPTS="-server -Xms1024m -Xmx1024m -XX:+UseConcMarkSweepGC -XX:NewSize=256m -XX:MaxNewSize=256m -XX:PermSize=96m -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "lib/*:temp/classes:." jvmdbbroker.core.Main 1>$consolelog 2>&1 &
+		parentpid=$!
+
+		echo -n " ."
+
+		succmsg="scalabpe started"
+		exceptionmsg="Exception"
+		found=`tail -n 1 $consolelog | grep -c "$succmsg"`
+
+		while [ $found = "0" ]; do
+			sleep 1
+			echo -n "."
+			found=`grep -c "$exceptionmsg" $consolelog`
+			if [ $found != "0" ]; then
+				cat $consolelog
+				echo "scalabpe start failed"
+				exit 1
+			fi
+			found=`tail -n 1 $consolelog | grep -c "$succmsg"`
+		done
+
+		pid=`ps -ef|grep 'jvmdbbroker.core.Main' | grep MainGenericRunner  | awk '{print $2 " " $3}' | grep "$parentpid" | awk '{print $1}'`
+    echo $pid > $pidfile
+
+    echo " done, pid=$pid"
+}
+
+stop_app()
+{
+		if [ -f dev_mode ]; then
+			exit 0
+		fi
+
+		check_running
+		running=$?
+
+		if [ $running = "1" ]; then
+			echo -n "killing scalabpe, pid=$pid"
+			kill $pid
+
+			echo -n " ."
+
+			check_running
+			running=$?
+
+			while [ $running = "1" ]; do
+
+				sleep 1
+				echo -n "."
+
+				check_running
+				running=$?
+
+			done
+
+			rm -f $pidfile
+			echo " done"
+
+		else
+			echo "scalabpe is not running"
+		fi
+
+}
+
+restart_app()
+{
+		if [ -f dev_mode ]; then
+			exit 0
+		fi
+
+		stop_app
+		start_app
+}
+
+check_status()
+{
+		if [ -f dev_mode ]; then
+			exit 0
+		fi
+
+		check_running
+		running=$?
+
+		if [ $running = "1" ]; then
+			echo "scalabpe is running, pid=$pid"
+		else
+			echo "scalabpe is not running"
+		fi
+}
+
+show_help()
+{
+cat << EOF
+
+usage:
+
+./service start     	# start scalabpe
+./service stop      	# stop scalabpe
+./service restart    	# restart scalabpe
+./service status     	# check scalabpe running status
+./service forcecompile  # force scalabpe to compile all flows in next startup
+./service runtest       # run test case file
+./service runscala      # enter scala console with all jars in lib/
+./service help      	# this help  (default)
+
+EOF
+}
+
+case "$1" in
+	start)
+		start_app
+		;;
+	stop)
+		stop_app
+		;;
+	restart)
+		restart_app
+		;;
+	status)
+		check_status
+		;;
+	forcecompile)
+		rm -f temp/*ts
+		echo "scalabpe compile timestamp file removed"
+		;;
+	runtest)
+		env JAVA_OPTS="-Dfile.encoding=UTF-8 -Dapplication.name=${APPLICATION_NAME}test"  scala -cp "classes:lib/*:." jvmdbbroker.core.TestCaseRunner $2
+		;;
+	runscala)
+		env JAVA_OPTS="-Dfile.encoding=UTF-8"  scala -cp "classes:temp/classes:lib/*:."
+		;;
+	help)
+		show_help
+		;;
+	*)
+		show_help
+		;;
+esac
+

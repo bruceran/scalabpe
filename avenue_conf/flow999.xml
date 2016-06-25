@@ -1,0 +1,33 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<service  name="service999" id="999" IsTreeStruct ="false">
+
+ 	<type name="userId_type" class="string" code="1"/>
+	<type name="name_type" class="string" code="2"/>
+	<type name="height_type" class="int" code="3"/>
+ 	<type name="intro_type" class="string" code="4"/>
+
+	<message name="queryUserInfo" id="1">
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+		</requestParameter>
+
+		<responseParameter>
+			<field name="name" type="name_type"/>
+			<field name="height" type="height_type"/>
+			<field name="intro" type="intro_type"/>
+		</responseParameter>
+	</message>
+
+	<message name="updateUserInfo" id="2">
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+			<field name="name" type="name_type"/>
+			<field name="height" type="height_type"/>
+			<field name="intro" type="intro_type"/>			
+		</requestParameter>
+
+		<responseParameter>
+		</responseParameter>
+	</message>
+
+</service>

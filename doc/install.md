@@ -47,7 +47,8 @@
 	    export SCALA_HOME=/usr/local/scala-2.10.2
 	    export PATH=$SCALA_HOME/bin:$PATH
 
-	为脚本增加可执行权限: cd /usr/local/scala-2.10.2/bin && chmod 755 *
+	为脚本增加可执行权限: 
+	cd /usr/local/scala-2.10.2/bin && chmod 755 *
 
 	在命令行下运行scala -version, 若配置正确会显示版本信息
 
