@@ -26,10 +26,12 @@
 
 ### 下载 
 
-	dd [官网下载](http://www.scala-lang.org/download/all.html)
+	dd [download](http://www.scala-lang.org/download/all.html)
 
 	建议下载 2.10.x(x>=2)的版本, 此框架仅在2.10.2版本下做过完整测试
 	此框架未在scala 2.11.x或更高版本下测试过, 如有需要可自行解决兼容性问题
+
+dd [download](http://www.scala-lang.org/download/all.html)
 
 ### 安装
 
