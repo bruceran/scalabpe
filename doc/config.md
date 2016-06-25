@@ -101,9 +101,9 @@
     配置日志中要隐藏实际值的字段，配置了该字段，在request log, csos log中将会以 *** 代替实际值, 多个配置值用逗号分隔
     也可以使用此参数来隐藏lob类型字段的日志，否则日志可能会很长
 
-  <AsyncLogDispatch defaultTarget="999.28">
-        <Item serviceId="999" msgId="27" target="999.28"/>
-  </AsyncLogDispatch>
+    <AsyncLogDispatch defaultTarget="999.28">
+          <Item serviceId="999" msgId="27" target="999.28"/>
+    </AsyncLogDispatch>
 
     其中msgId可用*代替匹配所有消息; target可不配置，则取defaultTarget默认值
     可转发给本地服务或远程服务；为避免消息丢失，可在服务描述文件将消息设为必达消息, isAck="true"
@@ -114,49 +114,49 @@
 
 # 流程里可使用的KEY/VALUE配置参数设置
 
-  `<Parameter name="xxx">yyyy</Parameter>`
+    <Parameter name="xxx">yyyy</Parameter>
 
-  流程中可用Flow.router.getConfig("xxx",defaultValue) 获取到上述xxx对应的值yyy
+    流程中可用Flow.router.getConfig("xxx",defaultValue) 获取到上述xxx对应的值yyy
 
 # 对外开放或关闭服务
 
-  `<Parameter name="serviceIdsNotAllowed">999,977</Parameter>`
+    <Parameter name="serviceIdsNotAllowed">999,977</Parameter>
 
-  默认流程服务(包括子流程服务)都对外开放, 可用serviceIdsNotAllowed调整
+    默认流程服务(包括子流程服务)都对外开放, 可用serviceIdsNotAllowed调整
 
-  `<Parameter name="serviceIdsAllowed">45601,45602</Parameter>`
+    <Parameter name="serviceIdsAllowed">45601,45602</Parameter>
 
-  默认非流程服务都不对外开放, 可用serviceIdsAllowed调整
+    默认非流程服务都不对外开放, 可用serviceIdsAllowed调整
 
 # runtest 目标地址
 
-  `<TestServerAddr>host:port</TestServerAddr>`
+    <TestServerAddr>host:port</TestServerAddr>
 
-  此配置仅用于runtest测试工具，用来将请求发给远程服务而不是本地服务
+    此配置仅用于runtest测试工具，用来将请求发给远程服务而不是本地服务
 
 # SOS配置
 
-  <ServerSos
-       host="*"
-       threadNum="1"
-       maxPackageSize="2000000"
-       idleTimeoutMillis="180000"
-       isSps="0"
-       spsReportTo="55605:1"
-       spsDisconnectNotifyTo="55605:111"
-       isEncrypted="0"
-       shakeHandsServiceIdMsgId="1:5"
-       reverseServiceIds="0"
-       timeout="30000"
-       timeoutInterval="100"
-       pushToIpPort="0"
-       pushToIp="0"
-       pushToAny="0" 
-   >
-        <ReverseIp>127.0.0.1</ReverseIp>
-        <ReverseIp>127.0.0.2</ReverseIp>
-        <ReverseIp>...</ReverseIp>
-  </ServerSos>
+    <ServerSos
+         host="*"
+         threadNum="1"
+         maxPackageSize="2000000"
+         idleTimeoutMillis="180000"
+         isSps="0"
+         spsReportTo="55605:1"
+         spsDisconnectNotifyTo="55605:111"
+         isEncrypted="0"
+         shakeHandsServiceIdMsgId="1:5"
+         reverseServiceIds="0"
+         timeout="30000"
+         timeoutInterval="100"
+         pushToIpPort="0"
+         pushToIp="0"
+         pushToAny="0" 
+     >
+          <ReverseIp>127.0.0.1</ReverseIp>
+          <ReverseIp>127.0.0.2</ReverseIp>
+          <ReverseIp>...</ReverseIp>
+    </ServerSos>
 
   目前支持：
 
