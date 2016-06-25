@@ -5,7 +5,7 @@
 
 # 用户手册
 
-## 安装指南 这里
+## [安装指南](doc/install.md) 
 
 	安装JDK
 	安装Scala
