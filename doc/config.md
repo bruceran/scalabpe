@@ -49,7 +49,7 @@
 
 # 异步流程引擎使用的线程数
 
-  <ThreadNum>4</ThreadNum>
+  `<ThreadNum>4</ThreadNum>`
 
   对异步流程引擎，4个线程足够
 
@@ -58,9 +58,9 @@
   所有异步流程都共用<ThreadNum>4</ThreadNum>配置项，所以不允许在线程内发生阻塞
   异步线程池只有一个, 但是可以额外配置多个线程池用于可能会发生阻塞的消息
 
-  <SyncedFlowCfg  threadNum="n">
+  `<SyncedFlowCfg  threadNum="n">
     <ServiceId>999.3,999.4</ServiceId>
-  </SyncedFlowCfg>
+  </SyncedFlowCfg>`
 
   threadNum: 指定该线程池的线程数, 若未配置则默认等于<ThreadNum>4</ThreadNum>里的值
 
