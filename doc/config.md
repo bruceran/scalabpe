@@ -192,6 +192,39 @@
        *)  如客户端是无状态的，也可使用invoke() 进行反向调用, 此时toAddr为空，则请求可发给客户端的任意连接上
        *)  如果想限制接收反向调用的IP，可通过<ReverseIp>...来进行配置
 
+
+# 错误码，错误信息支持配置
+
+    <ErrorCodeCfg localCacheServiceId="xxx">
+      <Service serviceId="999" resultCodeField="resultCode" resultMsgField="resultMsg"/>
+      <Service serviceId="998" resultCodeField="resultCode" />
+      ...
+    </ErrorCodeCfg>
+
+    在流程中不用关心body里的resultCode, resultMsg, 通过配置来处理；
+    body里的resultCode值应该总是和avenue包头的code值相同；
+
+    resultCodeField 配置对应 body的 key;
+    resultMsgField 配置对应 body的 key, resultMsgField可以不配置，如果未配置，则localCacheServiceId也不需指定;
+    对于配置了resultCodeField的响应中，会自动将resultCode设置为avenue code值；
+    对于配置了resultMsgField的响应中，则查询localCacheServiceId获取错误信息并设置到body中； 如果flow中指定了则不覆盖
+    code=0时不写resultMsgField
+
+    localCacheServiceId应该是一个local cache服务，不可以是其它异步服务;
+    要求该local cache服务的get方法的：key为resultCode,value为resultMsg
+
+# 定时任务配置
+
+    <QuartzCfg>
+      <Cron serviceId="999" msgId="2">0/2 * * * * ?</Cron>
+      <Repeat serviceId="999" msgId="1" startDelay="1" repeatInterval="1"/>
+    </QuartzCfg>
+
+    按服务号消息号定义定时任务：
+    方式1) 用Cron表达式，定时调用该服务号该消息号
+    方式2) 用Repeat表达式，指定初始间隔秒数和后续每次间隔秒数
+    调用接口时无入参，也不等待返回值；建议：实现该消息的流程一开始就reply(0)
+
 # HTTP Server插件
 
 ## web项目目录结构
@@ -451,62 +484,30 @@
       contextPath url的根一级目录
       urlArgs 静态文件的url参数，默认为?, 通过配置为不同值，如?v1, ?v2可强制客户端所有js,css,html失效重新从服务器下载最新版本
 
-12) 错误码，错误信息支持配置
+# 远程SOS服务配置
 
-    		<ErrorCodeCfg localCacheServiceId="xxx">
-    			<Service serviceId="999" resultCodeField="resultCode" resultMsgField="resultMsg"/>
-    			<Service serviceId="998" resultCodeField="resultCode" />
-    			...
-    		</ErrorCodeCfg>
+		配置远程SOS服务的服务号和多个地址
 
-        在流程中不用关心body里的resultCode, resultMsg, 通过配置来处理；
-        body里的resultCode值应该总是和avenue包头的code值相同；
+		<SosList >
+			<ServiceId>888,889</ServiceId>
+			<ServerAddr>127.0.0.1:9888</ServerAddr>
+			<ServerAddr>127.0.0.2:9888</ServerAddr>
+			...
+		</SosList>
 
-        resultCodeField 配置对应 body的 key;
-        resultMsgField 配置对应 body的 key, resultMsgField可以不配置，如果未配置，则localCacheServiceId也不需指定;
-        对于配置了resultCodeField的响应中，会自动将resultCode设置为avenue code值；
-        对于配置了resultMsgField的响应中，则查询localCacheServiceId获取错误信息并设置到body中； 如果flow中指定了则不覆盖
-        code=0时不写resultMsgField
+		SosList节点上的可配置属性, 以下属性一般都不需要设置，默认值就够了：
 
-        localCacheServiceId应该是一个local cache服务，不可以是其它异步服务;
-        要求该local cache服务的get方法的：key为resultCode,value为resultMsg
+		threadNum="2"  为消息投递线程数，默认为2
+		timeout="30000" 为每个消息的超时时间，默认为30000, 表示30秒
+		retryTimes="2" 消息发出后连接中断的消息会重发给其它服务器，默认为2次; 如果未找到一个可用连接，直接返回网络错误，不重试，不等待
+		connectTimeout="15000" 连接超时，默认为15000, 表示15秒
+		pingInterval="60" 心跳间隔，默认为60, 表示60秒
+		maxPackageSize="40000" 最大包长, 默认为 40000 字节
+		connSizePerAddr="8" 每个服务器建立的长连接数量，默认为 8 个, 消息发送采用轮询方式
+		timerInterval="100" 内部超时定时器的间隔时间，默认为100，表示100毫秒
+		reconnectInterval="1" 连接断开后的重连间隔时间，默认为1，表示1秒
 
-13) 定时任务配置
-
-    		<QuartzCfg>
-    			<Cron serviceId="999" msgId="2">0/2 * * * * ?</Cron>
-    			<Repeat serviceId="999" msgId="1" startDelay="1" repeatInterval="1"/>
-    		</QuartzCfg>
-
-    		按服务号消息号定义定时任务：
-    		方式1) 用Cron表达式，定时调用该服务号该消息号
-    		方式2) 用Repeat表达式，指定初始间隔秒数和后续每次间隔秒数
-    		调用接口时无入参，也不等待返回值；建议：实现该消息的流程一开始就reply(0)
-
-14) 远程SOS服务配置
-
-    		配置远程SOS服务的服务号和多个地址
-
-    		<SosList >
-    			<ServiceId>888,889</ServiceId>
-    			<ServerAddr>127.0.0.1:9888</ServerAddr>
-    			<ServerAddr>127.0.0.2:9888</ServerAddr>
-    			...
-    		</SosList>
-
-    		SosList节点上的可配置属性, 以下属性一般都不需要设置，默认值就够了：
-
-    		threadNum="2"  为消息投递线程数，默认为2
-    		timeout="30000" 为每个消息的超时时间，默认为30000, 表示30秒
-    		retryTimes="2" 消息发出后连接中断的消息会重发给其它服务器，默认为2次; 如果未找到一个可用连接，直接返回网络错误，不重试，不等待
-    		connectTimeout="15000" 连接超时，默认为15000, 表示15秒
-    		pingInterval="60" 心跳间隔，默认为60, 表示60秒
-    		maxPackageSize="40000" 最大包长, 默认为 40000 字节
-    		connSizePerAddr="8" 每个服务器建立的长连接数量，默认为 8 个, 消息发送采用轮询方式
-    		timerInterval="100" 内部超时定时器的间隔时间，默认为100，表示100毫秒
-    		reconnectInterval="1" 连接断开后的重连间隔时间，默认为1，表示1秒
-
-15) MemCache服务配置
+# MemCache服务配置
 
     <CacheThreadNum>2</CacheThreadNum>
     <CacheWriteThreadNum>1</CacheWriteThreadNum>
@@ -560,7 +561,7 @@
 
     在编写服务描述文件的  requestParameter,responseParameter 时，field 顺序不要紧， 但建议和code顺序保持一致。
 
-16) 本地缓存服务（进程内缓存)配置
+# 本地缓存服务（进程内缓存)配置
 
  		<ConfigDb>
 			<ServiceId>40998,...</ServiceId>
@@ -600,7 +601,7 @@
       sql select结果的顺序必须和 code 顺序一一对应, 不看名字，只看顺序;
       sql select结果的顺序和get方法的入参顺序无关;
 
-17) Redis服务配置
+# Redis服务配置
 
     redis服务提供缓存数据的持久化功能
 
@@ -637,7 +638,7 @@
 
       服务描述文件，KEY,VALUE格式和memcache一样
 
-18) 本地持久化队列配置
+# 本地持久化队列配置
 
     <LocalQueueCfg threadNum="2" receiverServiceId="879" maxSendTimes="5" retryInterval="5000">
         <ServiceId>878,...</ServiceId>
@@ -697,7 +698,7 @@
 
             可以用来记录日志，写数据库等操作
 
-19) 消息队列配置
+# 消息队列配置
 
     <MqCfg plugin="xxx">
         <ServiceId>991,992</ServiceId>
@@ -728,7 +729,7 @@
 
     如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqSelialize接口, 自定义插件类不再插入默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
 
-20) 消息队列接受者配置
+# 消息队列接受者配置
 
     <MqReceiverCfg receiverServiceId="879" maxSendTimes="5" retryInterval="5000" plugin="xxx">
 			  <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=sdouser password=des:a1f1869a55d5fa63</Connection>
@@ -759,7 +760,7 @@
 
     如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqDeselialize接口, 自定义插件类不再支持默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
 
-21) DB配置
+# DB配置
 
     <LongTimeSql>500</LongTimeSql> 耗时SQL配置参数，默认为500毫秒，超过此阀值的sql将被以WARN级别输出到日志文件中,便于定位db性能问题
 
