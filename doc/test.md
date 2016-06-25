@@ -28,17 +28,17 @@
     runtest 工具默认将请求发给本机，端口取自 config.xml中的<SapPort>节点;
 	如config.xml中配置了<TestServerAddr>host:port</TestServerAddr>, runtest工具会读此配置并发送到该地址
 
-## testcasefile 文件格式定义
+    testcasefile 文件格式定义:
 
-* 一个文件里可保存所有测试用例
-* 每行一个test case, 空行忽略
-* #开头的行为注释，忽略
-* serviceId,msgId,json串   json串对应该消息的参数
-* json串中，如果包含 x_repeat 属性，可用来指定该请求要重复发多少次，不指定则为1
+        * 一个文件里可保存所有测试用例
+        * 每行一个test case, 空行忽略
+        * #开头的行为注释，忽略
+        * serviceId,msgId,json串   json串对应该消息的参数
+        * json串中，如果包含 x_repeat 属性，可用来指定该请求要重复发多少次，不指定则为1
 
 ## 对于使用了http server的服务
 
-可以直接通过命令行curl或浏览器来访问url查看调用结果和调用过程
+    可以直接通过命令行curl或浏览器来访问url查看调用结果和调用过程
 
 [返回](#toc)
 
@@ -61,8 +61,8 @@
 
 ## 说明
 
-* linux下脚本默认直接在/opt/logs下建立日志目录
-* windows下/opt/目录会自动在项目所在盘符的根目录下创建
+    * linux下脚本默认直接在/opt/logs下建立日志目录
+    * windows下/opt/目录会自动在项目所在盘符的根目录下创建
 
 [返回](#toc)
 
