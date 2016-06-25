@@ -617,16 +617,23 @@
       更多映射方式：
 
       $SQLCODE为sql error code映射,scalabpe里只要name是sqlcode(不区分大小写),可不写from
+
       $result[n]行映射 可将查询结果第n行映射到结构体, n一般是0, 如 <field name="row" type="row_type" from="$result[0]"/>
             对于结构体映射，要求结构体各参数顺序和select顺序完全一致，不支持按名字匹配
             scalabpe里如果入参是一个struct类型且未写from, 则认为是要用结构体匹配第0行记录
-      $result 整个结果集映射，通过 <field name="allrows" type="row_array_type" from="$result"/> 将整个查询结果集映射为一个结构体数组
-            对于整个结果集映射，每条记录都对应一个map, 非常浪费内存，建议使用列映射
-            scalabpe里如果入参是一个struct array类型且未写from, 则认为是匹配所有记录
-      $result[*][n] 将第n列(从0开始)映射到一个string array或int array; 这种方式内存少用很多，也不需要去定义结构体; 查大量数据建议用列映射
-            scalabpe里如果入参是一个string或int类型的array且未写from, 则按名字匹配：只要 select字段的名称 或加后缀（s, array, list, _array, _list）和入参匹配，则认为是要将该列匹配为一个数组类型的string或int
 
-      SQL扩展，如果sql语句无法用:xxx这种的标记来表示，可改为使用$xxx标记，使用$xxx标记传入的字符串用来替换SQL, 如是值需带单引号; 用于动态的查询条件，排序条件等，$xxx这样的标记不限制数量；
+      $result 整个结果集映射，通过 <field name="allrows" type="row_array_type" from="$result"/> 
+              将整个查询结果集映射为一个结构体数组, 对于整个结果集映射，每条记录都对应一个map, 非常浪费内存，
+              建议使用列映射
+              如果入参是一个struct array类型且未写from, 则认为是匹配所有记录
+
+      $result[*][n] 将第n列(从0开始)映射到一个string array或int array; 这种方式内存少用很多，也不需要去定义结构体; 
+                    查大量数据建议用列映射
+                    如果入参是一个string或int类型的array且未写from, 则按名字匹配：只要 select字段的名称 
+                    或加后缀（s, array, list, _array, _list）和入参匹配，则认为是要将该列匹配为一个数组类型的string或int
+
+      SQL扩展，如果sql语句无法用:xxx这种的标记来表示，可改为使用$xxx标记，使用$xxx标记传入的字符串用来替换SQL, 
+      如是值需带单引号; 用于动态的查询条件，排序条件等，$xxx这样的标记不限制数量；
 
     scalabpe中允许的sql语句(以起始字符串判断): select,insert,update,merge,create,alter,drop,replace
 
@@ -655,7 +662,11 @@
 
         <DbSosList>
           <ServiceId>45601,...</ServiceId>
-          <MasterDb conns="4" splitTableType="custom" tbfactor="6" splitTableCustomCls="jvmdbbroker.flow.SampleDbPlugin">
+          <MasterDb 
+            conns="4" 
+            splitTableType="custom" 
+            tbfactor="6" 
+            splitTableCustomCls="jvmdbbroker.flow.SampleDbPlugin">
               <DefaultConn>service=jdbcstring user=riskcontrol password=riskcontrol</DefaultConn>
           </MasterDb>
         </DbSosList>
@@ -666,11 +677,13 @@
             tail2 用分表参数的最后2位作为分表关键字
             mod 用指定分表的hashCode取余作为分表关键字，需用tbfactor指定分表的数量
             modpad0 用分表参数的hashCode取余作为分表关键字,不足2位前面加0，需用tbfactor指定分表的数量
-            custom 自定义 使用 splitTableCustomCls指定的类来生成分表关键字，该类需实现接口SplitTablePlugin, 实现中可任意实现自己的规则； 该实现类可直接放在流程文件中，不用单独写插件
+            custom 自定义 使用 splitTableCustomCls指定的类来生成分表关键字，该类需实现接口SplitTablePlugin, 
+                   实现中可任意实现自己的规则； 该实现类可直接放在流程文件中，不用单独写插件
 
-        分表时SQL语句的表名中需带分表关键字，如 insert into consume_switch_setting_$tableIdx(pt, consume_switch) values(:1, :2)
+        分表时SQL语句的表名中需带分表关键字，如 
+          insert into consume_switch_setting_$tableIdx(pt, consume_switch) values(:1, :2)
+
         分表关键字实际上就是一个特殊的入参
-
             <field name="tableIdx" type="tableIdx_type"/>
 
         $tableIdx也可用$hashNum代替;
@@ -692,7 +705,8 @@
        splitDbType 共有如下的分库方式：
             no 不分库，默认
             assign 用指定参数值作为分库字段, 要求请求中有dbHashNum或dbIdx入参，取值范围为(0 to conn-1)
-            custom 自定义 使用 splitDbCustomCls 指定的类来生成分库索引(0 to conn-1)，该类需实现接口SplitDbPlugin； 该实现类可直接放在流程文件中，不用单独写插件
+            custom 自定义 使用 splitDbCustomCls 指定的类来生成分库索引(0 to conn-1)，
+                   该类需实现接口SplitDbPlugin； 该实现类可直接放在流程文件中，不用单独写插件
 
 ## master/slave模式
 
