@@ -5,6 +5,11 @@
 
 # 用户手册
 
+## [Release Notes]
+
+	[ScalaBPE core release notes](src/release_notes.txt)
+	[ScalaBPE plugins release notes](src/plugin/release_notes.txt)
+
 ## [安装指南](doc/install.md) 
 
 	安装JDK

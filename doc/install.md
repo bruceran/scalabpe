@@ -192,5 +192,5 @@
 
 	* mq插件
 
-	activemq-all-5.9.0.jar  从包中删除了logback和log4j，否则和框架使用的版本有冲突
+	activemq-all-5.9.0.jar  从包中删除了logback和log4j，否则和本框架使用的版本有冲突
 
