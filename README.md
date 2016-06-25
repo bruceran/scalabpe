@@ -16,7 +16,7 @@
 	框架目录结构
 	框架依赖的jar包说明
 
-## [开发指南](doc/develop.md) 
+## [开发指南](doc/develop.md)
 
 	了解Avenue协议
 	了解服务抽象
@@ -39,11 +39,9 @@
 ## [插件开发指南](doc/plugin.md) 
 
 	轻量级插件开发
-	重量结插件开发
+	重量级插件开发
 
 ## [其它](doc/other.md) 
 
-	监控数据上报
-	FAQ
 	TIPS
 

@@ -2,11 +2,11 @@
 
 [约定](#rule)
 
-[对外提供服务的TCP端口](#sapport)
+[TCP服务端口](#sapport)
 
-[管理HTTP端口](#cohport)
+[管理端口](#cohport)
 
-[异步流程引擎使用的线程数](#threadnum)
+[流程引擎线程数](#threadnum)
 
 [同步线程池配置](#cyncedflowcfg)
 
@@ -52,16 +52,18 @@
 
     xml中所有节点名都是首字母大写，属性名都是首字母小写
 
-# <a name="sapport">对外提供服务的TCP端口</a>
+# <a name="sapport">TCP服务端口</a>
 
     <SapPort>9898</SapPort>
 
+    此端口为TCP端口，对外协议为Avenue协议
     如设置为0，则表示不需要对外启动sos，只作为一个job服务
 
-# <a name="cohport">管理HTTP端口</a>
+# <a name="cohport">管理端口</a>
 
     <CohPort>9899</CohPort>
 
+    此端口为http端口
     如设置为0，则表示不需要管理功能
 
     目前支持：
@@ -70,11 +72,11 @@
     http://host:port/NotifyChanged.do 刷新进程内缓存
     http://host:port/Dump.do 写进程内资源（线程数，连接数等）信息到all.log日志中用于分析
 
-# <a name="threadnum">异步流程引擎使用的线程数</a>
+# <a name="threadnum">流程引擎线程数</a>
 
     <ThreadNum>4</ThreadNum>
 
-    对异步流程引擎，4个线程足够
+    此线程数用于配置框架内部的异步流程引擎，对一般负载不是特别高的系统，4个线程已足够
 
 # <a name="cyncedflowcfg">同步线程池配置</a>
 

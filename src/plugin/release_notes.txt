@@ -148,7 +148,7 @@
 * 修改本地队列插件 indexDir 不能使用绝对路径的bug
 * 修改billing-queue: short -> int 转换bug；
 		注意：billing-queue 对每个写入字段最多只能支持到unsigned short个字节，超过会丢失数据
-		      jvmdbbroker的本地队列使用billing-queue，也有此限制
+		      本地队列使用billing-queue，也有此限制
 * 修改db插件，支持columnType="number" 用在mysql里select a from b limit 0,n  如n需要为动态，需设置服务描述文件对应的值的columnType="number"
 * 修改db插件 解析分表 $tableIdx $hashNum 时的一个bug
 
