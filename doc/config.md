@@ -4,21 +4,21 @@
 
 [TCP服务端口](#sapport)
 
+[TCP服务配置](#serversos)
+
 [管理端口](#cohport)
 
-[流程引擎线程数](#threadnum)
+[异步流程引擎线程数](#threadnum)
 
 [同步线程池配置](#cyncedflowcfg)
 
-[异步日志](#asynclog)
+[异步日志配置](#asynclog)
 
 [KEY/VALUE配置参数](#keyvalue)
 
 [对外开放或关闭服务](#open)
 
-[runtest 目标地址](#runtest)
-
-[服务端SOS配置](#serversos)
+[runtest目标地址](#runtest)
 
 [错误码/错误描述配置](#error)
 
@@ -26,9 +26,9 @@
 
 [远程SOS服务配置](#sos)
 
-[本地缓存服务（进程内缓存)配置](#configdb)
+[本地缓存服务配置](#configdb)
 
-[MemCache服务配置](#cache)
+[MemCache服务配置](#memcache)
 
 [Redis服务配置](#redis)
 
@@ -36,149 +36,37 @@
 
 [DB配置](#db)
 
-[同步DB（支持事务）配置](#synceddb)
+[支持事务的DB配置](#synceddb)
 
-[AHT配置](#aht)
+[HTTP Client插件配置](#httpclient)
 
-[HTTP Server插件](#httpserver)
+[HTTP Server插件配置](#httpserver)
+
+[邮件插件配置](#mail)
 
 [消息队列配置](#mq)
 
 [消息队列接受者配置](#mqreceiver)
 
-[邮件插件配置](#mail)
-
 # <a name="rule">约定</a>
 
-    xml中所有节点名都是首字母大写，属性名都是首字母小写
+    config.xml中所有节点名都是首字母大写，属性名都是首字母小写
 
 # <a name="sapport">TCP服务端口</a>
 
     <SapPort>9898</SapPort>
 
     此端口为TCP端口，对外协议为Avenue协议
-    如设置为0，则表示不需要对外启动sos，只作为一个job服务
+    如设置为0，则表示不需要对外启动tcp服务，只作为一个job服务启动
 
-# <a name="cohport">管理端口</a>
+# <a name="serversos">TCP服务配置</a>
 
-    <CohPort>9899</CohPort>
-
-    此端口为http端口
-    如设置为0，则表示不需要管理功能
-
-    目前支持：
-
-    http://host:port/SelfCheck.do 自检, 返回json串
-    http://host:port/NotifyChanged.do 刷新进程内缓存
-    http://host:port/Dump.do 写进程内资源（线程数，连接数等）信息到all.log日志中用于分析
-
-# <a name="threadnum">流程引擎线程数</a>
-
-    <ThreadNum>4</ThreadNum>
-
-    此线程数用于配置框架内部的异步流程引擎，对一般负载不是特别高的系统，4个线程已足够
-
-# <a name="cyncedflowcfg">同步线程池配置</a>
-
-    所有异步流程都共用<ThreadNum>4</ThreadNum>配置项，所以不允许在线程内发生阻塞
-    异步线程池只有一个, 但是可以额外配置多个线程池用于可能会发生阻塞的消息
-
-    <SyncedFlowCfg  threadNum="n">
-      <ServiceId>999.3,999.4</ServiceId>
-    </SyncedFlowCfg>
-
-    threadNum: 指定该线程池的线程数, 若未配置则默认等于<ThreadNum>4</ThreadNum>里的值
-
-    此配置为消息级别，用逗号隔开多个消息，可指定对应的消息使用一个独立的线程池;
-    如需将该服务的所有消息都加入此独立线程池，可使用serviceid.*表示
-
-[返回](#toc)
-
-# <a name="asynclog">异步日志</a>
-
-## 日志输出
-
-    <AsyncLogThreadNum>2</AsyncLogThreadNum >
-
-    AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设置
-
-    上报数据给监控系统时如果出现网络错误会重试，每次间隔5秒钟，最多重试2次。如果超时，不重试。
-
-    <AsyncLogWithFieldName>true</AsyncLogWithFieldName>
-
-    在打印输入参数和输出参数的日志时，是否在值的前面输出参数名称；输出参数名称可方便查看数据； 默认为true
-
-    <AsyncLogArray>1</AsyncLogArray>
-
-    用于控制对数组类型日志打印前几条数据，默认为1, 只打印数组的第一条
-
-    <AsyncLogPasswordFields>password,pass_word</AsyncLogPasswordFields>
-
-    配置日志中要隐藏实际值的字段，配置了该字段，在request log, csos log中将会以 *** 代替实际值
-    多个配置值用逗号分隔
-    也可以使用此参数来隐藏lob类型字段的日志，否则日志可能会很长
-
-## 日志统计上报
-
-    <ReportUrl>http://api.monitor.sdo.com/stat_more_actions.php</ReportUrl>
-    <DetailReportUrl>http://api.monitor.sdo.com/stat_pages.php</DetailReportUrl>
-    <DetailReportServiceId>320,321,...</DetailReportServiceId>
-
-    ReportUrl用于报告服务总体情况：连接数，请求数，不分服务消息，这个数据上报作用不大, 如未配置，则不报
-    ReportUrl上报对应的日志数据在request_summary.log文件中
-
-    DetailReportUrl用于报告对外服务和子服务的请求数（成功，失败），耗时角度的统计数据, 如未配置，则不报
-    DetailReportUrl上报对应的日志数据在request_stat.log文件(对外服务)和sos_stat.log文件(子服务)中
-
-    DetailReportServiceId用来控制需要上报哪些服务号的统计数字到监控系统，此参数不影响打日志；如未配置，则全部都上报
-
-    __若未配置 ReportUrl  DetailReportUrl 则不上报__
-
-## 日志转发
-
-    <AsyncLogDispatch defaultTarget="999.28">
-            <Item serviceId="999" msgId="27" target="999.28"/>
-    </AsyncLogDispatch>
-
-    其中msgId可用*代替匹配所有消息; target可不配置，则取defaultTarget默认值
-    可转发给本地服务或远程服务；为避免消息丢失，可在服务描述文件将消息设为必达消息, isAck="true"
-    目标消息的服务描述文件要求：
-        serviceId 服务号
-        msgId 消息号
-        kvarray string array, 请求，响应，流程变量
-
-[返回](#toc)
-
-# <a name="keyvalue">KEY/VALUE配置参数</a>
-
-    <Parameter name="name">value</Parameter>
-
-    流程中可用Flow.router.getConfig("name",defaultValue)获取到上述value
-
-# <a name="open">对外开放或关闭服务</a>
-
-    <Parameter name="serviceIdsNotAllowed">999,977</Parameter>
-
-    默认流程服务(包括子流程服务)都对外开放, 可用serviceIdsNotAllowed调整
-
-    <Parameter name="serviceIdsAllowed">45601,45602</Parameter>
-
-    默认非流程服务都不对外开放, 可用serviceIdsAllowed调整；
-
-# <a name="runtest">runtest 目标地址</a>
-
-    <TestServerAddr>host:port</TestServerAddr>
-
-    此配置仅用于runtest测试工具，用来将请求发给远程服务而不是本地服务
-
-[返回](#toc)
-
-# <a name="serversos">服务端SOS配置</a>
+    SapPort只用于配置端口，更多属性使用ServerSos节点配置
 
       <ServerSos
            host="*"
            threadNum="1"
-           maxPackageSize="20020"
+           maxPackageSize="2000000"
            idleTimeoutMillis="180000"
            isSps="0"
            spsReportTo="55605:1"
@@ -237,7 +125,128 @@
 
 [返回](#toc)
 
+# <a name="cohport">管理端口</a>
+
+    <CohPort>9899</CohPort>
+
+    此端口为http端口, 如设置为0，则表示不需要管理功能
+
+    管理端口目前支持的命令为：
+
+    http://host:port/SelfCheck.do 自检, 返回json串, 监控系统可定时查询判断服务是否有异常
+    http://host:port/NotifyChanged.do 刷新进程内缓存
+    http://host:port/Dump.do Dump进程内资源（线程数，连接数等）信息到all.log日志中用于分析
+
+# <a name="threadnum">异步流程引擎线程数</a>
+
+    <ThreadNum>4</ThreadNum>
+
+    此线程数用于配置框架内部的异步流程引擎，对一般负载不是特别高的系统，4个线程已足够
+
+# <a name="cyncedflowcfg">同步线程池配置</a>
+
+    所有异步流程都共用<ThreadNum>4</ThreadNum>配置项，所以不允许在线程内发生阻塞
+    某些特殊情况下，线程内会发生阻塞，如调用支持事务的同步db服务，长时间处理文件，等
+    对这些特殊消息可以额外配置线程池, 避免影响阻塞异步流程线程池
+
+    <SyncedFlowCfg  threadNum="n">
+      <ServiceId>999.3,999.4</ServiceId>
+    </SyncedFlowCfg>
+
+    threadNum: 指定该线程池的线程数, 若未配置则默认等于<ThreadNum>4</ThreadNum>里的值
+
+    此配置为消息级别，用逗号隔开多个消息，可指定对应的消息使用一个独立的线程池;
+    如需将该服务的所有消息都加入此独立线程池，可使用serviceid.*表示
+
+[返回](#toc)
+
+# <a name="asynclog">异步日志配置</a>
+
+## 日志输出
+
+    <AsyncLogThreadNum>2</AsyncLogThreadNum >
+
+    AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设置
+
+    <AsyncLogWithFieldName>true</AsyncLogWithFieldName>
+
+    在打印输入参数和输出参数的日志时，是否在值的前面输出参数名称；输出参数名称可方便查看数据； 默认为true
+
+    <AsyncLogArray>1</AsyncLogArray>
+
+    用于控制对数组类型日志打印前几条数据，默认为1, 只打印数组的第一条
+
+    <AsyncLogPasswordFields>password,pass_word</AsyncLogPasswordFields>
+
+    配置日志中要隐藏实际值的字段，配置了该字段，在request log, csos log中将会以 *** 代替实际值
+    多个配置值用逗号分隔
+    也可以使用此参数来隐藏特别长的参数，否则日志可能会很长
+
+## 日志统计上报
+
+    <ReportUrl>http://api.monitor.sdo.com/stat_more_actions.php</ReportUrl>
+    <DetailReportUrl>http://api.monitor.sdo.com/stat_pages.php</DetailReportUrl>
+    <DetailReportServiceId>320,321,...</DetailReportServiceId>
+
+    ReportUrl用于报告服务总体情况：连接数，请求数，不分服务消息，这个数据上报作用不大, 如未配置，则不报
+    ReportUrl上报对应的日志数据在request_summary.log文件中
+
+    DetailReportUrl用于报告对外服务和子服务的请求数（成功，失败），耗时角度的统计数据, 如未配置，则不报
+    DetailReportUrl上报对应的日志数据在request_stat.log文件(对外服务)和sos_stat.log文件(子服务)中
+
+    DetailReportServiceId用来控制需要上报哪些服务号的统计数字到监控系统，此参数不影响打日志；如未配置，则全部都上报
+
+    上报数据给监控系统时如果出现网络错误会重试，每次间隔5秒钟，最多重试2次。如果超时，不重试。
+
+    __若未配置 ReportUrl  DetailReportUrl 则不上报__
+
+## 日志转发
+
+    可以将日志转发到新的目的地做二次处理，如根据日志做风控累加，数据汇总等
+
+    <AsyncLogDispatch defaultTarget="999.28">
+            <Item serviceId="999" msgId="27" target="999.28"/>
+    </AsyncLogDispatch>
+
+    其中msgId可用*代替匹配所有消息; target可不配置，则取defaultTarget默认值
+    可转发给本地服务或远程服务；为避免消息丢失，可在服务描述文件将消息设为必达消息, isAck="true"
+    目标消息的服务描述文件要求：
+        serviceId 服务号
+        msgId 消息号
+        kvarray string array, 请求，响应，流程变量
+
+[返回](#toc)
+
+# <a name="keyvalue">KEY/VALUE配置参数</a>
+
+    <Parameter name="name">value</Parameter>
+
+    流程中可用Flow.router.getConfig("name",defaultValue)获取到上述value
+
+# <a name="open">对外开放或关闭服务</a>
+
+    <Parameter name="serviceIdsNotAllowed">999,977</Parameter>
+
+    默认流程服务(包括子流程服务)都对外开放, 可用serviceIdsNotAllowed调整
+
+    <Parameter name="serviceIdsAllowed">45601,45602</Parameter>
+
+    默认非流程服务都不对外开放, 可用serviceIdsAllowed调整；
+
+# <a name="runtest">runtest目标地址</a>
+
+    <TestServerAddr>host:port</TestServerAddr>
+
+    此配置仅用于runtest测试工具，用来将请求发给远程服务而不是本地服务
+
+[返回](#toc)
+
 # <a name="error">错误码/错误描述配置</a>
+
+    avenue协议本身支持错误码的传输，服务描述文件中响应参数中应尽量避免再定义一个错误码参数，
+    如果确实有需要，通过此配置可以保证avenue包头的错误码和body中的错误码字段一致；
+    
+    流程中应可能避免直接返回错误描述， 通过此配置可将错误描述集中管理；
 
     <ErrorCodeCfg localCacheServiceId="xxx">
       <Service serviceId="999" resultCodeField="resultCode" resultMsgField="resultMsg"/>
@@ -245,11 +254,8 @@
       ...
     </ErrorCodeCfg>
 
-    在流程中不用关心body里的resultCode, resultMsg, 通过配置来处理；
-    body里的resultCode值应该总是和avenue包头的code值相同；
-
-    resultCodeField 配置对应 body的 key;
-    resultMsgField 配置对应 body的 key, resultMsgField可以不配置，如果未配置，则localCacheServiceId也不需指定;
+    resultCodeField 配置对应 body里错误码的 key;
+    resultMsgField 配置对应 body里错误描述的 key, resultMsgField可以不配置，如果未配置，则localCacheServiceId也不需指定;
     对于配置了resultCodeField的响应中，会自动将resultCode设置为avenue code值；
     对于配置了resultMsgField的响应中，则查询localCacheServiceId获取错误信息并设置到body中； 如果flow中指定了则不覆盖
     code=0时不写resultMsgField
@@ -269,12 +275,12 @@
 
     按服务号消息号定义定时任务：
 
-    方式1) 用Cron表达式，定时调用该服务号该消息号
-    方式2) 用Repeat表达式，指定初始间隔秒数和后续每次间隔秒数
+    方式1) 用Cron配置，定时调用该服务号该消息号
+    方式2) 用Repeat配置，指定初始间隔秒数和后续每次间隔秒数
 
     调用Cron,Repeat消息不等待返回值，实现这些消息的流程可以在一开始就reply(0)
 
-    方式3) 用Init表达式，和Repeat的区别是框架会在启动的时候调用Init消息，
+    方式3) 用Init配置，Init和Repeat的区别是框架会在启动的时候调用Init消息，
            直到所有Init消息收到错误码0才会继续启动, 如失败，会每隔10秒重新调用该方法
    
    调用Init消息会等待返回值，实现流程需注意只有成功再返回0
@@ -293,7 +299,7 @@
       ...
     </SosList>
 
-    SosList节点上的可配置属性, 以下属性一般都不需要设置，默认值就够了：
+    以下SosList属性一般都不需要设置，默认值就够了：
 
     threadNum="2"  为消息投递线程数，默认为2
     timeout="30000" 为每个消息的超时时间，默认为30000, 表示30秒
@@ -307,7 +313,7 @@
 
 [返回](#toc)
 
-# <a name="configdb">本地缓存服务（进程内缓存)配置</a>
+# <a name="configdb">本地缓存服务配置</a>
 
     <ConfigDb>
       <ServiceId>40998,...</ServiceId>
@@ -316,31 +322,36 @@
 
     将数据库内的数据加载到内存中，并缓存在本地文件系统中;
     如数据库连不通，本地文件可用，也可启动；如都不可以用，则启动失败；
-    ConnString中的service=可省略, 兼容以前的配置
 
     缓存文件格式为 list_xxx,  xxx为服务号， 文件格式为，一行表示一个配置项, 字段之间用\t分隔
+    缓存文件保存在项目的根目录下
 
     若只使用预定义好的本地文件做配置，不读数据库，配置可简化为
 
     <ConfigDb>
-      <ServiceId>100</ServiceId>
+      <ServiceId>xxx</ServiceId>
     </ConfigDb>
 
-    这种情况要求项目根目录下的 list_100 文件必须存在
+    这种情况要求项目项目根目录下的 list_xxx 文件必须存在
 
-    任何invoke接口访问本地缓存服务，都不会发生线程切换
+    注意：本地缓存服务的内部实现是同步的，调用时不会发生线程切换
 
     服务描述文件区别:
 
-    兼容MemCache服务
+    兼容MemCache服务, 参考MemCache服务配置
 
-    a) 支持的方法
+    a) 特殊的code:
+
+        code < 10000 为 key，可以有多个
+        code > 10000 为 value, 可以有多个
+
+    b) 支持的方法
 
         <message name="get" id="1">
         <message name="getarray" id="50"> 可根据一个key返回一组配置
         <message name="getall" id="51"> 返回所有配置
 
-    b) 增加了一个特殊节点，用来配置查询语句，如果只使用本地文件，可不配置
+    c) 增加了一个特殊节点，用来配置查询语句，如果只使用本地文件，可不配置
 
       <sql>SELECT APPID,APPCODE FROM TBAPPCODEAMOUNTWHITELIST</sql>
 
@@ -349,7 +360,7 @@
 
 [返回](#toc)
 
-# <a name="cache">MemCache服务配置</a>
+# <a name="memcache">MemCache服务配置</a>
 
     <CacheThreadNum>2</CacheThreadNum>
     <CacheWriteThreadNum>1</CacheWriteThreadNum>
@@ -361,6 +372,7 @@
 
     <CacheSosList readThreadNum="2" writeThreadNum="5">
         <ServiceId>990,45612</ServiceId>
+        <ConHash/> 或 <ArrayHash/> 或不配置
         <ServerAddr>10.241.37.37:11211</ServerAddr>
         <ServerAddr>10.241.37.37:11211</ServerAddr>
         ...
@@ -433,6 +445,7 @@
 
       <RedisSosList readThreadNum="2" writeThreadNum="5">
           <ServiceId>990,45612</ServiceId>
+          <ConHash/> 或 <ArrayHash/> 或不配置
           <ServerAddr>10.241.37.37:11211</ServerAddr>
           <ServerAddr>10.241.37.37:11211</ServerAddr>
           ...
@@ -441,6 +454,12 @@
       加<ArrayHash/> <ConHash/> 或者不加都支持，和memcache一样
 
       服务描述文件，KEY,VALUE格式和memcache一样
+
+      额外支持几个消息:
+
+      <message name="sget" id="10"> id必须为10, name没有限制
+      <message name="sadd" id="11"> id必须为11, name没有限制
+      <message name="sremove" id="12"> id必须为12, name没有限制
 
 [返回](#toc)
 
@@ -488,7 +507,7 @@
 
     本地队列对应的持久化文件默认在data/localqueue目录下
 
-    我们实际经常需要给商户发通知，每个商户有自己的通知地址，通常可以用appId作为queueName。如果商户的notifyUrl可在入参中传递，则队列名中应加上notifyUrl的hashCode
+    比如给很多商户发通知，每个商户有自己的通知地址，通常可以用appId作为queueName。如果商户的notifyUrl可在入参中传递，则队列名中应加上notifyUrl的hashCode
 
     对receiverServiceId服务描述文件的要求:
 
@@ -508,11 +527,13 @@
 
 # <a name="db">DB配置</a>
 
+## 耗时SQL语句输出阀值
+
     <LongTimeSql>500</LongTimeSql> 耗时SQL配置参数，默认为500毫秒，超过此阀值的sql将被以WARN级别输出到日志文件中,便于定位db性能问题
 
-    服务描述文件差异:
+## 消息定义语法
 
-    类型映射关系:
+    完整的配置语法:
 
       <message name="QueryTimes" id="1">
         <sql><![CDATA[
@@ -534,7 +555,7 @@
         </responseParameter>
       </message>
 
-      sql 为该消息对应的一个活多个SQL语句；
+      sql 为该消息对应的一个或多个SQL语句；
       sql节点内可放置多个sql语句，每个语句可跨越多行； 配置在一个sql节点内的sql保证在同一个事务中完成;空行或行前后的空格会自动去除;
       要求每个sql的所有占位符都能找到对应入参，反过来不需要所有入参都需要映射到每个SQL语句;
       一次执行多条SQL特别适合有大量相同参数需要同时插入或更新到几个表的时候。
@@ -542,7 +563,7 @@
 
       to 用来指定占位符 :1 为 占位符，用于和SQL对应; scalabpe里可以随意使用字母数字，不要求是从1开始的数值， 另外如果占位符和入参的name相同(不区分大小写)，可不写to映射
       default 可为每个入参指定default，当没有传值则用该默认值;
-      columnType 对数据库里为日期类型的入参，应设置columnType="date" (截除时分秒) 或 columnType="datetime", int,string不用指定, 默认为string
+      columnType 对数据库里为日期类型的入参，如oracle里的date类型，应设置columnType="date" (截除时分秒) 或 columnType="datetime", int,string不用指定, 默认为string
 
       入参的tlv类型只能是string, int
 
@@ -553,12 +574,12 @@
       $ROWCOUNT映射为返回查询结果记录数，对于更新操作，则是更新影响的行数(多条SQL则是总行数)；scalabpe里只要name是rowcount或row_count(不区分大小写),可不写from
       $result[n][m]表示映射为结果集的第n行m列，一般单值都是映射到0行的数据; scalabpe里只要name和select语句中的字段匹配(不区分大小写和顺序),则匹配为0行的对应值，可不写from, 如要匹配非0行数据，还是需要from
 
-      在scalabpe里，上述配置可简化为如下，仅仅是多了一个SQL语句：
+      简化后的配置语法：
 
       <message name="QueryTimes" id="1">
         <sql><![CDATA[
                     SELECT outtimes,intimes,begintime,endtime FROM TBSNDAIDBILLINGTIMESSET
-                    WHERE sndaid=:1 and appid=:2 and areaid=:3 and rownum < 2
+                    WHERE sndaid=:sndaid and appid=:appid and areaid=:areaid and rownum < 2
             ]]></sql>
         <requestParameter>
           <field name="sndaId" type="sndaId_type" />
@@ -589,11 +610,11 @@
 
       SQL扩展，如果sql语句无法用:xxx这种的标记来表示，可改为使用$xxx标记，使用$xxx标记传入的字符串用来替换SQL, 如是值需带单引号; 用于动态的查询条件，排序条件等，$xxx这样的标记不限制数量；
 
-      动态SQL替换 $dynamicSql, 是$xxx这种语法的一个用法，$dynamicSql不再是一个特殊标记，可换成任何合法字符串
-
     scalabpe中允许的sql语句(以起始字符串判断): select,insert,update,merge,create,alter,drop,replace
 
-    <DbThreadNum>16</DbThreadNum> 或  <dbthreadnum>16</dbthreadnum>
+## 配置参数
+
+    <DbThreadNum>16</DbThreadNum>
 
     配置db的默认线程数, 每一个DbSosList都会启动一组独立的线程池来执行任务, 而不是共用同一个线程池
 
@@ -602,38 +623,22 @@
         <DbSosList threadNum="2">
           <ServiceId>45601,...</ServiceId>
           <MasterDb conns="2">
-                    <DefaultConn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=des:7f4c1e7678077f51b7f9fb92f0d54023</DefaultConn>
+                    <DefaultConn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</DefaultConn>
           </MasterDb>
         </DbSosList>
 
         threadNum未配置则用默认值
         conns 为连接数
-        DefaultConn节点也可用defaultconn表示，兼容老的格式
-        DefaultConn中的service=可省略，兼容老的格式
-        service=后必须为一个有效的jdbc连接串, 支持计费这边常用的 url###url 模式
-        password可以用明文，也可用des:xxx表示des算法加密的密钥，加密方法同billing-dal中的算法, 可以为空串
-        内部连接池实现全部为固定连接数，不会上下浮动
+        service=后必须为一个有效的jdbc连接串
+        password可以用明文，也可用密文，也可是空串; 对如何使用密文配置，参考数据库连接密码加密部分
+        内部连接池实现全部为固定连接数，连接数不会上下抖动
 
-    MYSQL的master/slave模式: 所有select先查slave,查失败，查master,非select直接用master
-
-        <DbSosList>
-          <ServiceId>45601,...</ServiceId>
-          <MasterDb conns="4" >
-                    <DefaultConn>service=mysql_master_connect_string user=riskcontrol password=des:7f4c1e7678077f51b7f9fb92f0d54023</DefaultConn>
-          </MasterDb>
-          <SlaveDb conns="4" >
-                    <DefaultConn>service=mysql_slave_connect_string user=riskcontrol22 password=des:7f4c1e7678077f51b7f9fb92f0d54023</DefaultConn>
-          </SlaveDb>
-        </DbSosList>
-
-        oracle下的RAC节点应用url1###url2的格式, 不可用此方式; 除非做了类似mysql的master/slave同步
-
-    分表
+## 分表
 
         <DbSosList>
           <ServiceId>45601,...</ServiceId>
           <MasterDb conns="4" splitTableType="custom" tbfactor="6" splitTableCustomCls="jvmdbbroker.flow.SampleDbPlugin">
-          <DefaultConn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs###jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=des:7f4c1e7678077f51b7f9fb92f0d54023</DefaultConn>
+              <DefaultConn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs###jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</DefaultConn>
           </MasterDb>
         </DbSosList>
 
@@ -646,18 +651,21 @@
             custom 自定义 使用 splitTableCustomCls指定的类来生成分表关键字，该类需实现接口SplitTablePlugin, 实现中可任意实现自己的规则； 该实现类可直接放在流程文件中，不用单独写插件
 
         分表时SQL语句的表名中需带分表关键字，如 insert into consume_switch_setting_$tableIdx(pt, consume_switch) values(:1, :2)
+        分表关键字实际上就是一个特殊的入参
+
             <field name="tableIdx" type="tableIdx_type"/>
+
         $tableIdx也可用$hashNum代替;
 
-    分库
+## 分库
 
         <DbSosList>
           <ServiceId>45601,...</ServiceId>
           <MasterDb conns="4" splitDbType="custom" dbfactor="3" splitDbCustomCls="jvmdbbroker.flow.SampleDbPlugin">
               <DivideConns>
-                <Conn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=des:7f4c1e7678077f51b7f9fb92f0d54023</Conn>
-                <Conn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=des:7f4c1e7678077f51b7f9fb92f0d54023</Conn>
-                <Conn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=des:7f4c1e7678077f51b7f9fb92f0d54023</Conn>
+                <Conn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</Conn>
+                <Conn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</Conn>
+                <Conn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</Conn>
               </DivideConns>
           </MasterDb>
         </DbSosList>
@@ -668,26 +676,40 @@
             assign 用指定参数值作为分库字段, 要求请求中有dbHashNum或dbIdx入参，取值范围为(0 to conn-1)
             custom 自定义 使用 splitDbCustomCls 指定的类来生成分库索引(0 to conn-1)，该类需实现接口SplitDbPlugin； 该实现类可直接放在流程文件中，不用单独写插件
 
-    如果有超大数量的查询，结果集未知，不能分页或限制行数，不能把结果集都放在内存后处理，这时可以使用
+## master/slave模式
 
-       QueryCallback接口，定义在dbplugin.scala文件中; 这个查询不依赖服务描述文件，不符合上述需求就不应该使用
+    master/slave模式: 所有select先查slave,查失败，查master,非select直接用master
+
+        <DbSosList>
+          <ServiceId>45601,...</ServiceId>
+          <MasterDb conns="4" >
+                    <DefaultConn>service=master_connect_string user=riskcontrol password=riskcontrol</DefaultConn>
+          </MasterDb>
+          <SlaveDb conns="4" >
+                    <DefaultConn>service=slave_connect_string user=riskcontrol22 password=riskcontrol</DefaultConn>
+          </SlaveDb>
+        </DbSosList>
+
+    此模式未实际运用过，慎用
 
 [返回](#toc)
 
-# <a name="synceddb">同步DB（支持事务）配置</a>
+# <a name="synceddb">支持事务的DB配置</a>
 
     基本配置：
 
       <SyncedDbSosList>
         <ServiceId>45601,...</ServiceId>
         <MasterDb conns="2">
-                <DefaultConn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=des:7f4c1e7678077f51b7f9fb92f0d54023</DefaultConn>
+                <DefaultConn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</DefaultConn>
         </MasterDb>
       </SyncedDbSosList>
 
     和异步DB的差异：
 
-      1) 执行时线程不会发生切换，可以使用invoke调用该db服务下的各接口，但建议用 syncedInvoke调用, 一旦流程里使用invoke了"异步服务"，线程会发生切换，随后的调用必然出现异常
+      1) 执行时线程不会发生切换，可以使用invoke调用该db服务下的各接口，
+         但建议用 syncedInvoke调用, 一旦流程里使用invoke了"异步服务"，线程会发生切换，随后的调用必然出现异常
+
       2) 服务描述文件需增加3个特殊消息, 不需定义sql,requestParameter,responseParameter
 
          <message name="beginTransaction" id="10000"/>
@@ -697,17 +719,17 @@
       3) 显示使用syncedInvoke( "xxx.beginTransaction") 开始事务, 绑定连接
       4) 显示使用syncedInvoke( "xxx.commit") 提交事务, 释放连接
       5) 自动回滚: 执行该服务的任意消息出现异常都会自动回滚, 释放连接，不需要显示调用
-      6) 有需要可显示使用syncedInvoke( "xxx.rollback") 回滚事务;
+      6) 调用syncedInvoke( "xxx.rollback") 回滚事务;
       7) 该服务的任何消息都需要在一个事务中，也就是必须先调用beginTransaction
          通常将查询类的单独定义一个服务，对查询接口访问该异步DB服务，不用访问这个事务版本的服务
       8) 不支持异步DB的Master/Slave, 不支持分库
-      9) SyncedDbSosList需和SyncedFlowCfg一起使用
+      9) 如果配置了SyncedDbSosList， 一定也要配置SyncedFlowCfg, 否则会阻塞异步线程池
 
 [返回](#toc)
 
-# <a name="aht">AHT配置</a>
+# <a name="httpclient">Http Client插件配置</a>
 
-    服务描述文件差异：
+## 服务描述文件差异
 
         特殊的code:
 
@@ -721,7 +743,7 @@
           <requestParameter>
             <field name="notifyUrl" type="notifyUrl_type" />
             <field name="signatureKey" type="signatureKey_type" />
-                <field name="reqOrderNo" type="reqOrderNo_type" />
+            <field name="reqOrderNo" type="reqOrderNo_type" />
             <field name="orderAmount" type="orderAmount_type" />
             <field name="merchant_name" type="merchantName_type" default="youyun" />
           </requestParameter>
@@ -739,7 +761,7 @@
         path 响应和结果json的映射关系, 可用同样的方式配置从json,xml,form中解析结果，也可用jsonpath兼容老版本,
         isResultCode确定该字段是错误码字段，如未指定，则只要是HTTP 200，就认为code=0，否则报错; 也兼容isreturnfield配置参数
 
-    config.xml中的配置
+## config.xml中的配置
 
       <AhtCfg>
 
@@ -761,13 +783,13 @@
               <RequestContentType>application/x-www-form-urlencoded</RequestContentType>
               <CharSet>UTF-8</CharSet>
               <ServerUrl>http://xxx:xxxx/sdpp/payment/mobile/prepare</ServerUrl>
-                    <WSSOAPAction>http://tempuri.org/IDepositOrder/CheckDepositOrder</WSSOAPAction>
-                    <WSReqSuffix></WSReqSuffix>
-                    <WSResSuffix>Response</WSResSuffix>
-                    <WSReqWrap>orderInfo</WSReqWrap>
-                    <WSResWrap>CheckDepositOrderResult</WSResWrap>
-                    <WSNs>ns2=http://tempuri.org/ default=http://schemas.datacontract.org/2004/07/Sdo.Service.PayOrder.Entity</WSNs>
-                    <WSWrapNs>ns2</WSWrapNs>
+              <WSSOAPAction>http://tempuri.org/IDepositOrder/CheckDepositOrder</WSSOAPAction>
+              <WSReqSuffix></WSReqSuffix>
+              <WSResSuffix>Response</WSResSuffix>
+              <WSReqWrap>orderInfo</WSReqWrap>
+              <WSResWrap>CheckDepositOrderResult</WSResWrap>
+              <WSNs>ns2=http://tempuri.org/ default=http://schemas.datacontract.org/2004/07/Sdo.Service.PayOrder.Entity</WSNs>
+              <WSWrapNs>ns2</WSWrapNs>
               <Plugin>xxx</Plugin>
             </Item>
 
@@ -863,7 +885,7 @@
 
 [返回](#toc)
 
-# <a name="httpserver">HTTP Server插件</a>
+# <a name="httpserver">HTTP Server插件配置</a>
 
 ## web项目目录结构
 
@@ -1124,72 +1146,6 @@
 
 [返回](#toc)
 
-# <a name="mq">消息队列配置</a>
-
-    <MqCfg plugin="xxx">
-        <ServiceId>991,992</ServiceId>
-        <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=sdouser password=des:a1f1869a55d5fa63</Connection>
-        <Destination serviceId="991" queueName="com.sdo.billing.test1" persistent="true"/>
-        <Destination serviceId="992" queueName="com.sdo.billing.test2" persistent="true"/>
-    </MqCfg>
-
-    将消息发送给远程ActiveMQ服务
-    基于服务号发送，每个服务号对应一个队列
-    队列中的消息内容为一个json串，包括请求参数中的所有值，额外加上以下几个字段：
-
-      messageId 服务器请求ID
-      messageSourceIp 服务器IP
-      messageTimestamp 时间
-      messageType 消息号
-
-    收到消息会立即写入本地queue文件，然后从本地queue文件取出发送给远程MQ, 所以不管远程网络是否可用总是立即返回成功;
-    本地queue文件中的消息不会丢失，重启后也继续存在，会一直重试直到发送成功
-    唯一可能失败就是出现本地 IO失败, 比如磁盘慢，有坏道等
-    一般使用invokeWithReply发送消息到此服务就可以
-
-    本地队列对应的持久化文件默认在data/mq目录下
-
-    服务描述文件中所有消息都不需要response字段，只检查错误码，其它无特殊之处。
-
-    内部实现时每个队列对应一个发送线程，避免队列之间彼此影响。
-
-    如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqSelialize接口, 自定义插件类不再插入默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
-
-[返回](#toc)
-
-# <a name="mqreceiver">消息队列接受者配置</a>
-
-    <MqReceiverCfg receiverServiceId="879" maxSendTimes="5" retryInterval="5000" plugin="xxx">
-        <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=sdouser password=des:a1f1869a55d5fa63</Connection>
-        <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=sdouser password=des:a1f1869a55d5fa63</Connection>
-        <Destination queueName="com.sdo.billing.test1" />
-        <Destination queueName="com.sdo.billing.test2" />
-        ...
-    </MqReceiverCfg>
-
-    消息接收者插件和MQ队列插件配套使用， 接收到MQ服务器的数据，先写到本地队列中，再使用和本地队列一样的方式调用receiverServiceId
-
-    接受者一般对每个MQ服务器单独配置Connection,而不是放在一个Connection中，否则有些服务器上的消息队列会接收不到。
-    Destination可配置多个，会认为每个Connection上都有对应的Destination存在；
-
-    本地队列对应的持久化文件默认在data/mqreceiver目录下
-
-    本地队列名的划分是根据json消息的 messageType 消息号，每个消息号对应一个独立队列
-    receiverServiceId服务描述文件和MQ队列插件的服务描述文件一一对应，不过可多获取以下特殊值, 不关心可不配置：
-
-        messageId 服务器请求ID, MQ队列插件发送时加入的值
-        messageSourceIp 消息来源服务器IP, MQ队列插件发送时加入的值
-        messageTimestamp 时间, MQ队列插件发送时加入的值
-        messageType 消息号, MQ队列插件发送时加入的值
-
-        x_sendCount  含义同本地队列
-        x_isLastSend 含义同本地队列
-        x_sendTimeUsed 含义同本地队列
-
-    如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqDeselialize接口, 自定义插件类不再支持默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
-
-[返回](#toc)
-
 # <a name="mail">邮件插件配置</a>
 
     邮件插件支持https, 不支持附件
@@ -1229,7 +1185,7 @@
           <field name="smtpPort" type="smtpPort_type" default="465"/>
           <field name="smtpAuth" type="smtpAuth_type" default="true"/>
           <field name="smtpSsl" type="smtpSsl_type" default="true"/>
-          <field name="smtpUser" type="smtpUser_type" default="bruce_ran@sina.com"/>
+          <field name="smtpUser" type="smtpUser_type" default="xxx@sina.com"/>
           <field name="smtpPwd" type="smtpPwd_type" default="xxxxxxxx"/>
               
           <field name="from" type="from_type"/>
@@ -1263,3 +1219,70 @@
       content 正文, 可为空
 
 [返回](#toc)
+
+# <a name="mq">消息队列配置</a>
+
+    <MqCfg plugin="xxx">
+        <ServiceId>991,992</ServiceId>
+        <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=test password=test</Connection>
+        <Destination serviceId="991" queueName="com.sdo.billing.test1" persistent="true"/>
+        <Destination serviceId="992" queueName="com.sdo.billing.test2" persistent="true"/>
+    </MqCfg>
+
+    将消息发送给远程ActiveMQ服务
+    基于服务号发送，每个服务号对应一个队列
+    队列中的消息内容为一个json串，包括请求参数中的所有值，额外加上以下几个字段：
+
+      messageId 服务器请求ID
+      messageSourceIp 服务器IP
+      messageTimestamp 时间
+      messageType 消息号
+
+    收到消息会立即写入本地queue文件，然后从本地queue文件取出发送给远程MQ, 所以不管远程网络是否可用总是立即返回成功;
+    本地queue文件中的消息不会丢失，重启后也继续存在，会一直重试直到发送成功
+    唯一可能失败就是出现本地 IO失败, 比如磁盘慢，有坏道等
+    一般使用invokeWithReply发送消息到此服务就可以
+
+    本地队列对应的持久化文件默认在data/mq目录下
+
+    服务描述文件中所有消息都不需要response字段，只检查错误码，其它无特殊之处。
+
+    内部实现时每个队列对应一个发送线程，避免队列之间彼此影响。
+
+    如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqSelialize接口, 自定义插件类不再插入默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
+
+[返回](#toc)
+
+# <a name="mqreceiver">消息队列接受者配置</a>
+
+    <MqReceiverCfg receiverServiceId="879" maxSendTimes="5" retryInterval="5000" plugin="xxx">
+        <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=test password=test</Connection>
+        <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=test password=test</Connection>
+        <Destination queueName="com.sdo.billing.test1" />
+        <Destination queueName="com.sdo.billing.test2" />
+        ...
+    </MqReceiverCfg>
+
+    消息接收者插件和MQ队列插件配套使用， 接收到MQ服务器的数据，先写到本地队列中，再使用和本地队列一样的方式调用receiverServiceId
+
+    接受者一般对每个MQ服务器单独配置Connection,而不是放在一个Connection中，否则有些服务器上的消息队列会接收不到。
+    Destination可配置多个，会认为每个Connection上都有对应的Destination存在；
+
+    本地队列对应的持久化文件默认在data/mqreceiver目录下
+
+    本地队列名的划分是根据json消息的 messageType 消息号，每个消息号对应一个独立队列
+    receiverServiceId服务描述文件和MQ队列插件的服务描述文件一一对应，不过可多获取以下特殊值, 不关心可不配置：
+
+        messageId 服务器请求ID, MQ队列插件发送时加入的值
+        messageSourceIp 消息来源服务器IP, MQ队列插件发送时加入的值
+        messageTimestamp 时间, MQ队列插件发送时加入的值
+        messageType 消息号, MQ队列插件发送时加入的值
+
+        x_sendCount  含义同本地队列
+        x_isLastSend 含义同本地队列
+        x_sendTimeUsed 含义同本地队列
+
+    如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqDeselialize接口, 自定义插件类不再支持默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
+
+[返回](#toc)
+
