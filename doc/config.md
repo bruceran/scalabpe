@@ -10,6 +10,44 @@
 
 [同步线程池配置](#cyncedflowcfg)
 
+[异步日志](#asynclog)
+
+[KEY/VALUE配置参数](#keyvalue)
+
+[对外开放或关闭服务](#open)
+
+[runtest 目标地址](#runtest)
+
+[服务端SOS配置](#serversos)
+
+[错误码/错误描述配置](#error)
+
+[定时任务配置](#quartz)
+
+[远程SOS服务配置](#sos)
+
+[本地缓存服务（进程内缓存)配置](#configdb)
+
+[MemCache服务配置](#cache)
+
+[Redis服务配置](#redis)
+
+[本地持久化队列配置](#queue)
+
+[DB配置](#db)
+
+[同步DB（支持事务）配置](#synceddb)
+
+[AHT配置](#aht)
+
+[HTTP Server插件](#httpserver)
+
+[消息队列配置](#mq)
+
+[消息队列接受者配置](#mqreceiver)
+
+[邮件插件](#mail)
+
 # <a name="rule">约定</a>
 
     xml中所有节点名都是首字母大写，属性名都是首字母小写
@@ -52,7 +90,7 @@
     此配置为消息级别，用逗号隔开多个消息，可指定对应的消息使用一个独立的线程池;
     如需将该服务的所有消息都加入此独立线程池，可使用serviceid.*表示
 
-# 异步日志
+# <a name="asynclog">异步日志</a>
 
 ## 日志输出
 
@@ -105,13 +143,13 @@
         msgId 消息号
         kvarray string array, 请求，响应，流程变量
 
-# KEY/VALUE配置参数
+# <a name="keyvalue">KEY/VALUE配置参数</a>
 
     <Parameter name="name">value</Parameter>
 
     流程中可用Flow.router.getConfig("name",defaultValue)获取到上述value
 
-# 对外开放或关闭服务
+# <a name="open">对外开放或关闭服务</a>
 
     <Parameter name="serviceIdsNotAllowed">999,977</Parameter>
 
@@ -121,13 +159,13 @@
 
     默认非流程服务都不对外开放, 可用serviceIdsAllowed调整；
 
-# runtest 目标地址
+# <a name="runtest">runtest 目标地址</a>
 
     <TestServerAddr>host:port</TestServerAddr>
 
     此配置仅用于runtest测试工具，用来将请求发给远程服务而不是本地服务
 
-# 服务端SOS配置
+# <a name="serversos">服务端SOS配置</a>
 
       <ServerSos
            host="*"
@@ -190,7 +228,7 @@
        *)  如果想限制接收反向调用的IP，可通过<ReverseIp>...来进行配置
 
 
-# 错误码/错误描述配置
+# <a name="error">错误码/错误描述配置</a>
 
     <ErrorCodeCfg localCacheServiceId="xxx">
       <Service serviceId="999" resultCodeField="resultCode" resultMsgField="resultMsg"/>
@@ -210,7 +248,7 @@
     localCacheServiceId应该是一个local cache服务，不可以是其它异步服务;
     要求该local cache服务的get方法的：key为resultCode,value为resultMsg
 
-# 定时任务配置
+# <a name="quartz">定时任务配置</a>
 
     <QuartzCfg>
       <Cron serviceId="999" msgId="2">0/2 * * * * ?</Cron>
@@ -231,7 +269,7 @@
    调用Init消息会等待返回值，实现流程需注意只有成功再返回0
    Init消息可用于启动时加载数据库里的配置数据到内存，提供比本地缓存(LocalCache)更灵活的加载方式
 
-# 远程SOS服务配置
+# <a name="sos">远程SOS服务配置</a>
 
     配置远程SOS服务的服务号和多个地址
 
@@ -254,7 +292,7 @@
     timerInterval="100" 内部超时定时器的间隔时间，默认为100，表示100毫秒
     reconnectInterval="1" 连接断开后的重连间隔时间，默认为1，表示1秒
 
-# 本地缓存服务（进程内缓存)配置
+# <a name="configdb">本地缓存服务（进程内缓存)配置</a>
 
     <ConfigDb>
       <ServiceId>40998,...</ServiceId>
@@ -294,7 +332,7 @@
       sql select结果的顺序必须和 code 顺序一一对应, 不看名字，只看顺序;
       sql select结果的顺序和get方法的入参顺序无关;
 
-# MemCache服务配置
+# <a name="cache">MemCache服务配置</a>
 
     <CacheThreadNum>2</CacheThreadNum>
     <CacheWriteThreadNum>1</CacheWriteThreadNum>
@@ -348,7 +386,7 @@
 
     在编写服务描述文件的  requestParameter,responseParameter 时，field 顺序不要紧， 但建议和code顺序保持一致。
 
-# Redis服务配置
+# <a name="redis">Redis服务配置</a>
 
     redis服务提供缓存数据的持久化功能
 
@@ -385,7 +423,7 @@
 
       服务描述文件，KEY,VALUE格式和memcache一样
 
-# 本地持久化队列配置
+# <a name="queue">本地持久化队列配置</a>
 
     <LocalQueueCfg threadNum="2" receiverServiceId="879" maxSendTimes="5" retryInterval="5000">
         <ServiceId>878,...</ServiceId>
@@ -445,7 +483,7 @@
 
             可以用来记录日志，写数据库等操作
 
-# DB配置
+# <a name="db">DB配置</a>
 
     <LongTimeSql>500</LongTimeSql> 耗时SQL配置参数，默认为500毫秒，超过此阀值的sql将被以WARN级别输出到日志文件中,便于定位db性能问题
 
@@ -611,7 +649,7 @@
 
        QueryCallback接口，定义在dbplugin.scala文件中; 这个查询不依赖服务描述文件，不符合上述需求就不应该使用
 
-# 同步DB（支持事务）配置
+# <a name="synceddb">同步DB（支持事务）配置</a>
 
     基本配置：
 
@@ -640,7 +678,7 @@
       8) 不支持异步DB的Master/Slave, 不支持分库
       9) SyncedDbSosList需和SyncedFlowCfg一起使用
 
-# AHT配置
+# <a name="aht">AHT配置</a>
 
     jvmdbbroker直接将AHT功能集成进来。
 
@@ -798,7 +836,7 @@
 
             可自行解析contentStr到body中
 
-# HTTP Server插件
+# <a name="httpserver">HTTP Server插件</a>
 
 ## web项目目录结构
 
@@ -1057,7 +1095,7 @@
       contextPath url的根一级目录
       urlArgs 静态文件的url参数，默认为?, 通过配置为不同值，如?v1, ?v2可强制客户端所有js,css,html失效重新从服务器下载最新版本
 
-# 消息队列配置
+# <a name="mq">消息队列配置</a>
 
     <MqCfg plugin="xxx">
         <ServiceId>991,992</ServiceId>
@@ -1088,7 +1126,7 @@
 
     如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqSelialize接口, 自定义插件类不再插入默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
 
-# 消息队列接受者配置
+# <a name="mqreceiver">消息队列接受者配置</a>
 
     <MqReceiverCfg receiverServiceId="879" maxSendTimes="5" retryInterval="5000" plugin="xxx">
         <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=sdouser password=des:a1f1869a55d5fa63</Connection>
@@ -1119,7 +1157,7 @@
 
     如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqDeselialize接口, 自定义插件类不再支持默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
 
-# 邮件插件
+# <a name="mail">邮件插件</a>
 
     邮件插件支持https, 不支持附件
 
