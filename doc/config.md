@@ -1,7 +1,14 @@
 # 目录
 
 [约定](#rule)
+
 [对外提供服务的TCP端口](#sapport)
+
+[管理HTTP端口](#cohport)
+
+[异步流程引擎使用的线程数](#threadnum)
+
+[同步线程池配置](#cyncedflowcfg)
 
 # <a name="rule">约定</a>
 
@@ -13,7 +20,7 @@
 
     如设置为0，则表示不需要对外启动sos，只作为一个job服务
 
-# 管理HTTP端口
+# <a name="cohport">管理HTTP端口</a>
 
     <CohPort>9899</CohPort>
 
@@ -25,13 +32,13 @@
     http://host:port/NotifyChanged.do 刷新进程内缓存
     http://host:port/Dump.do 写进程内资源（线程数，连接数等）信息到all.log日志中用于分析
 
-# 异步流程引擎使用的线程数
+# <a name="threadnum">异步流程引擎使用的线程数</a>
 
     <ThreadNum>4</ThreadNum>
 
     对异步流程引擎，4个线程足够
 
-# 同步线程池配置
+# <a name="cyncedflowcfg">同步线程池配置</a>
 
     所有异步流程都共用<ThreadNum>4</ThreadNum>配置项，所以不允许在线程内发生阻塞
     异步线程池只有一个, 但是可以额外配置多个线程池用于可能会发生阻塞的消息
