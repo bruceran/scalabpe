@@ -2,54 +2,54 @@
 
 ## 支持的操作系统
 
-此框架在linux和windows下运行良好，未在其它操作系统下测试过
-此框架基于JDK, JDK能正常运行的操作系统理论上应该都能正常运行此框架，但可能编译和运行脚本需要调整
+	此框架在linux和windows下运行良好，未在其它操作系统下测试过
+	此框架基于JDK, JDK能正常运行的操作系统理论上应该都能正常运行此框架，但可能编译和运行脚本需要调整
 
 ## 安装JDK
 
 ### 安装
 
-安装Sun JDK1.6或以上版本, 根据机器是32位还是64位选择正确的jdk版本
-此框架未在JDK 7或以上版本下编译测试过, 如有需要可自行解决兼容性问题
+	安装Sun JDK1.6或以上版本, 根据机器是32位还是64位选择正确的jdk版本
+	此框架未在JDK 7或以上版本下编译测试过, 如有需要可自行解决兼容性问题
 
 ### 设置好JAVA_HOME和PATH环境变量
 
-JAVA_HOME 配置为JDK安装目录
-PATH中增加JDK安装目录下的bin目录为查找路径
+	JAVA_HOME 配置为JDK安装目录
+	PATH中增加JDK安装目录下的bin目录为查找路径
 
-linux下示例：
-编辑.bash_profile
-    export JAVA_HOME=/usr/local/jdk1.6.0_43
-    export PATH=$JAVA_HOME/bin:$PATH
+	linux下示例：
+	编辑.bash_profile
+	    export JAVA_HOME=/usr/local/jdk1.6.0_43
+	    export PATH=$JAVA_HOME/bin:$PATH
 
-在命令行下运行java -version, 若配置正确会显示版本信息
+	在命令行下运行java -version, 若配置正确会显示版本信息
 
 ## 安装scala
 
 ### 下载 
 
-[官网下载地址](http://www.scala-lang.org/download/all.html)
+	[官网下载地址](http://www.scala-lang.org/download/all.html)
 
-建议下载 2.10.x(x>=2)的版本, 此框架仅在2.10.2版本下做过完整测试
-此框架未在scala 2.11.x或更高版本下测试过, 如有需要可自行解决兼容性问题
+	建议下载 2.10.x(x>=2)的版本, 此框架仅在2.10.2版本下做过完整测试
+	此框架未在scala 2.11.x或更高版本下测试过, 如有需要可自行解决兼容性问题
 
 ### 安装
 
-scala安装包为一个zip包，直接解压到目标目录后就可使用
+	scala安装包为一个zip包，直接解压到目标目录后就可使用
 
 ### 设置SCALA_HOME和PATH环境变量
 
-SCALA_HOME 配置为scala安装目录
-PATH中增加scala安装目录下的bin目录为查找路径
+	SCALA_HOME 配置为scala安装目录
+	PATH中增加scala安装目录下的bin目录为查找路径
 
-linux下示例：
-编辑.bash_profile
-    export SCALA_HOME=/usr/local/scala-2.10.2
-    export PATH=$SCALA_HOME/bin:$PATH
+	linux下示例：
+	编辑.bash_profile
+	    export SCALA_HOME=/usr/local/scala-2.10.2
+	    export PATH=$SCALA_HOME/bin:$PATH
 
-为脚本增加可执行权限: cd /usr/local/scala-2.10.2/bin && chmod 755 *
+	为脚本增加可执行权限: cd /usr/local/scala-2.10.2/bin && chmod 755 *
 
-在命令行下运行scala -version, 若配置正确会显示版本信息
+	在命令行下运行scala -version, 若配置正确会显示版本信息
 
 # ScalaBPE框架源码编译环境配置
 
