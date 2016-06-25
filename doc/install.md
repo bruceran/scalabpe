@@ -27,6 +27,7 @@
 * scala 2.10.2
 
 		scala安装包scala-2.10.2.zip为一个zip包，直接解压后就可使用
+		
 		[本地下载](download/scala-2.10.2.zip) [官网下载](http://www.scala-lang.org/download/all.html)
 
 * 设置好SCALA_HOME和PATH环境变量:
