@@ -260,7 +260,8 @@
     threadNum 内部的线程数，因为只是转发，不需要很多线程，默认是2
     timeout 发给后端服务消息的超时时间，若超时直接给客户端超时响应
     idleTimeout 对keep-alive连接，超过此值由服务端关闭
-    returnMessageFieldNames 从body中提取哪些field作为输出json串顶层的return message, 默认值为return_message,resultMessage,result_message,failReason,fail_reason
+    returnMessageFieldNames 从body中提取哪些field作为输出json串顶层的return message, 
+          默认值为return_message,resultMessage,result_message,failReason,fail_reason
     sessionFieldName 服务描述文件中哪一项对应的是HTTP会话ID，默认是jsessionId
     sessionCookieName HTTP会话ID对应的cookie名，默认是JSESSIONID
     sessionMode sessionId模式 1=自动 2=手工，默认是自动
@@ -278,7 +279,11 @@
     skipMinFile 对静态文件，如果访问的是.min.js .min.css 等带.min.文件，是否改为访问不带.min.的文件，默认为false
     enableMock 是否支持url mock, 若开启，则自动给所有url增加/mock再进行匹配，默认为false
     urlArgs 访问静态文件时的参数，默认配置为?, 仅用于输出到模板中
-    devMode 开发模式下的总开关，若设置为true,则会自动调整其它开关：cacheEnabled和httpTemplateCache设置为false, httpCacheSeconds设置为0，skipMinFile设置为true，enableMock设置为true
+    devMode 开发模式下的总开关，若设置为true,则会自动调整其它开关：
+      cacheEnabled和httpTemplateCache设置为false, 
+      httpCacheSeconds设置为0，
+      skipMinFile设置为true，
+      enableMock设置为true
 
 ## 签名校验
 
@@ -299,7 +304,8 @@
 
     UrlMapping为url映射表，每一项Item代表一个配置, 每个配置有若干配置项，每个配置项都有默认值，一般不需要配置，具体如下：
 
-        url 可以为固定路径，也可以配置为动态路径，目前动态路径最多支持2个连续动态参数，如 path1/.../pathN/:a/:b, 在解析的时候会从路径中取参数a和b
+        url 可以为固定路径，也可以配置为动态路径，目前动态路径最多支持2个连续动态参数，
+        如 path1/.../pathN/:a/:b, 在解析的时候会从路径中取参数a和b
 
         caseInsensitive 获取参数是否区分大小写，默认为false, 区分大小写; 注意：url比较总是不区分大小写的
         charset 输入输出的字符集
@@ -342,33 +348,35 @@
     auditlog/http/access.log 此日志为访问日志, 输出所有http日志
     auditlog/csos_audit.log 此日志输出内部调用过程日志
 
-    logback.xml中可配置http日志是否输出，可控制到消息级别, 参考<a href="aa">bb</a>
+    logback.xml中可配置http日志是否输出，可控制到消息级别
 
 ## 服务描述文件扩展：http header支持
 
-          接口入参中 <field name="a" type="a_type" headerName="xxx"/> 表示a的值从http header xxx中获取
-          接口出参中 <field name="a" type="a_type" headerName="xxx"/> 表示把a输出到http header中
+    接口入参中 <field name="a" type="a_type" headerName="xxx"/> 表示a的值从http header xxx中获取
+    接口出参中 <field name="a" type="a_type" headerName="xxx"/> 表示把a输出到http header中
 
 
 ## 服务描述文件扩展：cookie支持
 
-          接口入参中 <field name="a" type="a_type" cookieName="xxx"/> 表示a的值从cookie xxx中获取
-          接口出参中 <field name="a" type="a_type" cookieName="xxx" cookieOption="Path=/;Domain=.sdo.com;..."/> 表示把a作为cookie输出，cookieOption配置cookie选项，可选
-          sessionId作为一种特殊的cookie, 无需上述这样配置，可直接通过sessionFieldName,sessionCookieName简化配置
+    接口入参中 <field name="a" type="a_type" cookieName="xxx"/> 表示a的值从cookie xxx中获取
+    接口出参中 <field name="a" type="a_type" cookieName="xxx" cookieOption="Path=/;Domain=.sdo.com;..."/> 表示把a作为cookie输出，cookieOption配置cookie选项，可选
+    sessionId作为一种特殊的cookie, 无需上述这样配置，可直接通过sessionFieldName,sessionCookieName简化配置
 
 ## 服务描述文件扩展：增加classex用于json转换
-       avenue协议只支持int,String，实际输出json的时候有时候需要将int转成string, 或将string转成number
-       对深度嵌套的json, avenue协议不能支持，但avenue协议可以将后台拼好的json串以string形式返回，在输出时转换成json就可支持深度嵌套
-       通过对服务描述文件的type项和struct里的field项支持classex属性来进行这种额外的转换
-       classex可以配置几个值：
-            string 将int转成string输出
-            long 将string转成long输出
-            double 将string转成double输出
-            json 将string转成json串再输出, 这种方法可形成一个多级嵌套的json
+
+    avenue协议只支持int,String，实际输出json的时候有时候需要将int转成string, 或将string转成number
+    对深度嵌套的json, avenue协议不能支持，但avenue协议可以将后台拼好的json串以string形式返回，在输出时转换成json就可支持深度嵌套
+    通过对服务描述文件的type项和struct里的field项支持classex属性来进行这种额外的转换
+    classex可以配置几个值：
+      string 将int转成string输出
+      long 将string转成long输出
+      double 将string转成double输出
+      json 将string转成json串再输出, 这种方法可形成一个多级嵌套的json
 
 ## 文件上传
 
     如果url mapping配置中RequestContentType配置为 multipart/form-data, 则表明该请求为上传文件请求，对上传的文件，接收参数是一个名为files的结构体数组,
+
       结构体为：
         filename 文件名
         name 表单field名
@@ -414,8 +422,11 @@
 
 ## mime types
 
-    MimeTypes为mime-type映射表，每一项Item代表一种类型，默认已配置html,txt,css,js,xml,json,gif,jpeg,png,ico,tiff的支持
-    如果有未支持的mime-type,可通过MimeTypes项来配置，格式示例： image/jpeg jpeg jpg jpe, 第一项为mime-type, 后面的为对应的各种后缀，可能有多个
+    MimeTypes为mime-type映射表，每一项Item代表一种类型，
+    默认已配置html,txt,css,js,xml,json,gif,jpeg,png,ico,tiff的支持
+
+    如果有未支持的mime-type,可通过MimeTypes项来配置，
+    格式示例： image/jpeg jpeg jpg jpe, 第一项为mime-type, 后面的为对应的各种后缀，可能有多个
 
 ## 模板文件支持
 
@@ -424,8 +435,15 @@
 
     支持两种格式:simple和velocity, 区分：如果模板文件的后缀是.vm,则是velocity格式，否则是simple格式
     
-    simple格式语法：只支持 ${xxx} 访问响应体内的单个值 和 ${xxx.yyy}, 访问响应体内的map里的值 , 支持avnue协议的string,int,struct
-    velocity格式语法：参考velocity语法手册 也支持上述的  ${xxx} ${xxx.yyy} 和其它高级功能，如条件，循环等  , 支持avnue协议的sting,int,struct,string array,int array, struct array
+    simple格式语法：
+
+    只支持 ${xxx} 访问响应体内的单个值 和 ${xxx.yyy}, 访问响应体内的map里的值 , 
+    支持avnue协议的string,int,struct
+
+    velocity格式语法：
+
+    参考velocity语法手册 也支持上述的  ${xxx} ${xxx.yyy} 和其它高级功能，
+    如条件，循环等  , 支持avnue协议的sting,int,struct,string array,int array, struct array
     
     ${domainName} ${contextPath} ${urlArgs} ${return_code} ${return_message} 为特殊值，可在模板文件中使用
       
