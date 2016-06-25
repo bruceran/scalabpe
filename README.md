@@ -5,10 +5,10 @@
 
 # 用户手册
 
-## [Release Notes]
+## [Release Notes](doc/releasenotes.md) 
 
-	[ScalaBPE core release notes](src/release_notes.txt)
-	[ScalaBPE plugins release notes](src/plugin/release_notes.txt)
+	ScalaBPE core release notes
+	ScalaBPE plugins release notes
 
 ## [安装指南](doc/install.md) 
 
