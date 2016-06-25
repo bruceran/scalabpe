@@ -169,7 +169,6 @@ AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设
 * threadNum 线程数，默认为2
 * maxPackageSize 最大包长，默认为 2000000
 * idleTimeoutMillis 超时断开连接时间，默认为180000, 3分钟
-
 * isSps 是否启动sps模式 默认为0
 
     sps模式的特殊处理：
@@ -178,21 +177,17 @@ AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设
           2. 每次和后端服务建立连接后会自动发送一个注册spsId的消息，使用spsReportTo配置参数
           3. 连接断开后会通知后端服务，使用spsDisconnectNotifyTo配置参数
           4. 反向调用时必须指定目标地址，可在流程中用invokeWithToAddr或者使用扩展包头的socId参数
-
 * spsReportTo sps向route服务发送注册消息, 默认为 55605:1
 * spsDisconnectNotifyTo sps向route服务发送连接断开消息, 默认为 55605:111
 * isEncrypted 是否启用加密, 默认为0
 * shakeHandsServiceIdMsgId 握手服务号消息号，默认为 1:5, isEncrypted 开启时只有此消息是明文，其他都是密文
-
 * reverseServiceIds 定义反向调用的服务号, 默认为0, 多个用逗号分隔
 * timeout 反向调用(从SOS主动发请求给SOC)的网络超时时间，默认为30000, 30秒
 * timerInterval 反向调用请求的定时器间隔时间，默认为100毫秒
 * pushToIpPort 推送给指定ip和端口的客户端, 默认为false, isSps开启时此开关自动设置为true
 * pushToIp 推送给指定ip的客户端，按顺序轮询推送, 默认为false, isSps开启时此开关自动设置为false
 * pushToAny 推送给任意客户端，按顺序轮询推送, 默认为false, isSps开启时此开关自动设置为false
-
 * ReverseIp 配置允许反向调用到哪些IP上, 不设置，则可能调用到任意客户端
-
 * 流程中如何反向调用
 
  a)  如客户端是有状态的，使用invokeWithToAddr()调用客户端的接口, 其中toAddr：
