@@ -62,6 +62,8 @@
 
 	在命令行下运行scala -version, 若配置正确会显示版本信息
 
+[返回](#toc)
+
 # <a name="source">ScalaBPE框架源码编译环境配置</a>
 
 ## 目录结构说明
@@ -103,13 +105,15 @@
 	service 启动服务, 按Ctrl+C停止服务
 	service runtest 发送接口测试指令
 
-	windows下的service脚本是个简化脚本，只适用于开发人员使用
+	windows下的service脚本是个简化脚本，只适用于开发人员使用，不适合生产环境运行
 
 ## 编译src/目录下的源码
 
 	运行 build 脚本进行编译
 	编译后会生成2个jar包：lib/scalabpe-core-1.1.x.jar 和 lib/scalabpe-plugins-1.1.jar 
 	每次修改src下的代码后需要重新编译再运行service脚本才能看到最新效果
+
+[返回](#toc)
 
 # <a name="project">基于ScalaBPE框架的业务项目配置</a>
 
@@ -131,6 +135,8 @@
 	* 只是源码编译环境的一个精简版, 使用相同的service脚本来启动停止服务
 	* 去除了所有运行时不需要的目录和文件, 只保留必需的目录
 	* 没有build编译脚本，compose_conf下的流程文件会在启动时自动进行编译
+
+[返回](#toc)
 
 # <a name="jars">框架依赖的jar包说明</a>
 
@@ -204,3 +210,4 @@
 
 	activemq-all-5.9.0.jar  从包中删除了logback和log4j，否则和本框架使用的版本有冲突
 
+[返回](#toc)
