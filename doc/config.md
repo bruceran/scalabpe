@@ -1,17 +1,6 @@
 
-* 约定
-* 对外提供服务的TCP端口
-* 服务端SOS配置
-* 管理HTTP端口
-* 异步流程引擎使用的线程数
-* 异步日志
-* 流程里可使用的KEY/VALUE配置参数设置
-9) 对外开放或关闭服务
-11) 同步线程池配置
-12) 错误码/错误信息支持配置
-
-
 * 对外提供服务的HTTP端口
+12) 错误码/错误信息支持配置
 13) 定时任务配置
 14) 远程SOS服务配置
 15) MemCache服务配置
@@ -42,7 +31,7 @@
 
     目前支持：
 
-    http://host:port/SelfCheck.do 自检, 符合监控部的格式要求
+    http://host:port/SelfCheck.do 自检, 返回json串
     http://host:port/NotifyChanged.do 刷新进程内缓存
     http://host:port/Dump.do 写进程内资源（线程数，连接数等）信息到all.log日志中用于分析
 
@@ -104,7 +93,7 @@
 
     DetailReportServiceId用来控制需要上报哪些服务号的统计数字到监控系统，此参数不影响打日志；如未配置，则全部都上报
 
-    __若未配置 ReportUrl  DetailReportUrl 则不上报
+    __若未配置 ReportUrl  DetailReportUrl 则不上报__
 
 ## 日志转发
 
@@ -119,7 +108,7 @@
         msgId 消息号
         kvarray string array, 请求，响应，流程变量
 
-# 流程里可使用的KEY/VALUE配置参数设置
+# KEY/VALUE配置参数
 
     <Parameter name="name">value</Parameter>
 
@@ -203,9 +192,7 @@
        *)  如客户端是无状态的，也可使用invoke() 进行反向调用, 此时toAddr为空，则请求可发给客户端的任意连接上
        *)  如果想限制接收反向调用的IP，可通过<ReverseIp>...来进行配置
 
-4) 对外提供服务的HTTP端口
-
-    HTTP接入完全兼容HPS已有功能，使用插件的形式实现，配置如下：
+# HTTP Server插件
 
     目录结构
           projecthome/ 项目根目录
@@ -238,7 +225,7 @@
         enableMock="false"
         devMode="false"
         logUserAgent="false"
-		maxContentLength="5000000"
+		    maxContentLength="5000000"
         >
 
         <UrlMapping>
@@ -287,7 +274,7 @@
         手工模式 request中若无sessionId,不会自动创建，由业务流程自己创建，要输出sessionId到cookie中,必须在服务描述文件输出中进行定义
     sessionIpBind sessionId是否和客户端ip绑定
     logUserAgent 是否在日志中输出UserAgent, 默认为0
-	maxContentLength http请求post最大允许长度
+    maxContentLength http请求post最大允许长度
 	
     jsonRpcUrl 客户端一次发多个url给服务端对应的接收地址, 默认是 /jsonrpc
 
@@ -353,7 +340,7 @@
             一个插件可以实现上述多个功能
         如果要进行服务端302重定向，不需使用插件，只要响应包中包含redirectUrl302并且非空，则做服务端302重定向
 
-     日志文件：
+    日志文件：
         HttpServer的日志文件为request_audit.log，格式同hps的request_detail.log，仅输出动态请求的日志
         access日志为访问日志, 输出所有http日志
         使用jsonrpc一次发多个调用的时候，日志为每个请求单独输出，从requestId可区分，jsonrpc的requestId都带rpc前缀并带id序号
@@ -363,7 +350,7 @@
             <logger name="jvmdbbroker.HttpRequestLog.xxx.xxx" level="info" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
             <logger name="jvmdbbroker.HttpRequestLog.access" level="info" additivity="false"><appender-ref ref="HTTPACCESSLOG" /></logger>
 
-     json转换:
+    json转换:
        avenue协议只支持int,String，实际输出json的时候有时候需要将int转成string, 或将string转成number
        对深度嵌套的json, avenue协议不能支持，但avenue协议可以将后台拼好的json串以string形式返回，在输出时转换成json就可支持深度嵌套
        通过对服务描述文件的type项和struct里的field项支持classex属性来进行这种额外的转换
@@ -373,12 +360,12 @@
             double 将string转成double输出
             json 将string转成json串再输出, 这种方法可形成一个多级嵌套的json
 
-     cookie支持：
+    cookie支持：
           接口入参中 <field name="a" type="a_type" cookieName="xxx"/> 表示a的值从cookie xxx中获取
           接口出参中 <field name="a" type="a_type" cookieName="xxx" cookieOption="Path=/;Domain=.sdo.com;..."/> 表示把a作为cookie输出，cookieOption配置cookie选项，可选
           sessionId作为一种特殊的cookie, 无需上述这样配置，可直接通过sessionFieldName,sessionCookieName简化配置
 
-     http header支持：
+    http header支持：
           接口入参中 <field name="a" type="a_type" headerName="xxx"/> 表示a的值从http header xxx中获取
           接口出参中 <field name="a" type="a_type" headerName="xxx"/> 表示把a输出到http header中
 
@@ -413,7 +400,6 @@
             urlArgs 静态文件的url参数，默认为?, 通过配置为不同值，如?v1, ?v2可强制客户端所有js,css,html失效重新从服务器下载最新版本
     jsonp支持
           如果入参中有一个jsonp=xxx, 且返回为json格式，则会转换为text/javascript, 格式为 xxx(jsondata);
-
 
 12) 错误码，错误信息支持配置
 
