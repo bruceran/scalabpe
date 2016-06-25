@@ -165,41 +165,45 @@ AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设
 
 目前支持：
 
-host 绑定哪个网卡，默认绑定所有网卡
-threadNum 线程数，默认为2
-maxPackageSize 最大包长，默认为 2000000
-idleTimeoutMillis 超时断开连接时间，默认为180000, 3分钟
+* host 绑定哪个网卡，默认绑定所有网卡
+* threadNum 线程数，默认为2
+* maxPackageSize 最大包长，默认为 2000000
+* idleTimeoutMillis 超时断开连接时间，默认为180000, 3分钟
 
-isSps 是否启动sps模式 默认为0
+* isSps 是否启动sps模式 默认为0
+
     sps模式的特殊处理：
-          1) 接收到的包会自动加入扩展包头spsId和socId, spsId为一个guid, socId为客户端连接和端口
-          2) 每次和后端服务建立连接后会自动发送一个注册spsId的消息，使用spsReportTo配置参数
-          3) 连接断开后会通知后端服务，使用spsDisconnectNotifyTo配置参数
-          4) 反向调用时必须指定目标地址，可在流程中用invokeWithToAddr或者使用扩展包头的socId参数
-spsReportTo sps向route服务发送注册消息, 默认为 55605:1
-spsDisconnectNotifyTo sps向route服务发送连接断开消息, 默认为 55605:111
-isEncrypted 是否启用加密, 默认为0
-shakeHandsServiceIdMsgId 握手服务号消息号，默认为 1:5, isEncrypted 开启时只有此消息是明文，其他都是密文
 
-reverseServiceIds 定义反向调用的服务号, 默认为0, 多个用逗号分隔
-timeout 反向调用(从SOS主动发请求给SOC)的网络超时时间，默认为30000, 30秒
-timerInterval 反向调用请求的定时器间隔时间，默认为100毫秒
-pushToIpPort 推送给指定ip和端口的客户端, 默认为false, isSps开启时此开关自动设置为true
-pushToIp 推送给指定ip的客户端，按顺序轮询推送, 默认为false, isSps开启时此开关自动设置为false
-pushToAny 推送给任意客户端，按顺序轮询推送, 默认为false, isSps开启时此开关自动设置为false
+          1. 接收到的包会自动加入扩展包头spsId和socId, spsId为一个guid, socId为客户端连接和端口
+          2. 每次和后端服务建立连接后会自动发送一个注册spsId的消息，使用spsReportTo配置参数
+          3. 连接断开后会通知后端服务，使用spsDisconnectNotifyTo配置参数
+          4. 反向调用时必须指定目标地址，可在流程中用invokeWithToAddr或者使用扩展包头的socId参数
 
-ReverseIp 配置允许反向调用到哪些IP上, 不设置，则可能调用到任意客户端
+* spsReportTo sps向route服务发送注册消息, 默认为 55605:1
+* spsDisconnectNotifyTo sps向route服务发送连接断开消息, 默认为 55605:111
+* isEncrypted 是否启用加密, 默认为0
+* shakeHandsServiceIdMsgId 握手服务号消息号，默认为 1:5, isEncrypted 开启时只有此消息是明文，其他都是密文
 
-流程中如何反向调用
+* reverseServiceIds 定义反向调用的服务号, 默认为0, 多个用逗号分隔
+* timeout 反向调用(从SOS主动发请求给SOC)的网络超时时间，默认为30000, 30秒
+* timerInterval 反向调用请求的定时器间隔时间，默认为100毫秒
+* pushToIpPort 推送给指定ip和端口的客户端, 默认为false, isSps开启时此开关自动设置为true
+* pushToIp 推送给指定ip的客户端，按顺序轮询推送, 默认为false, isSps开启时此开关自动设置为false
+* pushToAny 推送给任意客户端，按顺序轮询推送, 默认为false, isSps开启时此开关自动设置为false
 
- *)  如客户端是有状态的，使用invokeWithToAddr()调用客户端的接口, 其中toAddr：
+* ReverseIp 配置允许反向调用到哪些IP上, 不设置，则可能调用到任意客户端
+
+* 流程中如何反向调用
+
+ a)  如客户端是有状态的，使用invokeWithToAddr()调用客户端的接口, 其中toAddr：
 
             IP： 发给对应IP连接过来的客户端 可根据req.remoteIp获取
             IP:PORT 发给对应IP和端口连接过来的客户端 可根据req.remoteAddr获取
             IP:PORT:ID 发给指定连接 可根据req.connId获取
 
- *)  如客户端是无状态的，也可使用invoke() 进行反向调用, 此时toAddr为空，则请求可发给客户端的任意连接上
- *)  如果想限制接收反向调用的IP，可通过<ReverseIp>...来进行配置
+ b)  如客户端是无状态的，也可使用invoke() 进行反向调用, 此时toAddr为空，则请求可发给客户端的任意连接上
+
+ c)  如果想限制接收反向调用的IP，可通过<ReverseIp>...来进行配置
 
 # 对外提供服务的HTTP端口
 
