@@ -42,9 +42,9 @@ xml中所有节点名都是首字母大写，属性名都是首字母小写
 
 目前支持：
 
-http://host:port/SelfCheck.do 自检, 符合监控部的格式要求
-http://host:port/NotifyChanged.do 刷新进程内缓存
-http://host:port/Dump.do 写进程内资源（线程数，连接数等）信息到all.log日志中用于分析
+* http://host:port/SelfCheck.do 自检，返回json格式
+* http://host:port/NotifyChanged.do 刷新进程内缓存
+* http://host:port/Dump.do 写进程内资源（线程数，连接数等）信息到all.log日志中用于分析
 
 # 异步流程引擎使用的线程数
 
@@ -55,6 +55,7 @@ http://host:port/Dump.do 写进程内资源（线程数，连接数等）信息�
 # 同步线程池配置
 
 所有异步流程都共用`<ThreadNum>xxx</ThreadNum>`配置项，所以不允许在线程内发生阻塞
+
 异步线程池只有一个, 但是可以额外配置多个线程池用于可能会发生阻塞的消息
 
     <SyncedFlowCfg  threadNum="n">
@@ -64,6 +65,7 @@ http://host:port/Dump.do 写进程内资源（线程数，连接数等）信息�
 threadNum: 指定该线程池的线程数, 若未配置则默认等于`<ThreadNum>xxx</ThreadNum>`里的值
 
 此配置为消息级别，用逗号隔开多个消息，可指定对应的消息使用一个独立的线程池;
+
 如需将该服务的所有消息都加入此独立线程池，可使用serviceid.*表示
 
 # 异步日志
