@@ -26,46 +26,45 @@
 
 # 约定
 
-  xml中所有节点名都是首字母大写，属性名都是首字母小写
+xml中所有节点名都是首字母大写，属性名都是首字母小写
 
 # 对外提供服务的TCP端口
 
     <SapPort>9898</SapPort>
 
-  如设置为0，则表示不需要对外启动sos，只作为一个job服务
+如设置为0，则表示不需要对外启动sos，只作为一个job服务
 
 # 管理HTTP端口
 
     <CohPort>9899</CohPort>
 
-  如设置为0，则表示不需要管理功能
+如设置为0，则表示不需要管理功能
 
-  目前支持：
+目前支持：
 
-  http://host:port/SelfCheck.do 自检, 符合监控部的格式要求
-  http://host:port/NotifyChanged.do 刷新进程内缓存
-  http://host:port/Dump.do 写进程内资源（线程数，连接数等）信息到all.log日志中用于分析
-
+http://host:port/SelfCheck.do 自检, 符合监控部的格式要求
+http://host:port/NotifyChanged.do 刷新进程内缓存
+http://host:port/Dump.do 写进程内资源（线程数，连接数等）信息到all.log日志中用于分析
 
 # 异步流程引擎使用的线程数
 
     <ThreadNum>4</ThreadNum>
 
-  对异步流程引擎，4个线程足够
+对异步流程引擎，4个线程足够
 
 # 同步线程池配置
 
-  所有异步流程都共用`<ThreadNum>xxx</ThreadNum>`配置项，所以不允许在线程内发生阻塞
-  异步线程池只有一个, 但是可以额外配置多个线程池用于可能会发生阻塞的消息
+所有异步流程都共用`<ThreadNum>xxx</ThreadNum>`配置项，所以不允许在线程内发生阻塞
+异步线程池只有一个, 但是可以额外配置多个线程池用于可能会发生阻塞的消息
 
     <SyncedFlowCfg  threadNum="n">
       <ServiceId>999.3,999.4</ServiceId>
     </SyncedFlowCfg>
 
-  threadNum: 指定该线程池的线程数, 若未配置则默认等于`<ThreadNum>xxx</ThreadNum>`里的值
+threadNum: 指定该线程池的线程数, 若未配置则默认等于`<ThreadNum>xxx</ThreadNum>`里的值
 
-  此配置为消息级别，用逗号隔开多个消息，可指定对应的消息使用一个独立的线程池;
-  如需将该服务的所有消息都加入此独立线程池，可使用serviceid.*表示
+此配置为消息级别，用逗号隔开多个消息，可指定对应的消息使用一个独立的线程池;
+如需将该服务的所有消息都加入此独立线程池，可使用serviceid.*表示
 
 # 异步日志
 
@@ -73,67 +72,67 @@
     <DetailReportUrl>http://api.monitor.sdo.com/stat_pages.php</DetailReportUrl>
     <DetailReportServiceId>320,321,...</DetailReportServiceId>
 
-  ReportUrl用于报告服务总体情况：连接数，请求数，不分服务消息，这个数据上报作用不大, 如未配置，则不报
-  ReportUrl上报对应的日志数据在request_summary.log文件中
+ReportUrl用于报告服务总体情况：连接数，请求数，不分服务消息，这个数据上报作用不大, 如未配置，则不报
+ReportUrl上报对应的日志数据在request_summary.log文件中
 
-  DetailReportUrl用于报告对外服务和子服务的请求数（成功，失败），耗时角度的统计数据, 如未配置，则不报
-  DetailReportUrl上报对应的日志数据在request_stat.log文件(对外服务)和sos_stat.log文件(子服务)中
+DetailReportUrl用于报告对外服务和子服务的请求数（成功，失败），耗时角度的统计数据, 如未配置，则不报
+DetailReportUrl上报对应的日志数据在request_stat.log文件(对外服务)和sos_stat.log文件(子服务)中
 
-  ** 若未配置 ReportUrl DetailReportUrl 则不进行上报 **
+__若未配置 ReportUrl DetailReportUrl 则不进行上报__
 
-  DetailReportServiceId用来控制需要上报哪些服务号的统计数字到监控系统，此参数不影响打日志；如未配置，则全部都上报
+DetailReportServiceId用来控制需要上报哪些服务号的统计数字到监控系统，此参数不影响打日志；如未配置，则全部都上报
 
     <AsyncLogThreadNum>1</AsyncLogThreadNum>
 
-  AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设置
+AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设置
 
-  上报数据给监控系统时如果出现网络错误会重试，每次间隔5秒钟，最多重试2次。如果超时，不重试。
+上报数据给监控系统时如果出现网络错误会重试，每次间隔5秒钟，最多重试2次。如果超时，不重试。
 
     <AsyncLogWithFieldName>true</AsyncLogWithFieldName>
 
-  在打印输入参数和输出参数的日志时，是否在值的前面输出参数名称；输出参数名称可方便查看数据； 默认为true
+在打印输入参数和输出参数的日志时，是否在值的前面输出参数名称；输出参数名称可方便查看数据； 默认为true
 
     <AsyncLogArray>1</AsyncLogArray>
 
-  用于控制对数组类型日志打印前几条数据，默认为1, 只打印数组的第一条
+用于控制对数组类型日志打印前几条数据，默认为1, 只打印数组的第一条
 
     <AsyncLogPasswordFields>password,pass_word</AsyncLogPasswordFields>
 
-  配置日志中要隐藏实际值的字段，配置了该字段，在request log, csos log中将会以 *** 代替实际值, 多个配置值用逗号分隔
-  也可以使用此参数来隐藏lob类型字段的日志，否则日志可能会很长
+配置日志中要隐藏实际值的字段，配置了该字段，在request log, csos log中将会以 *** 代替实际值, 多个配置值用逗号分隔
+也可以使用此参数来隐藏lob类型字段的日志，否则日志可能会很长
 
     <AsyncLogDispatch defaultTarget="999.28">
           <Item serviceId="999" msgId="27" target="999.28"/>
     </AsyncLogDispatch>
 
-  其中msgId可用*代替匹配所有消息; target可不配置，则取defaultTarget默认值
-  可转发给本地服务或远程服务；为避免消息丢失，可在服务描述文件将消息设为必达消息, isAck="true"
-  目标消息的服务描述文件要求：
-    serviceId 服务号
-    msgId 消息号
-    kvarray string array, 请求，响应，流程变量
+其中msgId可用*代替匹配所有消息; target可不配置，则取defaultTarget默认值
+可转发给本地服务或远程服务；为避免消息丢失，可在服务描述文件将消息设为必达消息, isAck="true"
+目标消息的服务描述文件要求：
+  serviceId 服务号
+  msgId 消息号
+  kvarray string array, 请求，响应，流程变量
 
 # 流程里可使用的KEY/VALUE配置参数设置
 
     <Parameter name="xxx">yyyy</Parameter>
 
-    流程中可用Flow.router.getConfig("xxx",defaultValue) 获取到上述xxx对应的值yyy
+流程中可用Flow.router.getConfig("xxx",defaultValue) 获取到上述xxx对应的值yyy
 
 # 对外开放或关闭服务
 
     <Parameter name="serviceIdsNotAllowed">999,977</Parameter>
 
-    默认流程服务(包括子流程服务)都对外开放, 可用serviceIdsNotAllowed调整
+默认流程服务(包括子流程服务)都对外开放, 可用serviceIdsNotAllowed调整
 
     <Parameter name="serviceIdsAllowed">45601,45602</Parameter>
 
-    默认非流程服务都不对外开放, 可用serviceIdsAllowed调整
+默认非流程服务都不对外开放, 可用serviceIdsAllowed调整
 
 # runtest 目标地址
 
     <TestServerAddr>host:port</TestServerAddr>
 
-    此配置仅用于runtest测试工具，用来将请求发给远程服务而不是本地服务
+此配置仅用于runtest测试工具，用来将请求发给远程服务而不是本地服务
 
 # SOS配置
 
@@ -159,43 +158,43 @@
           <ReverseIp>...</ReverseIp>
     </ServerSos>
 
-  目前支持：
+目前支持：
 
-  host 绑定哪个网卡，默认绑定所有网卡
-  threadNum 线程数，默认为2
-  maxPackageSize 最大包长，默认为 2000000
-  idleTimeoutMillis 超时断开连接时间，默认为180000, 3分钟
+host 绑定哪个网卡，默认绑定所有网卡
+threadNum 线程数，默认为2
+maxPackageSize 最大包长，默认为 2000000
+idleTimeoutMillis 超时断开连接时间，默认为180000, 3分钟
 
-  isSps 是否启动sps模式 默认为0
-      sps模式的特殊处理：
-            1) 接收到的包会自动加入扩展包头spsId和socId, spsId为一个guid, socId为客户端连接和端口
-            2) 每次和后端服务建立连接后会自动发送一个注册spsId的消息，使用spsReportTo配置参数
-            3) 连接断开后会通知后端服务，使用spsDisconnectNotifyTo配置参数
-            4) 反向调用时必须指定目标地址，可在流程中用invokeWithToAddr或者使用扩展包头的socId参数
-  spsReportTo sps向route服务发送注册消息, 默认为 55605:1
-  spsDisconnectNotifyTo sps向route服务发送连接断开消息, 默认为 55605:111
-  isEncrypted 是否启用加密, 默认为0
-  shakeHandsServiceIdMsgId 握手服务号消息号，默认为 1:5, isEncrypted 开启时只有此消息是明文，其他都是密文
+isSps 是否启动sps模式 默认为0
+    sps模式的特殊处理：
+          1) 接收到的包会自动加入扩展包头spsId和socId, spsId为一个guid, socId为客户端连接和端口
+          2) 每次和后端服务建立连接后会自动发送一个注册spsId的消息，使用spsReportTo配置参数
+          3) 连接断开后会通知后端服务，使用spsDisconnectNotifyTo配置参数
+          4) 反向调用时必须指定目标地址，可在流程中用invokeWithToAddr或者使用扩展包头的socId参数
+spsReportTo sps向route服务发送注册消息, 默认为 55605:1
+spsDisconnectNotifyTo sps向route服务发送连接断开消息, 默认为 55605:111
+isEncrypted 是否启用加密, 默认为0
+shakeHandsServiceIdMsgId 握手服务号消息号，默认为 1:5, isEncrypted 开启时只有此消息是明文，其他都是密文
 
-  reverseServiceIds 定义反向调用的服务号, 默认为0, 多个用逗号分隔
-  timeout 反向调用(从SOS主动发请求给SOC)的网络超时时间，默认为30000, 30秒
-  timerInterval 反向调用请求的定时器间隔时间，默认为100毫秒
-  pushToIpPort 推送给指定ip和端口的客户端, 默认为false, isSps开启时此开关自动设置为true
-  pushToIp 推送给指定ip的客户端，按顺序轮询推送, 默认为false, isSps开启时此开关自动设置为false
-  pushToAny 推送给任意客户端，按顺序轮询推送, 默认为false, isSps开启时此开关自动设置为false
+reverseServiceIds 定义反向调用的服务号, 默认为0, 多个用逗号分隔
+timeout 反向调用(从SOS主动发请求给SOC)的网络超时时间，默认为30000, 30秒
+timerInterval 反向调用请求的定时器间隔时间，默认为100毫秒
+pushToIpPort 推送给指定ip和端口的客户端, 默认为false, isSps开启时此开关自动设置为true
+pushToIp 推送给指定ip的客户端，按顺序轮询推送, 默认为false, isSps开启时此开关自动设置为false
+pushToAny 推送给任意客户端，按顺序轮询推送, 默认为false, isSps开启时此开关自动设置为false
 
-  ReverseIp 配置允许反向调用到哪些IP上, 不设置，则可能调用到任意客户端
+ReverseIp 配置允许反向调用到哪些IP上, 不设置，则可能调用到任意客户端
 
-  流程中如何反向调用
+流程中如何反向调用
 
-   *)  如客户端是有状态的，使用invokeWithToAddr()调用客户端的接口, 其中toAddr：
+ *)  如客户端是有状态的，使用invokeWithToAddr()调用客户端的接口, 其中toAddr：
 
-              IP： 发给对应IP连接过来的客户端 可根据req.remoteIp获取
-              IP:PORT 发给对应IP和端口连接过来的客户端 可根据req.remoteAddr获取
-              IP:PORT:ID 发给指定连接 可根据req.connId获取
+            IP： 发给对应IP连接过来的客户端 可根据req.remoteIp获取
+            IP:PORT 发给对应IP和端口连接过来的客户端 可根据req.remoteAddr获取
+            IP:PORT:ID 发给指定连接 可根据req.connId获取
 
-   *)  如客户端是无状态的，也可使用invoke() 进行反向调用, 此时toAddr为空，则请求可发给客户端的任意连接上
-   *)  如果想限制接收反向调用的IP，可通过<ReverseIp>...来进行配置
+ *)  如客户端是无状态的，也可使用invoke() 进行反向调用, 此时toAddr为空，则请求可发给客户端的任意连接上
+ *)  如果想限制接收反向调用的IP，可通过<ReverseIp>...来进行配置
 
 # 对外提供服务的HTTP端口
 
