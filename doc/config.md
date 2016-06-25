@@ -561,23 +561,36 @@
       </message>
 
       sql 为该消息对应的一个或多个SQL语句；
-      sql节点内可放置多个sql语句，每个语句可跨越多行； 配置在一个sql节点内的sql保证在同一个事务中完成;空行或行前后的空格会自动去除;
+      sql节点内可放置多个sql语句，每个语句可跨越多行； 
+      配置在一个sql节点内的sql保证在同一个事务中完成;空行或行前后的空格会自动去除;
       要求每个sql的所有占位符都能找到对应入参，反过来不需要所有入参都需要映射到每个SQL语句;
       一次执行多条SQL特别适合有大量相同参数需要同时插入或更新到几个表的时候。
       内部所有的SQL都转换为prepareStatement执行;
 
-      to 用来指定占位符 :1 为 占位符，用于和SQL对应; scalabpe里可以随意使用字母数字，不要求是从1开始的数值， 另外如果占位符和入参的name相同(不区分大小写)，可不写to映射
+      to 用来指定占位符 :1 为 占位符，用于和SQL对应; scalabpe里可以随意使用字母数字，
+         不要求是从1开始的数值， 另外如果占位符和入参的name相同(不区分大小写)，可不写to映射
+
       default 可为每个入参指定default，当没有传值则用该默认值;
-      columnType 对数据库里为日期类型的入参，如oracle里的date类型，应设置columnType="date" (截除时分秒) 或 columnType="datetime", int,string不用指定, 默认为string
+
+      columnType 对数据库里为日期类型的入参，如oracle里的date类型，应设置columnType="date" (截除时分秒) 
+                 或 columnType="datetime", int,string不用指定, 默认为string
 
       入参的tlv类型只能是string, int
 
-      如果sql是单条的insert/update/delete, 入参也可以是int array,或string array, 这种方式的后台处理是进行batch update, 对array里每条数据执行一次该sql, 所有执行都在一个事务里;
-      batch update的时候，个别参数可以是单值，则每次执行sql都用相同值执行; 非单值则要求数组的大小必须相同;
-      注意：batch update的时候目前的rowcount由于底层jdbc driver不支持返回的不一定准确，不应以此为判断依据，只应根据code来判断。
+      如果sql是单条的insert/update/delete, 入参也可以是int array,或string array, 这种方式的后台处理是进行
+      batch update, 对array里每条数据执行一次该sql, 所有执行都在一个事务里;
 
-      $ROWCOUNT映射为返回查询结果记录数，对于更新操作，则是更新影响的行数(多条SQL则是总行数)；scalabpe里只要name是rowcount或row_count(不区分大小写),可不写from
-      $result[n][m]表示映射为结果集的第n行m列，一般单值都是映射到0行的数据; scalabpe里只要name和select语句中的字段匹配(不区分大小写和顺序),则匹配为0行的对应值，可不写from, 如要匹配非0行数据，还是需要from
+      batch update的时候，个别参数可以是单值，则每次执行sql都用相同值执行; 非单值则要求数组的大小必须相同;
+      
+      注意：batch update的时候目前的rowcount由于底层jdbc driver不支持返回的不一定准确，不应以此为判断依据，
+      只应根据code来判断。
+
+      $ROWCOUNT映射为返回查询结果记录数，对于更新操作，则是更新影响的行数(多条SQL则是总行数)；
+      scalabpe里只要name是rowcount或row_count(不区分大小写),可不写from
+      
+      $result[n][m]表示映射为结果集的第n行m列，一般单值都是映射到0行的数据; 
+      scalabpe里只要name和select语句中的字段匹配(不区分大小写和顺序),则匹配为0行的对应值，可不写from, 
+      如要匹配非0行数据，还是需要from
 
       简化后的配置语法：
 
@@ -628,7 +641,7 @@
         <DbSosList threadNum="2">
           <ServiceId>45601,...</ServiceId>
           <MasterDb conns="2">
-                    <DefaultConn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</DefaultConn>
+                    <DefaultConn>service=jdbcstring user=riskcontrol password=riskcontrol</DefaultConn>
           </MasterDb>
         </DbSosList>
 
@@ -643,7 +656,7 @@
         <DbSosList>
           <ServiceId>45601,...</ServiceId>
           <MasterDb conns="4" splitTableType="custom" tbfactor="6" splitTableCustomCls="jvmdbbroker.flow.SampleDbPlugin">
-              <DefaultConn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs###jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</DefaultConn>
+              <DefaultConn>service=jdbcstring user=riskcontrol password=riskcontrol</DefaultConn>
           </MasterDb>
         </DbSosList>
 
@@ -668,9 +681,9 @@
           <ServiceId>45601,...</ServiceId>
           <MasterDb conns="4" splitDbType="custom" dbfactor="3" splitDbCustomCls="jvmdbbroker.flow.SampleDbPlugin">
               <DivideConns>
-                <Conn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</Conn>
-                <Conn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</Conn>
-                <Conn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</Conn>
+                <Conn>service=jdbcstring user=riskcontrol password=riskcontrol</Conn>
+                <Conn>service=jdbcstring user=riskcontrol password=riskcontrol</Conn>
+                <Conn>service=jdbcstring user=riskcontrol password=riskcontrol</Conn>
               </DivideConns>
           </MasterDb>
         </DbSosList>
@@ -706,7 +719,7 @@
       <SyncedDbSosList>
         <ServiceId>45601,...</ServiceId>
         <MasterDb conns="2">
-                <DefaultConn>service=jdbc:oracle:thin:@10.241.37.37:1521:ebs user=riskcontrol password=riskcontrol</DefaultConn>
+                <DefaultConn>service=jdbcstring user=riskcontrol password=riskcontrol</DefaultConn>
         </MasterDb>
       </SyncedDbSosList>
 
