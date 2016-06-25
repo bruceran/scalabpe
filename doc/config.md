@@ -112,7 +112,7 @@
 
     <Parameter name="name">value</Parameter>
 
-    流程中可用getConfig("name")获取到上述value
+    流程中可用Flow.router.getConfig("name",defaultValue)获取到上述value
 
 # 对外开放或关闭服务
 
@@ -194,25 +194,27 @@
 
 # HTTP Server插件
 
-    目录结构
+## web项目目录结构
+
           projecthome/ 项目根目录
                 webapp/ web目录
                     static/ 静态文件目录
                     template/ 模板文件目录
                     upload/ 上传文件目录
 
+## 配置
+
     <HttpServerCfg port="9090"
         host="*"
         threadNum="2"
         timeout="30000"
         idleTimeout="45000"
-        defaultVerify="false"
-        osapDb="false"
-        osapDbServiceId="62100"
         returnMessageFieldNames="xxx,xxx"
         sessionFieldName="jsessionId"
         sessionCookieName="JSESSIONID"
         sessionMode="1"
+        logUserAgent="false"
+        maxContentLength="5000000"
         jsonRpcUrl="/jsonrpc"
 
         cacheEnabled="true"
@@ -224,8 +226,10 @@
         skipMinFile="false"
         enableMock="false"
         devMode="false"
-        logUserAgent="false"
-		    maxContentLength="5000000"
+
+        defaultVerify="false"
+        osapDb="false"
+        osapDbServiceId="62100"
         >
 
         <UrlMapping>
@@ -238,7 +242,7 @@
                     whiteIps="ipgrp1,ipgrp2"
                     bodyOnly="0"
                     encodeRequest="1"
-                    plugin="">youyun/sendPhoneCheckCode,999,26</Item>
+                    plugin="">xxx/yyy,999,26</Item>
             ...
         </UrlMapping>
 
@@ -248,24 +252,14 @@
 
     </HttpServerCfg>
 
+## 基本配置
+
     如未配置HttpServerCfg节点, 则不启动http服务
     port 对外的端口, 此配置值必须手工指定
     host 绑定到哪个IP上, 默认是*, 不限
     threadNum 内部的线程数，因为只是转发，不需要很多线程，默认是2
     timeout 发给后端服务消息的超时时间，若超时直接给客户端超时响应
     idleTimeout 对keep-alive连接，超过此值由服务端关闭
-    defaultVerify 接口默认是否需要签名授权, 默认为false
-    osapDb 是否需要连接授权库，若此值为true,则还需配置 osapDbServiceId和一个对应的DbSosList, 默认为false
-    osapDbServiceId osap查配置对应的服务描述文件的服务号，默认为 62100
-        查配置对应的服务描述文件为预定义好，直接放在avenue_conf目录下使用，不用修改
-        <DbSosList threadNum="1" desc="osap db">
-            <ServiceId>62100</ServiceId>
-            <MasterDb conns="1">
-                <DefaultConn>service=jdbc:oracle:thin:@//10.240.17.38:1521/ebs10g user=osap2 password=osap2</DefaultConn>
-            </MasterDb>
-        </DbSosList>
-        注意：在配置了要连接osap授权库的时候，如是配置未取到，则http监听端口不会打开，要取到配置后才会打开；
-        每10分钟一次配置数据会自动刷新，也可调用 /NotifyChanged.do来立即刷新配置
     returnMessageFieldNames 从body中提取哪些field作为输出json串顶层的return message, 默认值为return_message,resultMessage,result_message,failReason,fail_reason
     sessionFieldName 服务描述文件中哪一项对应的是HTTP会话ID，默认是jsessionId
     sessionCookieName HTTP会话ID对应的cookie名，默认是JSESSIONID
@@ -275,26 +269,33 @@
     sessionIpBind sessionId是否和客户端ip绑定
     logUserAgent 是否在日志中输出UserAgent, 默认为0
     maxContentLength http请求post最大允许长度
-	
-    jsonRpcUrl 客户端一次发多个url给服务端对应的接收地址, 默认是 /jsonrpc
+    cacheEnabled 对静态文件，是否启用cache功能，默认为启用
+    cacheFileSize 对静态文件，低于此size的文件启用cache功能, 默认为25000字节
+    cacheFiles 对静态文件，哪些后缀会启用cache功能，用空格分隔多个后缀，默认为 html htm css js
+    httpCacheSeconds 对静态文件，输出的http头(expire,cache-control)允许客户端多长的缓存时间,默认为86400秒,若为0则不允许客户端缓存
+    httpTemplateCache 对模板文件，是否启用缓存功能, 默认为true
+    httpTemplateCheckInterval 对模板文件，多长时间检查一下时间戳是否发生变化，默认为60秒
+    skipMinFile 对静态文件，如果访问的是.min.js .min.css 等带.min.文件，是否改为访问不带.min.的文件，默认为false
+    enableMock 是否支持url mock, 若开启，则自动给所有url增加/mock再进行匹配，默认为false
+    urlArgs 访问静态文件时的参数，默认配置为?, 仅用于输出到模板中
+    devMode 开发模式下的总开关，若设置为true,则会自动调整其它开关：cacheEnabled和httpTemplateCache设置为false, httpCacheSeconds设置为0，skipMinFile设置为true，enableMock设置为true
 
-        参考 http://blog.csdn.net/mhmyqn/article/details/39718097，具体协议略有不同
-        请求格式可以为：
-            1) get方法  /jsonrpc?data=json
-            2) post方法 /jsonrpc  post的内容为json
-        json体为一个json数组，数组每一项为一个对象: jsonrpc为版本号，固定为2.0，id从1开始编号, method为url, params为参数，参数可以是url_encoded形式或json对象形式
-        json请求示例：
-            [
-                {"jsonrpc":"2.0","id":"1","method":"/path/url1","params":"a=1&b=2"},
-                {"jsonrpc":"2.0","id":"2","method":"/path/url2","params":{"a":"1","b":"2"}}
-            ]
-        响应格式为json数组
-        json体为一个json数组，数组每一项为一个对象: jsonrpc为版本号，固定为2.0，id从1开始编号, result为一个json对象，就是hps的标准返回内容
-        json请求示例：
-            [
-                {"jsonrpc":"2.0","id":"1","result":{"return_code":0,"return_message":"success","data":{...}}},
-                {"jsonrpc":"2.0","id":"2","result":{"return_code":-1,"return_message":"error","data":{...}}},
-            ]
+## 签名校验
+
+    defaultVerify 接口默认是否需要签名授权, 默认为false
+    osapDb 是否需要连接授权库，若此值为true,则还需配置 osapDbServiceId和一个对应的DbSosList, 默认为false
+    osapDbServiceId osap查配置对应的服务描述文件的服务号，默认为 62100
+        查配置对应的服务描述文件为预定义好，直接放在avenue_conf目录下使用，不用修改
+        <DbSosList threadNum="1" desc="osap db">
+            <ServiceId>62100</ServiceId>
+            <MasterDb conns="1">
+                <DefaultConn>service=jdbcstring user=osap password=osap</DefaultConn>
+            </MasterDb>
+        </DbSosList>
+        注意：在配置了要连接osap授权库的时候，如是配置未取到，则http监听端口不会打开，要取到配置后才会打开；
+        每10分钟一次配置数据会自动刷新，也可调用 /NotifyChanged.do来立即刷新配置
+
+## url mapping
 
     UrlMapping为url映射表，每一项Item代表一个配置, 每个配置有若干配置项，每个配置项都有默认值，一般不需要配置，具体如下：
 
@@ -303,14 +304,6 @@
         caseInsensitive 获取参数是否区分大小写，默认为false, 区分大小写; 注意：url比较总是不区分大小写的
         charset 输入输出的字符集
         requestContentType 输入内容格式，默认为application/x-www-form-urlencoded, 若非这种形式则必须定义plugin来解析
-		如果RequestContentType配置为 multipart/form-data, 则表明该请求为上传文件请求，对上传的文件，接收参数是一个名为files的结构体数组,
-			结构体为：
-				filename 文件名
-				name 表单field名
-				ext 文件后缀
-				size 文件长度
-				contentType 文件mimetype
-				file 临时文件名, 保存在webapp/upload目录下以.tmp为后缀
         responseContentType 输出内容格式，默认为application/json, 若非这种形式则必须定义plugin来处理输出
         verify 是否要签名检查，若未配置则取defaultVerify
             如果要验签名：有配置verify plugin, 则优先使用插件校验，否则使用hps标准校验方法进行校验：md5校验, ip校验，权限校验
@@ -324,13 +317,14 @@
             <Parameter name="regex3"><![CDATA[\"items\":\"[^\"]*\",?]]></Parameter>
         bodyOnly 在输出json部分，只输出body部分的json，不输出hps的return_code, return_message
         encodeRequest 对接收到的入参不按照服务描述文件进行编码过滤，用来接收一些未知的参数，比如转发接口
+
         plugin="plain|redirect|template|..."
         plugin中允许的值为预定义的值或者类名, 预定义的值有：
-            plain 输出纯文本，从plainText参数中取值，若要调整参数名，可以用plugin="plain:参数名"形式
-            redirect 输出一段html进行跳转，从redirectUrl参数中取值，若要调整参数名，可以用plugin="redirect:参数名"形式
-            template 根据模板输出内容，必须用plugin="template:模板名"形式来指定模板;
+            1) plain 输出纯文本，从plainText参数中取值，若要调整参数名，可以用plugin="plain:参数名"形式
+            2) redirect 输出一段html进行跳转，从redirectUrl参数中取值，若要调整参数名，可以用plugin="redirect:参数名"形式
+            3) template 根据模板输出内容，必须用plugin="template:模板名"形式来指定模板;
                 模板必须放在 template目录下，不带后缀名
-            类名, 支持以下几种插件
+            4) 类名, 支持以下几种插件
                 trait HttpServerPlugin 标记接口，所有插件必须有此标记
                 trait HttpServerRequestParsePlugin 参数解析插件
                 trait HttpServerRequestPostParsePlugin 解析后处理插件, 可对解析完毕的参数进一步做些调整
@@ -340,17 +334,29 @@
             一个插件可以实现上述多个功能
         如果要进行服务端302重定向，不需使用插件，只要响应包中包含redirectUrl302并且非空，则做服务端302重定向
 
-    日志文件：
-        HttpServer的日志文件为request_audit.log，格式同hps的request_detail.log，仅输出动态请求的日志
-        access日志为访问日志, 输出所有http日志
-        使用jsonrpc一次发多个调用的时候，日志为每个请求单独输出，从requestId可区分，jsonrpc的requestId都带rpc前缀并带id序号
-        logback中可配置http日志是否输出，可控制到消息级别
-            <logger name="jvmdbbroker.HttpRequestLog" level="info" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
-            <logger name="jvmdbbroker.HttpRequestLog.xxx" level="info" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
-            <logger name="jvmdbbroker.HttpRequestLog.xxx.xxx" level="info" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
-            <logger name="jvmdbbroker.HttpRequestLog.access" level="info" additivity="false"><appender-ref ref="HTTPACCESSLOG" /></logger>
+## 日志文件
 
-    json转换:
+    HttpServer有3个日志文件:
+
+    auditlog/http/request_audit.log 此日志仅输出动态请求的日志
+    auditlog/http/access.log 此日志为访问日志, 输出所有http日志
+    auditlog/csos_audit.log 此日志输出内部调用过程日志
+
+    logback.xml中可配置http日志是否输出，可控制到消息级别, 参考<a href="aa">bb</a>
+
+## 服务描述文件扩展：http header支持
+
+          接口入参中 <field name="a" type="a_type" headerName="xxx"/> 表示a的值从http header xxx中获取
+          接口出参中 <field name="a" type="a_type" headerName="xxx"/> 表示把a输出到http header中
+
+
+## 服务描述文件扩展：cookie支持
+
+          接口入参中 <field name="a" type="a_type" cookieName="xxx"/> 表示a的值从cookie xxx中获取
+          接口出参中 <field name="a" type="a_type" cookieName="xxx" cookieOption="Path=/;Domain=.sdo.com;..."/> 表示把a作为cookie输出，cookieOption配置cookie选项，可选
+          sessionId作为一种特殊的cookie, 无需上述这样配置，可直接通过sessionFieldName,sessionCookieName简化配置
+
+## 服务描述文件扩展：增加classex用于json转换
        avenue协议只支持int,String，实际输出json的时候有时候需要将int转成string, 或将string转成number
        对深度嵌套的json, avenue协议不能支持，但avenue协议可以将后台拼好的json串以string形式返回，在输出时转换成json就可支持深度嵌套
        通过对服务描述文件的type项和struct里的field项支持classex属性来进行这种额外的转换
@@ -360,46 +366,72 @@
             double 将string转成double输出
             json 将string转成json串再输出, 这种方法可形成一个多级嵌套的json
 
-    cookie支持：
-          接口入参中 <field name="a" type="a_type" cookieName="xxx"/> 表示a的值从cookie xxx中获取
-          接口出参中 <field name="a" type="a_type" cookieName="xxx" cookieOption="Path=/;Domain=.sdo.com;..."/> 表示把a作为cookie输出，cookieOption配置cookie选项，可选
-          sessionId作为一种特殊的cookie, 无需上述这样配置，可直接通过sessionFieldName,sessionCookieName简化配置
+## 文件上传
 
-    http header支持：
-          接口入参中 <field name="a" type="a_type" headerName="xxx"/> 表示a的值从http header xxx中获取
-          接口出参中 <field name="a" type="a_type" headerName="xxx"/> 表示把a输出到http header中
+    如果url mapping配置中RequestContentType配置为 multipart/form-data, 则表明该请求为上传文件请求，对上传的文件，接收参数是一个名为files的结构体数组,
+      结构体为：
+        filename 文件名
+        name 表单field名
+        ext 文件后缀
+        size 文件长度
+        contentType 文件mimetype
+        file 临时文件名, 保存在webapp/upload目录下以.tmp为后缀
 
-    cacheEnabled 对静态文件，是否启用cache功能，默认为启用
-    cacheFileSize 对静态文件，低于此size的文件启用cache功能, 默认为25000字节
-    cacheFiles 对静态文件，哪些后缀会启用cache功能，用空格分隔多个后缀，默认为 html htm css js
-    httpCacheSeconds 对静态文件，输出的http头(expire,cache-control)允许客户端多长的缓存时间,默认为86400秒,若为0则不允许客户端缓存
-    httpTemplateCache 对模板文件，是否启用缓存功能, 默认为true
-    httpTemplateCheckInterval 对模板文件，多长时间检查一下时间戳是否发生变化，默认为60秒
-    skipMinFile 对静态文件，如果访问的是.min.js .min.css 等带.min.文件，是否改为访问不带.min.的文件，默认为false
-    enableMock 是否支持url mock, 若开启，则自动给所有url增加/mock再进行匹配，默认为false
-    urlArgs 访问静态文件时的参数，默认配置为?, 仅用于输出到模板中
-    devMode 开发模式下的总开关，若设置为true,则会自动调整其它开关：cacheEnabled和httpTemplateCache设置为false, httpCacheSeconds设置为0，skipMinFile设置为true，enableMock设置为true
+## jsonp支持
+    
+    如果入参中有一个jsonp=xxx, 且返回为json格式，则会转换为text/javascript, 格式为 xxx(jsondata);
+
+## json rpc
+
+    jsonRpcUrl 客户端一次发多个url给服务端对应的接收地址, 默认是 /jsonrpc
+
+    参考 http://blog.csdn.net/mhmyqn/article/details/39718097，具体协议略有不同
+    请求格式可以为：
+        1) get方法  /jsonrpc?data=json
+        2) post方法 /jsonrpc  post的内容为json
+    json体为一个json数组，数组每一项为一个对象: jsonrpc为版本号，固定为2.0，id从1开始编号, method为url, params为参数，参数可以是url_encoded形式或json对象形式
+    json请求示例：
+        [
+            {"jsonrpc":"2.0","id":"1","method":"/path/url1","params":"a=1&b=2"},
+            {"jsonrpc":"2.0","id":"2","method":"/path/url2","params":{"a":"1","b":"2"}}
+        ]
+    响应格式为json数组
+    json体为一个json数组，数组每一项为一个对象: jsonrpc为版本号，固定为2.0，id从1开始编号, result为一个json对象，就是hps的标准返回内容
+    json请求示例：
+        [
+            {"jsonrpc":"2.0","id":"1","result":{"return_code":0,"return_message":"success","data":{...}}},
+            {"jsonrpc":"2.0","id":"2","result":{"return_code":-1,"return_message":"error","data":{...}}},
+        ]
+
+    使用jsonrpc一次发多个调用的时候，日志不是一条，而是每个请求单独输出一条日志，从requestId可区分，jsonrpc的requestId都带rpc前缀并带id序号
+
+## 静态文件支持
+
+    如果存在webapp/static目录，当url不存在时，返回http 404错误，而不是hps json错误
+    支持If-Modified-Since, 若文件未变更，返回http 304错误
+    不支持断点下载
+    不支持上传文件
+
+## mime types
 
     MimeTypes为mime-type映射表，每一项Item代表一种类型，默认已配置html,txt,css,js,xml,json,gif,jpeg,png,ico,tiff的支持
     如果有未支持的mime-type,可通过MimeTypes项来配置，格式示例： image/jpeg jpeg jpg jpe, 第一项为mime-type, 后面的为对应的各种后缀，可能有多个
 
-    静态文件支持
-          如果存在webapp/static目录，当url不存在时，返回http 404错误，而不是hps json错误
-          支持If-Modified-Since, 若文件未变更，返回http 304错误
-          不支持断点下载
-          不支持上传文件
-    模板文件支持
-          模板文件的文件名要求带后缀，比如 a.xml.vm, 系统会根据后缀来自动生成content-type
-          模板文件若分目录，则定义模板参数的时候需带相对路径
-          支持两种格式:simple和velocity, 区分：如果模板文件的后缀是.vm,则是velocity格式，否则是simple格式
-          simple格式语法：只支持 ${xxx} 访问响应体内的单个值 和 ${xxx.yyy}, 访问响应体内的map里的值 , 支持avnue协议的string,int,struct
-          velocity格式语法：参考velocity语法手册 也支持上述的  ${xxx} ${xxx.yyy} 和其它高级功能，如条件，循环等  , 支持avnue协议的sting,int,struct,string array,int array, struct array
-          ${domainName} ${contextPath} ${urlArgs} ${return_code} ${return_message} 为特殊值，可在模板文件中使用
-            domainName 域名
-            contextPath url的根一级目录
-            urlArgs 静态文件的url参数，默认为?, 通过配置为不同值，如?v1, ?v2可强制客户端所有js,css,html失效重新从服务器下载最新版本
-    jsonp支持
-          如果入参中有一个jsonp=xxx, 且返回为json格式，则会转换为text/javascript, 格式为 xxx(jsondata);
+## 模板文件支持
+
+    模板文件的文件名要求带后缀，比如 a.xml.vm, 系统会根据后缀来自动生成content-type
+    模板文件若分目录，则定义模板参数的时候需带相对路径
+
+    支持两种格式:simple和velocity, 区分：如果模板文件的后缀是.vm,则是velocity格式，否则是simple格式
+    
+    simple格式语法：只支持 ${xxx} 访问响应体内的单个值 和 ${xxx.yyy}, 访问响应体内的map里的值 , 支持avnue协议的string,int,struct
+    velocity格式语法：参考velocity语法手册 也支持上述的  ${xxx} ${xxx.yyy} 和其它高级功能，如条件，循环等  , 支持avnue协议的sting,int,struct,string array,int array, struct array
+    
+    ${domainName} ${contextPath} ${urlArgs} ${return_code} ${return_message} 为特殊值，可在模板文件中使用
+      
+      domainName 域名
+      contextPath url的根一级目录
+      urlArgs 静态文件的url参数，默认为?, 通过配置为不同值，如?v1, ?v2可强制客户端所有js,css,html失效重新从服务器下载最新版本
 
 12) 错误码，错误信息支持配置
 
