@@ -1,4 +1,4 @@
-# 目录
+# <a name="toc">目录</a>
 
 [约定](#rule)
 
@@ -46,7 +46,7 @@
 
 [消息队列接受者配置](#mqreceiver)
 
-[邮件插件](#mail)
+[邮件插件配置](#mail)
 
 # <a name="rule">约定</a>
 
@@ -321,7 +321,7 @@
 
     a) 支持的方法
 
-        <message name="get" id="1"> (dbbroker里还需配置一个set方法，jvmdbbroker里去除了)
+        <message name="get" id="1">
         <message name="getarray" id="50"> 可根据一个key返回一组配置
         <message name="getall" id="51"> 返回所有配置
 
@@ -517,7 +517,7 @@
       一次执行多条SQL特别适合有大量相同参数需要同时插入或更新到几个表的时候。
       内部所有的SQL都转换为prepareStatement执行;
 
-      to 用来指定占位符 :1 为 占位符，用于和SQL对应; jvmdbbroker里可以随意使用字母数字，不要求是从1开始的数值， 另外如果占位符和入参的name相同(不区分大小写)，可不写to映射
+      to 用来指定占位符 :1 为 占位符，用于和SQL对应; scalabpe里可以随意使用字母数字，不要求是从1开始的数值， 另外如果占位符和入参的name相同(不区分大小写)，可不写to映射
       default 可为每个入参指定default，当没有传值则用该默认值;
       columnType 对数据库里为日期类型的入参，应设置columnType="date" (截除时分秒) 或 columnType="datetime", int,string不用指定, 默认为string
 
@@ -527,10 +527,10 @@
       batch update的时候，个别参数可以是单值，则每次执行sql都用相同值执行; 非单值则要求数组的大小必须相同;
       注意：batch update的时候目前的rowcount由于底层jdbc driver不支持返回的不一定准确，不应以此为判断依据，只应根据code来判断。
 
-      $ROWCOUNT映射为返回查询结果记录数，对于更新操作，则是更新影响的行数(多条SQL则是总行数)；jvmdbbroker里只要name是rowcount或row_count(不区分大小写),可不写from
-      $result[n][m]表示映射为结果集的第n行m列，一般单值都是映射到0行的数据; jvmdbbroker里只要name和select语句中的字段匹配(不区分大小写和顺序),则匹配为0行的对应值，可不写from, 如要匹配非0行数据，还是需要from
+      $ROWCOUNT映射为返回查询结果记录数，对于更新操作，则是更新影响的行数(多条SQL则是总行数)；scalabpe里只要name是rowcount或row_count(不区分大小写),可不写from
+      $result[n][m]表示映射为结果集的第n行m列，一般单值都是映射到0行的数据; scalabpe里只要name和select语句中的字段匹配(不区分大小写和顺序),则匹配为0行的对应值，可不写from, 如要匹配非0行数据，还是需要from
 
-      在jvmdbbroker里，上述配置可简化为如下，仅仅是多了一个SQL语句：
+      在scalabpe里，上述配置可简化为如下，仅仅是多了一个SQL语句：
 
       <message name="QueryTimes" id="1">
         <sql><![CDATA[
@@ -554,21 +554,21 @@
 
       更多映射方式：
 
-      $SQLCODE为sql error code映射,jvmdbbroker里只要name是sqlcode(不区分大小写),可不写from
+      $SQLCODE为sql error code映射,scalabpe里只要name是sqlcode(不区分大小写),可不写from
       $result[n]行映射 可将查询结果第n行映射到结构体, n一般是0, 如 <field name="row" type="row_type" from="$result[0]"/>
             对于结构体映射，要求结构体各参数顺序和select顺序完全一致，不支持按名字匹配
-            jvmdbbroker里如果入参是一个struct类型且未写from, 则认为是要用结构体匹配第0行记录
+            scalabpe里如果入参是一个struct类型且未写from, 则认为是要用结构体匹配第0行记录
       $result 整个结果集映射，通过 <field name="allrows" type="row_array_type" from="$result"/> 将整个查询结果集映射为一个结构体数组
             对于整个结果集映射，每条记录都对应一个map, 非常浪费内存，建议使用列映射
-            jvmdbbroker里如果入参是一个struct array类型且未写from, 则认为是匹配所有记录
+            scalabpe里如果入参是一个struct array类型且未写from, 则认为是匹配所有记录
       $result[*][n] 将第n列(从0开始)映射到一个string array或int array; 这种方式内存少用很多，也不需要去定义结构体; 查大量数据建议用列映射
-            jvmdbbroker里如果入参是一个string或int类型的array且未写from, 则按名字匹配：只要 select字段的名称 或加后缀（s, array, list, _array, _list）和入参匹配，则认为是要将该列匹配为一个数组类型的string或int
+            scalabpe里如果入参是一个string或int类型的array且未写from, 则按名字匹配：只要 select字段的名称 或加后缀（s, array, list, _array, _list）和入参匹配，则认为是要将该列匹配为一个数组类型的string或int
 
       SQL扩展，如果sql语句无法用:xxx这种的标记来表示，可改为使用$xxx标记，使用$xxx标记传入的字符串用来替换SQL, 如是值需带单引号; 用于动态的查询条件，排序条件等，$xxx这样的标记不限制数量；
 
       动态SQL替换 $dynamicSql, 是$xxx这种语法的一个用法，$dynamicSql不再是一个特殊标记，可换成任何合法字符串
 
-    jvmdbbroker中允许的sql语句(以起始字符串判断): select,insert,update,merge,create,alter,drop,replace
+    scalabpe中允许的sql语句(以起始字符串判断): select,insert,update,merge,create,alter,drop,replace
 
     <DbThreadNum>16</DbThreadNum> 或  <dbthreadnum>16</dbthreadnum>
 
@@ -680,8 +680,6 @@
 
 # <a name="aht">AHT配置</a>
 
-    jvmdbbroker直接将AHT功能集成进来。
-
     服务描述文件差异：
 
         特殊的code:
@@ -709,7 +707,7 @@
           </responseParameter>
         </message>
 
-        signature属性表示该消息需要签名，jvmdbbroker支持放在AhtCfg配置NeedSignature里，建议放在config.xml里
+        signature属性表示该消息需要签名，scalabpe支持放在AhtCfg配置NeedSignature里，建议放在config.xml里
         default 入参中可以使用default指定默认值
         path 响应和结果json的映射关系, 可用同样的方式配置从json,xml,form中解析结果，也可用jsonpath兼容老版本,
         isResultCode确定该字段是错误码字段，如未指定，则只要是HTTP 200，就认为code=0，否则报错; 也兼容isreturnfield配置参数
@@ -1157,7 +1155,7 @@
 
     如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqDeselialize接口, 自定义插件类不再支持默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
 
-# <a name="mail">邮件插件</a>
+# <a name="mail">邮件插件配置</a>
 
     邮件插件支持https, 不支持附件
 
