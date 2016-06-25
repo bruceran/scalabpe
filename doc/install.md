@@ -1,4 +1,14 @@
-# 安装JDK和SCALA
+# <a name="toc">目录</a>
+
+[安装JDK和SCALA](#install)
+
+[ScalaBPE框架源码编译环境配置](#source)
+
+[基于ScalaBPE框架的业务项目配置](#project)
+
+[框架依赖的jar包说明](#jars)
+
+# <a name="install">安装JDK和SCALA</a>
 
 ## 支持的操作系统
 
@@ -52,7 +62,7 @@
 
 	在命令行下运行scala -version, 若配置正确会显示版本信息
 
-# ScalaBPE框架源码编译环境配置
+# <a name="source">ScalaBPE框架源码编译环境配置</a>
 
 ## 目录结构说明
 
@@ -101,7 +111,7 @@
 	编译后会生成2个jar包：lib/scalabpe-core-1.1.x.jar 和 lib/scalabpe-plugins-1.1.jar 
 	每次修改src下的代码后需要重新编译再运行service脚本才能看到最新效果
 
-# 基于ScalaBPE框架的业务项目配置
+# <a name="project">基于ScalaBPE框架的业务项目配置</a>
 
 ## 目录结构
 
@@ -122,7 +132,7 @@
 * 去除了所有运行时不需要的目录和文件, 只保留必需的目录
 * 没有build编译脚本，compose_conf下的流程文件会在启动时自动进行编译
 
-# 框架依赖的jar包说明
+# <a name="jars">框架依赖的jar包说明</a>
 
 ## 必须包含的jar包
 
