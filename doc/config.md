@@ -30,13 +30,13 @@
 
 # 对外提供服务的TCP端口
 
-  <SapPort>9898</SapPort>
+  `<SapPort>9898</SapPort>`
 
   如设置为0，则表示不需要对外启动sos，只作为一个job服务
 
 # 管理HTTP端口
 
-  <CohPort>9899</CohPort>
+  `<CohPort>9899</CohPort>`
 
   如设置为0，则表示不需要管理功能
 
