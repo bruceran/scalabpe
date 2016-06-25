@@ -1,8 +1,13 @@
-# 约定
+# 目录
+
+[约定](#rule)
+[对外提供服务的TCP端口](#sapport)
+
+# <a name="rule">约定</a>
 
     xml中所有节点名都是首字母大写，属性名都是首字母小写
 
-# 对外提供服务的TCP端口
+# <a name="sapport">对外提供服务的TCP端口</a>
 
     <SapPort>9898</SapPort>
 
