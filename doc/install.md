@@ -131,9 +131,9 @@
 	scalabpe-core-1.1.x.jar
 	scalabpe-plugins-1.1.x.jar
 
-	* 本地队列
+	* 基于文件的队列实现
 
-	billing-queue-1.1.1.jar  源码见另一项目 [billing-queue](https://github.com/bruceran/billing-queue)
+	billing-queue-1.1.1.jar  源码地址：https://github.com/bruceran/billing-queue
 
 	* 核心依赖包
 
@@ -162,35 +162,35 @@
 
 ## 可选的jar包
 
-	* quartz插件使用
+	* quartz插件
 
 	quartz-2.2.1.jar
 
-	* 数据库插件使用
+	* 数据库插件
 
 	mysql-connector-java-5.1.18.jar
 	ojdbc14-10.2.0.5.0.jar
 	sqljdbc4.jar
 
-	* redis插件使用
+	* redis插件
 
 	jedis-2.1.0.jar
 
-	* xmemcached插件使用
+	* xmemcached插件
 	
 	xmemcached-2.0.0.jar
 
-	* httpserver插件使用， velocity模板引擎
+	* httpserver插件中用到的velocity模板引擎
 
 	oro-2.0.8.jar
 	velocity-1.7.jar
 
-	* mail插件使用
+	* mail插件
 
 	activation.jar
 	mail-1.4.5.jar
 
-	* mq插件使用
+	* mq插件
 
 	activemq-all-5.9.0.jar  从包中删除了logback和log4j，否则和框架使用的版本有冲突
 
