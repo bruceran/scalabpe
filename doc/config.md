@@ -55,48 +55,48 @@
 
 # 同步线程池配置
 
-  所有异步流程都共用<ThreadNum>4</ThreadNum>配置项，所以不允许在线程内发生阻塞
+  所有异步流程都共用`<ThreadNum>xxx</ThreadNum>`配置项，所以不允许在线程内发生阻塞
   异步线程池只有一个, 但是可以额外配置多个线程池用于可能会发生阻塞的消息
 
-  `<SyncedFlowCfg  threadNum="n">
-    <ServiceId>999.3,999.4</ServiceId>
-  </SyncedFlowCfg>`
+    <SyncedFlowCfg  threadNum="n">
+      <ServiceId>999.3,999.4</ServiceId>
+    </SyncedFlowCfg>
 
-  threadNum: 指定该线程池的线程数, 若未配置则默认等于<ThreadNum>4</ThreadNum>里的值
+  threadNum: 指定该线程池的线程数, 若未配置则默认等于`<ThreadNum>xxx</ThreadNum>`里的值
 
   此配置为消息级别，用逗号隔开多个消息，可指定对应的消息使用一个独立的线程池;
   如需将该服务的所有消息都加入此独立线程池，可使用serviceid.*表示
 
 # 异步日志
 
-  <ReportUrl>http://api.monitor.sdo.com/stat_more_actions.php</ReportUrl>
+  `<ReportUrl>http://api.monitor.sdo.com/stat_more_actions.php</ReportUrl>`
 
     ReportUrl用于报告服务总体情况：连接数，请求数，不分服务消息，这个数据上报作用不大, 如未配置，则不报
     ReportUrl上报对应的日志数据在request_summary.log文件中
 
-  <DetailReportUrl>http://api.monitor.sdo.com/stat_pages.php</DetailReportUrl>
-  <DetailReportServiceId>320,321,...</DetailReportServiceId>
+  `<DetailReportUrl>http://api.monitor.sdo.com/stat_pages.php</DetailReportUrl>`
+  `<DetailReportServiceId>320,321,...</DetailReportServiceId>`
 
     DetailReportUrl用于报告对外服务和子服务的请求数（成功，失败），耗时角度的统计数据, 如未配置，则不报
     DetailReportUrl上报对应的日志数据在request_stat.log文件(对外服务)和sos_stat.log文件(子服务)中
 
     DetailReportServiceId用来控制需要上报哪些服务号的统计数字到监控系统，此参数不影响打日志；如未配置，则全部都上报
 
-  <AsyncLogThreadNum>1</AsyncLogThreadNum >
+  `<AsyncLogThreadNum>1</AsyncLogThreadNum>`
 
     AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设置
 
     上报数据给监控系统时如果出现网络错误会重试，每次间隔5秒钟，最多重试2次。如果超时，不重试。
 
-  <AsyncLogWithFieldName>true</AsyncLogWithFieldName>
+  `<AsyncLogWithFieldName>true</AsyncLogWithFieldName>`
 
     在打印输入参数和输出参数的日志时，是否在值的前面输出参数名称；输出参数名称可方便查看数据； 默认为true
 
-  <AsyncLogArray>1</AsyncLogArray>
+  `<AsyncLogArray>1</AsyncLogArray>`
 
     用于控制对数组类型日志打印前几条数据，默认为1, 只打印数组的第一条
 
-  <AsyncLogPasswordFields>password,pass_word</AsyncLogPasswordFields>
+  `<AsyncLogPasswordFields>password,pass_word</AsyncLogPasswordFields>`
 
     配置日志中要隐藏实际值的字段，配置了该字段，在request log, csos log中将会以 *** 代替实际值, 多个配置值用逗号分隔
     也可以使用此参数来隐藏lob类型字段的日志，否则日志可能会很长
@@ -114,23 +114,23 @@
 
 # 流程里可使用的KEY/VALUE配置参数设置
 
-  <Parameter name="xxx">yyyy</Parameter>
+  `<Parameter name="xxx">yyyy</Parameter>`
 
   流程中可用Flow.router.getConfig("xxx",defaultValue) 获取到上述xxx对应的值yyy
 
 # 对外开放或关闭服务
 
-  <Parameter name="serviceIdsNotAllowed">999,977</Parameter>
+  `<Parameter name="serviceIdsNotAllowed">999,977</Parameter>`
 
   默认流程服务(包括子流程服务)都对外开放, 可用serviceIdsNotAllowed调整
 
-  <Parameter name="serviceIdsAllowed">45601,45602</Parameter>
+  `<Parameter name="serviceIdsAllowed">45601,45602</Parameter>`
 
   默认非流程服务都不对外开放, 可用serviceIdsAllowed调整
 
 # runtest 目标地址
 
-  <TestServerAddr>host:port</TestServerAddr>
+  `<TestServerAddr>host:port</TestServerAddr>`
 
   此配置仅用于runtest测试工具，用来将请求发给远程服务而不是本地服务
 
