@@ -303,7 +303,8 @@
 
     threadNum="2"  为消息投递线程数，默认为2
     timeout="30000" 为每个消息的超时时间，默认为30000, 表示30秒
-    retryTimes="2" 消息发出后连接中断的消息会重发给其它服务器，默认为2次; 如果未找到一个可用连接，直接返回网络错误，不重试，不等待
+    retryTimes="2" 消息发出后连接中断的消息会重发给其它服务器，默认为2次; 
+                   如果未找到一个可用连接，直接返回网络错误，不重试，不等待
     connectTimeout="15000" 连接超时，默认为15000, 表示15秒
     pingInterval="60" 心跳间隔，默认为60, 表示60秒
     maxPackageSize="40000" 最大包长, 默认为 40000 字节
@@ -484,7 +485,8 @@
 
     Msg节点，可按消息配置不同的重发次数和重试间隔时间，若无配置，则取默认值
 
-    ConnLocalQueueCfg为增强版本地持久化队列，允许队列中的数据以concurrentNum="20"进行并行处理，其它配置兼容LocalQueueCfg
+    ConnLocalQueueCfg为增强版本地持久化队列，允许队列中的数据以concurrentNum="20"进行并行处理，
+    其它配置兼容LocalQueueCfg
     concurrentNum 并行执行数量，默认为1，在推送，通知的时候可设置此值来提高并行度
 
     本地队列服务描述文件差异:
@@ -499,13 +501,15 @@
     本地队列在回调receiverServiceId时，只有得到0的返回值才会发下一条。
     不同的队列可以并行调用，但是同一个队列的消息是按顺序一条条调用的。
 
-    为避免不同的远程接收者的数据彼此影响，调用者应通过queueName来区分不同的接收者, 提高并发程度，避免彼此影响。
+    为避免不同的远程接收者的数据彼此影响，调用者应通过queueName来区分不同的接收者, 提高并发程度，
+    避免彼此影响。
 
     本地队列开销很小，不用担心队列数量会对性能有影响。
 
     本地队列对应的持久化文件默认在data/localqueue目录下
 
-    比如给很多商户发通知，每个商户有自己的通知地址，通常可以用appId作为queueName。如果商户的notifyUrl可在入参中传递，则队列名中应加上notifyUrl的hashCode
+    比如给很多商户发通知，每个商户有自己的通知地址，通常可以用appId作为queueName。
+    如果商户的notifyUrl可在入参中传递，则队列名中应加上notifyUrl的hashCode
 
     对receiverServiceId服务描述文件的要求:
 
@@ -516,7 +520,8 @@
 
             x_sendCount  含义：当前发送次数
             x_isLastSend 含义: 为1表示是最后一次发送，为0表示不是最后一次发送
-            x_sendTimeUsed 含义：从开始发送到当前时间，不包括最后一次调用的时间, 最后一次发送耗时可用System.currentTimeMillis-req.receivedTime得到
+            x_sendTimeUsed 含义：从开始发送到当前时间，不包括最后一次调用的时间, 最后一次发送耗时
+                                 可用System.currentTimeMillis-req.receivedTime得到
             x_maxSendTimes 含义：配置的maxSendTimes值，用于某些特殊情况下流程里做控制
 
             可以用来记录日志，写数据库等操作
