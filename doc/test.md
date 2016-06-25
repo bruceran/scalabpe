@@ -1,4 +1,14 @@
-# 测试工具
+# <a name="toc">目录</a>
+
+[测试工具](#testtool)
+
+[日志文件目录](#dir)
+
+[logback.xml配置文件](#logback)
+
+[框架使用到的错误码](#error)
+
+# <a name="testtool">测试工具</a>
 
 ## 使用service runscala
 
@@ -30,7 +40,9 @@
 
 可以直接通过命令行curl或浏览器来访问url查看调用结果和调用过程
 
-# 日志文件目录
+[返回](#toc)
+
+# <a name="dir">日志文件目录</a>
 
 ## 目录结构
 
@@ -52,7 +64,9 @@
 * linux下脚本默认直接在/opt/logs下建立日志目录
 * windows下/opt/目录会自动在项目所在盘符的根目录下创建
 
-# logback.xml配置文件
+[返回](#toc)
+
+# <a name="logback">logback.xml配置文件</a>
 
 ## 请求响应日志文件 request_audit.log 输出配置
 
@@ -100,7 +114,9 @@
 
     查看AHT请求和响应原始内容，需设置<logger name="jvmdbbroker.plugin.http.HttpClientImpl" level="debug" ...
 
-# 框架使用到的错误码
+[返回](#toc)
+
+# <a name="error">框架使用到的错误码</a>
 
 * 错误码分类
 
@@ -117,3 +133,5 @@
 * 框架里将所有出现的错误码都归类到上述错误码之一
 * 对于数据库查询未找到匹配数据的情况，不会返回错误，而是返回0； 
   流程中应根据rowcount是否为0来判断是否有匹配数据
+
+[返回](#toc)
