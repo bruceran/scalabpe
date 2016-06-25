@@ -75,9 +75,11 @@ threadNum: 指定该线程池的线程数, 若未配置则默认等于`<ThreadNu
     <DetailReportServiceId>320,321,...</DetailReportServiceId>
 
 ReportUrl用于报告服务总体情况：连接数，请求数，不分服务消息，这个数据上报作用不大, 如未配置，则不报
+
 ReportUrl上报对应的日志数据在request_summary.log文件中
 
 DetailReportUrl用于报告对外服务和子服务的请求数（成功，失败），耗时角度的统计数据, 如未配置，则不报
+
 DetailReportUrl上报对应的日志数据在request_stat.log文件(对外服务)和sos_stat.log文件(子服务)中
 
 __若未配置 ReportUrl DetailReportUrl 则不进行上报__
@@ -101,18 +103,19 @@ AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设
     <AsyncLogPasswordFields>password,pass_word</AsyncLogPasswordFields>
 
 配置日志中要隐藏实际值的字段，配置了该字段，在request log, csos log中将会以 *** 代替实际值, 多个配置值用逗号分隔
+
 也可以使用此参数来隐藏lob类型字段的日志，否则日志可能会很长
 
     <AsyncLogDispatch defaultTarget="999.28">
           <Item serviceId="999" msgId="27" target="999.28"/>
     </AsyncLogDispatch>
 
-其中msgId可用*代替匹配所有消息; target可不配置，则取defaultTarget默认值
-可转发给本地服务或远程服务；为避免消息丢失，可在服务描述文件将消息设为必达消息, isAck="true"
-目标消息的服务描述文件要求：
-  serviceId 服务号
-  msgId 消息号
-  kvarray string array, 请求，响应，流程变量
+* 其中msgId可用*代替匹配所有消息; target可不配置，则取defaultTarget默认值
+* 可转发给本地服务或远程服务；为避免消息丢失，可在服务描述文件将消息设为必达消息, isAck="true"
+* 目标消息的服务描述文件要求：
+  + serviceId 服务号
+  + msgId 消息号
+  + kvarray string array, 请求，响应，流程变量
 
 # 流程里可使用的KEY/VALUE配置参数设置
 
