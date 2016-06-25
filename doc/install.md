@@ -27,6 +27,7 @@
 * scala 2.10.2
 
 		scala安装包scala-2.10.2.zip为一个zip包，直接解压后就可使用
+		[本地下载](download/scala-2.10.2.zip) [官网下载](http://www.scala-lang.org/download/all.html)
 
 * 设置好SCALA_HOME和PATH环境变量:
 
@@ -83,6 +84,8 @@
 
 	service 启动服务, 按Ctrl+C停止服务
 	service runtest 发送接口测试指令
+
+	注：windows下的service脚本只用于开发人员使用，只能在控制台使用，不能作为服务，正式部署建议使用linux脚本，或自己打包成service
 
 ## 编译src/目录下的源码
 
