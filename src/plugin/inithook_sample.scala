@@ -8,7 +8,7 @@ class InitHookSample(val router:Router,val cfgNode: Node) extends Logging with I
 
   log.info("init hook created")
 
-  def loadParameter(pmap:HashMapStringString) {
+  def loadParameter(pmap:HashMapStringString):Unit = {
     log.info("loadParameter called")
   }
 }

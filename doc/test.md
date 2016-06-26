@@ -38,9 +38,9 @@
         * serviceId,msgId,json串   json串对应该消息的参数
         * json串中，如果包含 x_repeat 属性，可用来指定该请求要重复发多少次，不指定则为1
 
-## 对于使用了http server的服务
+## 对于使用了http server插件的服务
 
-    可以直接通过命令行curl或浏览器来访问url查看调用结果和调用过程
+    可以直接通过命令行curl或浏览器来访问url
 
 [返回](#toc)
 
@@ -52,6 +52,9 @@
 				 auditlog/
 				 	request_audit.log 	对外接口的请求响应日志文件
 				 	csos_audit.log 		流程的内部处理流程日志文件
+                    request_stat.log  对外接口汇总日志
+                    sos_stat.log   内部处理接口汇总日志
+                    request_summary.log 对外请求/连接情况汇总日志
 				 	http/
 				 		request_audit.log 	http服务的请求响应日志文件
 				 		access.log 	http服务的访问日志文件,类似nginx日志
