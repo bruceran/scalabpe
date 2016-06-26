@@ -4,6 +4,10 @@
 
 [服务描述文件](#service)
 
+[必达消息说明](#mustreach)
+
+[FLOW文件语法和启动时编译](#flow)
+
 # <a name="avenue">Avenue协议</a>
 
 ## 介绍
@@ -161,8 +165,12 @@
 
     name 消息名称，不区分大小写，流程中使用消息名来调用
     id 消息ID, 在同一个服务描述文件中必须唯一, 网络传输时传输此值
-    requestParameter 请求参数，由0-n个field组成
-    responseParameter 响应参数，由0-n个field组成
+    isAck 该消息是否为必达消息，参见必达消息的说明
+    retryInterval 重试间隔，毫秒， isAck为true时使用
+    retryTimes 重试次数，isAck为true时使用
+
+    requestParameter 子节点 定义请求参数，由0-n个field组成
+    responseParameter 子节点 定义响应参数，由0-n个field组成
 
     field定义
 
@@ -225,36 +233,7 @@
 
 [返回](#toc)
 
-26) 增量编译
-
-    编译有些耗时，可能需要10多秒，为加快启动速度，jvmdbbroker使用增量编译，规则如下：
-
-    lib/*.jar 时间戳有任何改变，需要全量编译
-    compose_conf/*.scala 任意一个文件的时间戳有任何改变，需要全量编译
-    compose_conf/*.flow 如仅仅是flow文件变化，使用增量编译，只编译改动的flow文件
-
-    所以：
-
-    1) 所有的流程用flow文件，不要用scala文件，scala文件里只写公共的辅助类
-    2) flow文件中可以定义类，但一定不要是多个flow共享的，如果多个flow共享，用scala文件
-
-
-
-
-30) syncedInvoke特别说明
-
-    1) 要使用此方法需要withsyncedinvoke特殊标记， //$xxx.xxx.withsyncedinvoke
-    2) 只应该使用syncedInvoke调用本地缓存或同步DB服务
-    3) syncedInvoke调用本地缓存或同步DB服务时，timeout参数传0
-    4) 调用本地缓存用invoke也可同样实现，只是需要多一次跳转，可用invokeN一次查询多个配置，就只需要一次跳转
-    5) syncedInvoke同步DB服务时需配置独立的SyncedFlowCfg线程池
-    6) 调用子流程：
-
-          invoke 子流程是异步调用，必须设置 timeout > 0 才能拿到返回值，这是常用的子流程共享
-          syncedInvoke 子流程是同步调用，如子流程内未再发生invoke, 线程就不会切换，可设置 timeout = 0, 一定可以拿到返回值，可用于事务内的子流程共享
-          但是如果syncedInvoke的子流程内又有异步调用, 则必须设置 timeout > 0才能拿到返回值
-
-31) 必达消息说明
+# <a name="mustreach">必达消息说明</a>
 
     <message name="testbatchupdate" id="7" isAck="true" retryInterval="30000" retryTimes="100">
 
@@ -267,11 +246,11 @@
 
     必达消息的语义：如果一个请求的返回码是以下3个错误码则认为没有"必达"，需要进行重试。
 
-        超时  -10242504
-        网络错误 -10242404
-        队列满或开始处理请求时发现请求已超时 -10242488
+        网络错误  -10242404
+        服务或消息未找到 -10242405
+        队列满或队列阻塞引起的超时 -10242488
 
-    目前sos,db,cache等都会返回上述错误码。
+    目前sos,db,cache等插件都可能会返回以上错误码。
 
     必达消息可以在任何服务描述文件中定义，而不仅仅在对外的服务的描述文件。
     可以定义在一个子流程上，也可以在某个db的消息上。由业务根据实际情况使用。
@@ -281,3 +260,65 @@
 
     必达消息的持久化数据保存在data/mustreach目录下，以服务名_消息名为队列名。
 
+[返回](#toc)
+
+# <a name="flow">FLOW文件语法和启动时编译</a>
+
+    compose_conf 目录下可以有2种文件：
+
+    .scala后缀的纯scala文件, 如一些辅助类文件，轻量级插件类等
+    对.scala后缀的类文件，包名建议统一用jvmdbbroker.flow，简化import语句
+
+    .flow结尾的流程文件, 服务描述文件中的每个消息都对应一个.flow的文件
+
+## flow 文件格式
+
+    * 示例：//$service999.updateUserInfo
+
+      说明：//$指定该流程对应的服务名和消息名, 此行不一定要是第一行，前面可以有import语句
+
+
+    * 入口地址：//#receive
+
+      说明：每个流程都有一个入口地址, 流程从该入口开始执行
+
+
+    * 回调函数地址：//#nnn
+
+      说明：在流程中每个异步调用都需要指定一个回调函数，在异步请求完成后框架会自动调用该函数
+          继续流程， 回调函数名可以自己随便定义
+
+          在流程中通过invoke系列方法进行异步调用，如：
+
+              invoke(querycallback,3000,"userId"->"123")
+
+          这里 querycallback 就是一个回调函数，需用//#querycallback定义
+
+    * 流程的基类
+
+      默认流程都继承类jvmdbbroker.core.Flow, 使用特殊语法可以修改继承的基类
+
+      使用//$xxx.xxx.withsyncedinvoke语法可以让流程继承jvmdbbroker.core.SyncedFlow, 
+      继承后可以使用syncedInvoke语法, 在支持数据库事务的流程中使用此方法会更方便
+
+      使用//$xxx.xxx.with(baseclass)语法可以让流程继承一个用户自定义的基类baseclass,
+      baseclass必须继承jvmdbbroker.core.Flow, 用户可以在基类中做一些特殊处理，
+      如在每个流程开始前自动从redis中加载http的session信息到内存中，通过session变量给流程使用
+
+## 启动时编译
+
+    框架在启动时会对compose_conf下的文件进行编译;
+    每个flow文件在启动的时候会转换为scala类文件，转换后的文件保存在temp/src目录下
+
+    编译过程比较耗时，为加快启动速度，scalabpe使用增量编译，规则如下：
+
+    任意一个lib下的jar文件时间戳有改变，需要全量编译
+    任意一个scala文件的时间戳有改变，需要全量编译
+    如仅仅是flow文件变化，使用增量编译，只编译改动的flow文件
+
+    所以：
+
+    1) 所有的流程用flow文件，不要用scala文件，scala文件里只写公共的辅助类或插件
+    2) flow文件中可以定义类，但一定不要是多个flow共享的，如果多个flow共享，用scala文件
+
+[返回](#toc)
