@@ -1,6 +1,7 @@
 # ScalaBPE
 
 * ScalaBPE 的含义是可伸缩的业务流程引擎(Scalable Business Process Engine)
+* 此框架用于服务端系统开发
 * 此框架使用scala语言开发, 2013年11月发布第一个版本
 
 # 用户手册

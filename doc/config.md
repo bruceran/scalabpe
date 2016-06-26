@@ -791,7 +791,8 @@
         signature属性表示该消息需要签名，scalabpe支持放在AhtCfg配置NeedSignature里，建议放在config.xml里
         default 入参中可以使用default指定默认值
         path 响应和结果json的映射关系, 可用同样的方式配置从json,xml,form中解析结果，也可用jsonpath兼容老版本,
-        isResultCode确定该字段是错误码字段，如未指定，则只要是HTTP 200，就认为code=0，否则报错; 也兼容isreturnfield配置参数
+        isResultCode确定该字段是错误码字段，如未指定，则只要是HTTP 200，就认为code=0，否则报错; 
+                    也兼容isreturnfield配置参数
 
 ## config.xml中的配置
 
@@ -820,7 +821,7 @@
               <WSResSuffix>Response</WSResSuffix>
               <WSReqWrap>orderInfo</WSReqWrap>
               <WSResWrap>CheckDepositOrderResult</WSResWrap>
-              <WSNs>ns2=http://tempuri.org/ default=http://schemas.datacontract.org/2004/07/Sdo.Service.PayOrder.Entity</WSNs>
+              <WSNs>ns2=http://tempuri.org/</WSNs>
               <WSWrapNs>ns2</WSWrapNs>
               <Plugin>xxx</Plugin>
             </Item>
@@ -843,13 +844,14 @@
       ConnectTimeout HTTP连接超时时间, 默认为3秒，以秒为单位
       ThreadNum Aht Actor 使用的线程数，默认为2个
       TimerInterval 内部定时器的间隔毫秒数，默认为100毫秒，如果需要100毫秒内的超时精度，可调整此值
-      TimeOut,ConnectTimeout,ThreadNum,TimerInterval的设置也可以用AhtCfg节点的属性方式设置，对应属性：timeOut,connectTimeout,threadNum,timerInterval
+      TimeOut,ConnectTimeout,ThreadNum,TimerInterval的设置也可以用AhtCfg节点的属性方式设置，
+            对应属性：timeOut,connectTimeout,threadNum,timerInterval
 
       AHT默认支持的格式：
           请求 application/x-www-form-urlencoded
           响应 json, xml, application/x-www-form-urlencoded,text/html,text/plain
             对xml，path中除了a.b 这种，还可用 a.b@xxx 取a节点下的b节点的xxx属性
-            对text/html,text/plain，根据响应的第一个字符判定内容格式，<则认为是xml, {则认为是json
+            对text/html,text/plain，根据响应的第一个字符判定内容格式，< 则认为是xml, { 则认为是json
           不符合上述规则的则需实现一个插件类
       AHT签名方法：
           默认支持的签名方法是HPS签名方法，如果需要其它的签名方法需实现一个插件类
@@ -862,15 +864,18 @@
       CharSet 默认为 utf-8
       Signature 签名密钥, 如消息中定义了code=10000的入参，则以入参为准
       ServerUrl 通知地址, 如消息中定义了code=10001的入参，则以入参为准
-          如果非-1的消息里配置了ServerUrlSuffix, 则实际通知url是ServerUrl + ServerUrlSuffix, 可用来将前缀相同部分都配置在-1节点
+          如果非-1的消息里配置了ServerUrlSuffix, 则实际通知url是ServerUrl + ServerUrlSuffix, 
+          可用来将前缀相同部分都配置在-1节点
           ServerUrl支持http或https的url
 
       在Method为POST, RequestContentType为text/xml时，则进入web service调用模式
 
         aht插件不使用第三方webservice库来调用远程服务，而是直接拼出符合要求的xml发给远程webservice服务
 
-        WSNs 请求中所有用到的namespace定义 n1=v1 n2=v2形式，用空格隔开多个定义，第一个namespace也作为方法节点的namespace, 默认节点用default表示
-        WSReqSuffix 请求根节点的后缀，全名为方法名+后缀, 此值一般和方法名一样，不用配置, 此节点的ns为WsNs的第一个值
+        WSNs 请求中所有用到的namespace定义 n1=v1 n2=v2形式，用空格隔开多个定义，第一个namespace也作为方法
+             节点的namespace, 默认节点用default表示
+        WSReqSuffix 请求根节点的后缀，全名为方法名+后缀, 此值一般和方法名一样，不用配置, 此节点的ns为WsNs
+                    的第一个值
         WSResSuffix 响应根节点的后缀，全名为方法名+后缀，此值一般是Response, 此节点的ns为WsNs的第一个值
         WSWrapNs 请求和响应包装节点对应的namespace, default表示默认namespace, 也可不配置
         WSReqWrap 请求包装节点的名称，可为空串, 此值可能随每个方法不一样，比如arg0等
@@ -880,7 +885,8 @@
       webservice的服务描述文件
 
         每个field都可以额外指定一个ns参数来指定namespace, 可以为空
-        如果field名称是用.分隔，表示是嵌套xml; 如需指定ns, 必须为每个级别指定ns，如key为a.b, 则ns为"ns1.ns2", 若为*表示用默认namespace
+        如果field名称是用.分隔，表示是嵌套xml; 如需指定ns, 必须为每个级别指定ns，如key为a.b, 则ns为"ns1.ns2", 
+        若为*表示用默认namespace
         方法名，field名都和xml一一对应，大小写必须一致
         参数的顺序和xml的顺序一致，如果错乱会导致服务端返回500错误
 
