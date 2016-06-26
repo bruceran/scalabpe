@@ -116,8 +116,10 @@
 
 * type定义
 
-      name 名称自定义，不区分大小写，建议以_type结尾, 在同一个服务描述文件中必须唯一
+      name 名称，不区分大小写，建议以_type结尾, 在同一个服务描述文件中必须唯一
+
       code 对应的tlv编码值，在同一个服务描述文件中必须唯一
+
       class 共有3种:
 
         int 整数
@@ -129,9 +131,9 @@
 
 * struct里的field定义
 
-        int
-        systemstring 无需指定长度
-        string 需通过len定义长度，主要是为兼容老版本, 若是最后一个field，可不指定len
+        int 整数
+        systemstring 字符串, 无需指定长度
+        string 字符串, 需通过len定义长度，主要是为兼容老版本, 若是最后一个field，可不指定len
 
 * array定义
 
@@ -142,9 +144,13 @@
     int             scala.Int
     bytes           scala.Array[scala.Byte]
     string          java.lang.String
+
     struct          jvmdbbroker.core.HashMapStringAny 继承自 scala.collection.mutable.HashMap[String,Any]
+
     int array       jvmdbbroker.core.ArrayBufferInt 继承自 scala.collection.mutable.ArrayBuffer[Int]
+
     string array    jvmdbbroker.core.ArrayBufferString 继承自 scala.collection.mutable.ArrayBuffer[String]        
+    
     struct array    jvmdbbroker.core.ArrayBufferMap 继承自 scala.collection.mutable.ArrayBuffer[jvmdbbroker.core.HashMapStringAny]
 
 ## 默认值 default value
