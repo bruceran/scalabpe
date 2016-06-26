@@ -107,20 +107,23 @@
 
 ## 介绍
 
-  所有服务（访问数据库，操作缓存，调用外部http服务，调用Avenue服务等）都通过服务描述文件来抽象,
-  可以抽象为
+  所有外部服务（访问数据库，操作缓存，调用外部http服务，调用Avenue服务等）都通过服务描述文件来抽象。
+  流程中调用所有的外部服务都是以相同的方式来调用。
 
-## 格式说明
+  示例:  参考 avenue_conf/flow999.xml
 
-    示例:  参考 avenue_conf/flow999.xml
+## service定义
 
-* type定义
+    name 服务名，不区分大小写, 流程中使用此名称
+    id 服务号, 不可以和其它服务的ID重复，网络传输时传输此值
 
-      name 名称，不区分大小写，建议以_type结尾, 在同一个服务描述文件中必须唯一
+## type定义
 
-      code 对应的tlv编码值，在同一个服务描述文件中必须唯一
+    name 名称，不区分大小写，建议以_type结尾, 在同一个服务描述文件中必须唯一
 
-      class 共有3种:
+    code 对应的tlv编码值，在同一个服务描述文件中必须唯一, 网络传输时传输此值
+
+    class 共有3种:
 
         int 整数
         string 字符串， 其长度最大为64K (一个short), long,float,double等类型都必须转成string
@@ -129,29 +132,53 @@
 
         注：二进制类型数据不是一个单独的class, 而是特殊的string, 设置了isbytes为1的string则表示是二进制内容
 
-* struct里的field定义
+    default 默认值
 
-        int 整数
-        systemstring 字符串, 无需指定长度
-        string 字符串, 需通过len定义长度，主要是为兼容老版本, 若是最后一个field，可不指定len
+    * struct里的field定义
 
-* array定义
+        name 对象的名称，区分大小写, 流程中使用此名称
+        type 类型
+          int 整数
+          systemstring 字符串, 无需指定长度
+          string 字符串, 需通过len定义长度，主要是为兼容老版本, 若是最后一个field，可不指定len
+        default 默认值
 
-         itemType 该数组每个元素对应的type的name
+    * array 定义
 
-* 服务描述文件中的类型和ScalaBPE数据类型的对应关系
+        itemType 该数组每个元素对应的type的name
 
-    int             scala.Int
-    bytes           scala.Array[scala.Byte]
-    string          java.lang.String
+    * 服务描述文件中的类型和ScalaBPE数据类型的对应关系
 
-    struct          jvmdbbroker.core.HashMapStringAny 继承自 scala.collection.mutable.HashMap[String,Any]
+        int             scala.Int
+        bytes           scala.Array[scala.Byte]
+        string          java.lang.String
+        struct          jvmdbbroker.core.HashMapStringAny 继承自 scala.collection.mutable.HashMap[String,Any]
+        int array       jvmdbbroker.core.ArrayBufferInt 继承自 scala.collection.mutable.ArrayBuffer[Int]
+        string array    jvmdbbroker.core.ArrayBufferString 继承自 scala.collection.mutable.ArrayBuffer[String]        
+        struct array    jvmdbbroker.core.ArrayBufferMap 继承自 scala.collection.mutable.ArrayBuffer[jvmdbbroker.core.HashMapStringAny]
 
-    int array       jvmdbbroker.core.ArrayBufferInt 继承自 scala.collection.mutable.ArrayBuffer[Int]
+## message 定义
 
-    string array    jvmdbbroker.core.ArrayBufferString 继承自 scala.collection.mutable.ArrayBuffer[String]        
-    
-    struct array    jvmdbbroker.core.ArrayBufferMap 继承自 scala.collection.mutable.ArrayBuffer[jvmdbbroker.core.HashMapStringAny]
+    name 消息名称，不区分大小写，流程中使用消息名来调用
+    id 消息ID, 在同一个服务描述文件中必须唯一, 网络传输时传输此值
+    requestParameter 请求参数，有0-n个field组成
+    responseParameter 响应参数，有0-n个field组成
+
+    * field定义
+
+        name 参数名，此值区分大小写，流程中使用此名称
+        type 类型名，不区分大小写
+        default 默认值
+
+## 服务描述文件扩展
+
+    由于所有服务提供的接口都通过服务描述文件来描述，标准的服务描述文件格式不能满足需求。
+    每个插件会根据需要对服务描述文件做一些扩展或约定，如:
+        
+        缓存服务要求的 get 方法的 id必须是 1, set方法的id必须是2
+        DB服务在每个message下增加了一个SQL节点来定义sql语句
+
+    这类扩展参见各个插件的配置文档。
 
 ## 默认值 default value
 
