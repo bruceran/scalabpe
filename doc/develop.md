@@ -8,6 +8,8 @@
 
 [启动时编译](#compile)
 
+[Scala语法和Java语法对比](#compare)
+
 # <a name="avenue">Avenue协议</a>
 
 ## 介绍
@@ -347,5 +349,82 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
     1) 所有的流程用flow文件，不要用scala文件，scala文件里只写公共的辅助类或插件
     2) flow文件中可以定义类，但一定不要是多个flow共享的，如果多个flow共享，用scala文件
+
+[返回](#toc)
+
+# <a name="compare">Scala语法和Java语法对比</a>
+
+    feature                                 java                                                              scala
+    ======================================================================================================================================================
+
+    类型申明                                int a; String b;                                                  val a:Int=0; var b:String="abc";
+    val申明的变量                           相当于final对象，不可再赋值，必须初始化                           val a=2;  不可再赋值 ; scala里建议尽量用val
+    var申明的变量                           相当于非final变量，可再赋值                                       var a=3;  a=4;
+
+    行尾的分号                              必须                                                              可省略; 一行多个语句时不能省略
+    无参数方法调用                          a.xxx()                                                           可省略成a.xxx
+    非void函数return关键字                  必须写                                                            一般函数最后的return能省略的都省略，最后一个表达式的值就是返回值; 函数中间过程的return不能省略
+    函数默认值                              无                                                                可以，可减少重复的函数定义
+    Getter/Setter                          一般都使用bean此风格申明类                                         scala里不使用java bean风格, 直接引用变量
+    类型推导                                无                                                                val a = 1;  a则是Int; val b = "" 则b是String;
+                                                                                                              val c = null;  这时c类型不明确，一般用 val c:String = null 或者 val c:String = _ 或者 val c = null:String
+                                                                                                              凡是能推导出类型的地方都可不写类型
+    函数定义                                int add(int a,int b) { return a + b }                             def add(a:Int,b:Int): Int = { a + b } 根据是否能自动推导，可有多个变体:
+                                                                                                              def add(a:Int,b:Int) = { a + b }  Int可自动推导出
+                                                                                                              def add(a:Int,b:Int) = a + b  还可省略大括号, 注意=不能省略；没有=号的函数认为返回Unit,
+
+
+
+    VOID类型                                void                                                              Unit
+    int类型                                 int                                                               scala.Int
+    string类型                              java.lang.String                                                  相同，也是java.lang.String
+    字符串/int转换                          Integer.parseInt(s),                                              s.toInt, java.lang.String没有这个方法，scala编译器会转换
+                                            String.valueOf(i)                                                 i.toString
+
+    对象比较                                equals(),!equals()                                                == !=
+    对象==                                  ==                                                                eq 一般不用
+
+    泛型                                    <>                                                                []
+    数组下标                                []                                                                ()
+
+    import                                  文件开头                                                          文件开头，类内(仅在该类内有用)，函数内(仅在该函数内有用)
+    import所有类                            import java.util.*                                                import jvmdbbroker.core._; import jvmdbbroker.plugin.{SplitTablePlugin,SplitDbPlugin}; 一行引入多个类
+
+    ?:表达式                                int a = ok ? 1 : 0;                                               val a = if ok 1 else 0
+    ++运算符                               有   ++i                                                           用 i += 1 代替
+
+    条件判断                                if ... else if ... else                                           相同
+    while, do while                         while, do while                                                   相同
+    循环中break,continue                    有                                                                无
+    for循环1                                for(;;)                                                           不支持
+    for循环2                                for( a <- b )                                                     有，功能很强，不是传统的循环，不做详细说明;
+    switch                                  switch { case ... case ... other ... } case后需要break            xxx match {case ... } 非常非常强大，不做详细说明, 注意case后不需要break
+    异常                                    try { ... } catch(Exception e) { ... } finally {...}              try { ... } catch { case a:Exception => ... } finally {...} 也是用match的case语法
+    异常catch                               非runtime exception需要catch                                      不需要
+    常用数据结构                            List,Set,Map                                                      java的类库都可使用，但一般情况下用scala自己的集合类库，不能满足需求再用java类库的，scala常用：
+                                                                                                                scala.collection.mutable.ArrayBuffer  功能等价于java的ArrayList，加数据可以用  buff += a
+                                                                                                                scala.collection.mutable.HashMap 功能等价于java的HashMap  注意其中的get和java的不一样，用getOrElse(key,defaultValue)才是java里的get
+                                                                                                                scala.collection.mutable.HashSet 功能等价于java的HashSet
+    定长数组                                new String[3]                                                     new Array[String](3)  固定大小数组，动态数组用ArrayBuffer[String]
+    Tuple                                   无                                                                Tuple2,Tuple3,... 对象，非常好用
+    多重赋值                                不支持                                                            val (ret1,ret2,...) = xxx, 可使用此方法从Tuple中直接取值, jvmdbbroker flow使用这个从并行调用中获取结果
+    列表LIST                                无                                                                scala里的List和java的List没任何关系，也完全不是一回事; 主要是用来做函数式编程的
+
+    对象根                                  Object                                                            Any, 一切都是对象; Object是Any的一个子类
+    类的静态成员                            static                                                            class 内都是实例成员, 静态成员放在一个同名的object单例对象内; 也可单独定义没有class的object对象
+    接口申明                                interface                                                         trait 可有具体实现代码
+    抽象类                                  abstract class                                                    trait
+    类继承                                  只能继承(extends)一个类，实现(implements)多个接口                 只能继承(extends)一个类, 但可混入(with)多个trait, 此设计非常强大
+    函数也是对象                            不支持                                                            支持,jvmdbbroker里invoke的callback就是函数; java中只能传递字符串然后通过反射找到对应方法
+    类申明                                  class  SocRequest { ... }                                         可同时申明实例成员, 可带默认值  class SocRequest (
+                                                                                                                val requestId : String,
+                                                                                                                    val serviceId : Int,
+                                                                                                                    val msgId : Int,
+                                                                                                                    val body : HashMapStringAny,
+                                                                                                                val encoding : Int = AvenueCodec.ENCODING_UTF8,
+                                                                                                                    val xhead : HashMapStringAny = new HashMapStringAny() ) { ... } 就申明一个类，里面有requestId,serviceId,msgId,body,encoding,xhead几个实例变量。
+    字符串格式化                            String中没有                                                      直接使用String类的format方法 "s=%s d=%d".format(s,d) 方法来格式化字符串，类似c语言的format格式
+    map.get()                               String s = map.get("abc")                                         val s = map.getOrElse("abc",null) scala里HashMap.get返回的是Option对象，一般不用
+
 
 [返回](#toc)

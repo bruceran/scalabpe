@@ -36,6 +36,7 @@
 	了解服务描述文件
 	FLOW文件格式
 	启动时编译
+	Scala语法和Java语法对比
 
 ## [插件开发指南](doc/plugin.md) 
 
