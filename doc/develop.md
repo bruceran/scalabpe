@@ -364,64 +364,31 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | 非void函数return关键字 | 必须写 | 一般函数最后的return能省略的都省略，最后一个表达式的值就是返回值; 函数中间过程的return不能省略 |
 | 函数参数默认值 | 无 | 可以，可减少重复的函数定义 |
 | Getter/Setter | 一般都使用bean此风格申明类 | scala里不使用java bean风格, 直接引用变量 |
-| 类型推导 | 无 | 凡是能推导出类型的地方都可不写类型<br>val a = 1;  a则是Int; <br>val b = "" 则b是String;<br>val c = null;  这时c类型不明确，<br>一般用 val c:String = null 或者 val c:String = _ 或者 val c = null:String |
+| 类型推导 | 无 | 凡是能推导出类型的地方都可不写类型<br>val a = 1;  a则是Int; <br>val b = "" 则b是String;<br>val c = null;  这时c类型不明确，一般用 val c:String = null 或者 val c:String = _ 或者 val c = null:String |
+| 函数定义 | int add(int a,int b) { return a + b }  | def add(a:Int,b:Int): Int = { a + b } 根据是否能自动推导，可有多个变体:<br>def add(a:Int,b:Int) = { a + b }  Int可自动推导出; <br>def add(a:Int,b:Int) = a + b  还可省略大括号, 注意=不能省略； |
+| VOID类型 | void | Unit |
+| int类型 | int | scala.Int |
+| string类型 | java.lang.String | 相同，也是java.lang.String |
+| 字符串/int转换 | Integer.parseInt(s)<br>String.valueOf(i) | s.toInt, java.lang.String没有这个方法，scala编译器会转换<br>i.toString|
+| 对象比较 | equals(),!equals() | scala |
+| 对象== | == | eq 一般不用 |                                                              
+| 泛型 | <> | [] |                                                              
+| 数组下标 | [] | () |                                                              
+| import | 文件开头 | 文件开头，类内(仅在该类内有用)，函数内(仅在该函数内有用) |                                                              
+| import所有类 | import java.util.* | import jvmdbbroker.core._;<br>import jvmdbbroker.plugin.{SplitTablePlugin,SplitDbPlugin}; 一行引入多个类 |                                                              
+| ?:表达式  | int a = ok ? 1 : 0; | val a = if ok 1 else 0 |                                                              
+| ++运算符 | 有   ++i  | 用 i += 1 代替 |
+| 条件判断 | if ... else if ... else | 相同 |
+| while, do while | while, do while | 相同 |
+| 循环中break | 有 | 无 |
+| 循环中continue | 有 | 无 |
+| for循环1 | for(;;) | 不支持 |
+| for循环2 | for( a <- b ) | 有，功能很强，不是传统的循环，scala的for很强大! |
 | feature | java | scala |
 | feature | java | scala |
-| feature | java | scala |
-| feature | java | scala |
-| feature | java | scala |
-| feature | java | scala |
-| feature | java | scala |
 
-                                                               
-                                                                         
-                                                                         
-                                                                         
+             
 
-    函数定义                  int add(int a,int b) { return a + b }      def add(a:Int,b:Int): Int = { a + b } 根据是否能自动推导，
-                                                                         可有多个变体:
-
-                                                                         def add(a:Int,b:Int) = { a + b }  Int可自动推导出
-                                                                         def add(a:Int,b:Int) = a + b  还可省略大括号, 注意=不能省略；
-                                                                         
-                                                                         没有=号的函数认为返回Unit,
-
-    VOID类型                  void                                       Unit
-
-    int类型                   int                                        scala.Int
-
-    string类型                java.lang.String                           相同，也是java.lang.String
-
-    字符串/int转换            Integer.parseInt(s),                       s.toInt, java.lang.String没有这个方法，scala编译器会转换
-                              String.valueOf(i)                          i.toString
-
-    对象比较                  equals(),!equals()                         == !=
-
-    对象==                    ==                                         eq 一般不用
-
-    泛型                      <>                                         []
-
-    数组下标                  []                                         ()
-
-    import                    文件开头                                   文件开头，类内(仅在该类内有用)，函数内(仅在该函数内有用)
-
-    import所有类              import java.util.*                         import jvmdbbroker.core._; 
-                                                                         import jvmdbbroker.plugin.{SplitTablePlugin,SplitDbPlugin}; 一行引入多个类
-
-    ?:表达式                  int a = ok ? 1 : 0;                        val a = if ok 1 else 0
-
-    ++运算符                 有   ++i                                    用 i += 1 代替
-
-    条件判断                  if ... else if ... else                    相同
-
-    while, do while           while, do while                            相同
-
-    循环中break,continue      有                                         无
-
-    for循环1                  for(;;)                                    不支持
-
-    for循环2                  for( a <- b )                              有，功能很强，不是传统的循环，
-                                                                         scala的for很强大!
 
     switch                    switch {                                   xxx match {   
                                  case ...                                    case ... => ...
