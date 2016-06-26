@@ -11,6 +11,7 @@
 	xml形式, http server插件的输出是一个xml格式，而不是标准的json格式
 
 	轻量级插件只要将实现类放入compose_conf目录就可以使用，框架启动时会自动编译该插件类
+	轻量级插件的包名建议用 jvmdbbroker.flow
 
 	常用的插件：
 
@@ -56,6 +57,8 @@
     HttpResponsePlugin 响应内容转化接口，如果响应不是json或简单的xml，需实现此接口来完成
                        contentStr到body的转换，返回值就是错误码
 
+	示例：compose_conf/WeiXinPayHttpPlugin.scala
+		
 ## http server 插件
 
     参考：src/jvmdbbroer/plugin/http/httpserverplugin.scala
