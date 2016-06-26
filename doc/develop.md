@@ -4,8 +4,6 @@
 
 [服务描述文件](#service)
 
-[必达消息说明](#mustreach)
-
 [FLOW文件语法和启动时编译](#flow)
 
 # <a name="avenue">Avenue协议</a>
@@ -115,6 +113,13 @@
   流程中调用所有的外部服务都是以相同的方式来调用。
 
   示例:  参考 avenue_conf/flow999.xml
+
+## avenue_conf目录结构约定
+
+    __建议将对外的服务描述文件直接放在avenue_conf下__
+    __而内部使用的服务描述文件则放在子目录下__
+
+    子目录可以采用 internal/external的命名方式，也可按服务名来命名，根据自己的需要决定
 
 ## service定义
 
@@ -231,11 +236,9 @@
         NocaseEncoder       无                     无            不区分大小写的NormalEncoder编码转换
         AttackFilter        无                     无            基于NocaseEncoder,等价于： script,|exec,|select,|update,|delete,|insert,|create,|alter,|drop,|truncate,|&,|<,|>,|",|',|/,|\\,
 
-[返回](#toc)
+## 必达消息说明
 
-# <a name="mustreach">必达消息说明</a>
-
-    <message name="testbatchupdate" id="7" isAck="true" retryInterval="30000" retryTimes="100">
+    <message name="testbatchupdate" id="7" __isAck="true" retryInterval="30000" retryTimes="100"__>
 
       isAck (或者isack) 是否要将一个消息设置为必达消息，默认为false
       retryTimes 重试次数，默认为 3*24*60, 按一分钟一次，要尝试3天
@@ -270,13 +273,20 @@
     对.scala后缀的类文件，包名建议统一用jvmdbbroker.flow，简化import语句
 
     .flow结尾的流程文件, 服务描述文件中的每个消息都对应一个.flow的文件
+    所有flow文件的包名会自动设置为jvmdbbroker.flow
+
+## compose_conf目录结构约定
+
+    __建议将scala后缀的文件直接放在compose_conf下__
+    __而flow文件则根据服务名分别放在对应服务名的子目录下__
+    __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
 ## flow 文件格式
 
     * 示例：//$service999.updateUserInfo
 
       说明：//$指定该流程对应的服务名和消息名, 此行不一定要是第一行，前面可以有import语句
-
+            __流程和消息是通过//$后的申明来对应的，而和该flow的文件名没有关系__
 
     * 入口地址：//#receive
 
