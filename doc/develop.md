@@ -123,7 +123,7 @@
 
     code 对应的tlv编码值，在同一个服务描述文件中必须唯一, 网络传输时传输此值
 
-    class 共有3种:
+    class 共有4种:
 
         int 整数
         string 字符串， 其长度最大为64K (一个short), long,float,double等类型都必须转成string
@@ -136,14 +136,14 @@
 
     * struct里的field定义
 
-        name 对象的名称，区分大小写, 流程中使用此名称
+        name 对象的名称，__区分大小写__, 流程中使用此名称
         type 类型
           int 整数
           systemstring 字符串, 无需指定长度
-          string 字符串, 需通过len定义长度，主要是为兼容老版本, 若是最后一个field，可不指定len
+          string 字符串, 需通过len定义长度, 若是最后一个field，可不指定len，此类型主要是为兼容老版本
         default 默认值
 
-    * array 定义
+    * array定义
 
         itemType 该数组每个元素对应的type的name
 
@@ -161,12 +161,12 @@
 
     name 消息名称，不区分大小写，流程中使用消息名来调用
     id 消息ID, 在同一个服务描述文件中必须唯一, 网络传输时传输此值
-    requestParameter 请求参数，有0-n个field组成
-    responseParameter 响应参数，有0-n个field组成
+    requestParameter 请求参数，由0-n个field组成
+    responseParameter 响应参数，由0-n个field组成
 
-    * field定义
+    field定义
 
-        name 参数名，此值区分大小写，流程中使用此名称
+        name 参数名，__此值区分大小写__，流程中使用此名称
         type 类型名，不区分大小写
         default 默认值
 
@@ -176,52 +176,52 @@
     每个插件会根据需要对服务描述文件做一些扩展或约定，如:
         
         缓存服务要求的 get 方法的 id必须是 1, set方法的id必须是2
-        DB服务在每个message下增加了一个SQL节点来定义sql语句
+        DB服务在每个message下增加了一个sql节点来定义sql语句
 
     这类扩展参见各个插件的配置文档。
 
 ## 默认值 default value
 
-* default系列标签可以出现在<type>内 或者请求/响应中的<field>内 或 struct里的 <field>内, 请求响应中的配置优先于type上的配置
-* 未设置default属性和设置default=""含义不同，一个表示NULL,一个表示空串; 只有入参为null时，default值才会起作用
+    default系列标签可以出现在<type>内 或者请求/响应中的<field>内 或 struct里的 <field>内, 请求响应中的配置优先于type上的配置
+    未设置default属性和设置default=""含义不同，一个表示NULL,一个表示空串; 只有入参为null时，default值才会起作用
 
 ## validator
 
-* validator系列标签可以出现在<type>内 或者请求/响应中的<field>内 或 struct里的 <field>内, 请求响应中的配置优先于type上的配置
+    validator系列标签可以出现在<type>内 或者请求/响应中的<field>内 或 struct里的 <field>内, 请求响应中的配置优先于type上的配置
 
-* validator系列标签有3个：validator 、validatorParam、returnCode分别表示验证名、验证参数、验证失败后的返回码
+    validator系列标签有3个：validator 、validatorParam、returnCode分别表示验证名、验证参数、验证失败后的返回码
 
-* 若请求字段校验失败，直接返回错误码。若响应字段校验失败，包体不变，包头code为修改为错误码。原响应包code!=0时不触发校验。
+    若请求字段校验失败，直接返回错误码。若响应字段校验失败，包体不变，包头code为修改为错误码。原响应包code!=0时不触发校验。
 
-大类  validator    validatorParam      参数说明        returnCode      实现说明
+        大类  validator    validatorParam      参数说明        returnCode      实现说明
 
-必填  Required      不需要             不需要           默认-10242400  用于判断必填，其中空字符串算做有值
-正则类 Regex        配置为正则表达式   是否符合正则     默认-10242400  最基础的validator
-        Email       不需要             不需要           默认-10242400  通过正则内置实现，等价于正则参数：([0-9A-Za-z\\-_\\.]+)@([a-zA-Z0-9_-])+(.[a-zA-Z0-9_-])+
-        Url         不需要             不需要           默认-10242400  通过正则内置实现
-范围类  NumberRange 数字1,数字2        左闭由闭区间     默认-10242400  用于判断整数范围
-        LengthRange 数字1,数字2        左闭由闭区间     默认-10242400  用于判断字符串长度范围
-        TimeRange   字符串1,字符串2    左闭由闭区间     默认-10242400  用于判断时间范围 示例：2011-1-2 13:00:05.231,2018-2-3 15:00:00.345
-集合类  NumberSet   A|b|C|d|e|…                         默认-10242400  用于整数枚举类型，示例 0|1
-        Regex       A|b|C|d|e|…                         默认-10242400  完全同正则validator，普通正则实现
+        必填  Required      不需要             不需要           默认-10242400  用于判断必填，其中空字符串算做有值
+        正则类 Regex        配置为正则表达式   是否符合正则     默认-10242400  最基础的validator
+                Email       不需要             不需要           默认-10242400  通过正则内置实现，等价于正则参数：([0-9A-Za-z\\-_\\.]+)@([a-zA-Z0-9_-])+(.[a-zA-Z0-9_-])+
+                Url         不需要             不需要           默认-10242400  通过正则内置实现
+        范围类  NumberRange 数字1,数字2        左闭由闭区间     默认-10242400  用于判断整数范围
+                LengthRange 数字1,数字2        左闭由闭区间     默认-10242400  用于判断字符串长度范围
+                TimeRange   字符串1,字符串2    左闭由闭区间     默认-10242400  用于判断时间范围 示例：2011-1-2 13:00:05.231,2018-2-3 15:00:00.345
+        集合类  NumberSet   A|b|C|d|e|…                         默认-10242400  用于整数枚举类型，示例 0|1
+                Regex       A|b|C|d|e|…                         默认-10242400  完全同正则validator，普通正则实现
 
 ## encoder
 
-* encoder系列标签可以出现在<type>内 或者请求/响应中的<field>内, 或者struct里的<field>内, 请求响应中的配置优先于type上的配置
+    encoder系列标签可以出现在<type>内 或者请求/响应中的<field>内, 或者struct里的<field>内, 请求响应中的配置优先于type上的配置
 
-* encoder系列标签有2个：encoder、encoderParam分别表示编码名、编码参数
+    encoder系列标签有2个：encoder、encoderParam分别表示编码名、编码参数
 
-* encoder对请求、响应均有效
+    encoder对请求、响应均有效
 
-* 实现的Encoder有：
+    实现的Encoder有：
 
-encoder             encoderParam          参数说明      实现说明
+        encoder             encoderParam          参数说明      实现说明
 
-NormalEncoder     A,b|c,d|<,&lt         |是大分割符，逗号是小分隔符，代表将A转义为b,将c转义为d, |,\三个字符实现为关键字，要输入实际这三个字符使用\转义，比如\|   \,  \\
-HtmlEncoder         无                     无            基于NormalEncoder实现，等价于： &,&amp;|<,&lt;|>,&gt;|",&quot;|',&#x27;|/,&#x2f;
-HtmlFilter          无                     无            基于NormalEncoder实现，等价于： &,|<,|>,|",|',|/,|\\,
-NocaseEncoder       无                     无            不区分大小写的NormalEncoder编码转换
-AttackFilter        无                     无            基于NocaseEncoder,等价于： script,|exec,|select,|update,|delete,|insert,|create,|alter,|drop,|truncate,|&,|<,|>,|",|',|/,|\\,
+        NormalEncoder     A,b|c,d|<,&lt         |是大分割符，逗号是小分隔符，代表将A转义为b,将c转义为d, |,\三个字符实现为关键字，要输入实际这三个字符使用\转义，比如\|   \,  \\
+        HtmlEncoder         无                     无            基于NormalEncoder实现，等价于： &,&amp;|<,&lt;|>,&gt;|",&quot;|',&#x27;|/,&#x2f;
+        HtmlFilter          无                     无            基于NormalEncoder实现，等价于： &,|<,|>,|",|',|/,|\\,
+        NocaseEncoder       无                     无            不区分大小写的NormalEncoder编码转换
+        AttackFilter        无                     无            基于NocaseEncoder,等价于： script,|exec,|select,|update,|delete,|insert,|create,|alter,|drop,|truncate,|&,|<,|>,|",|',|/,|\\,
 
 [返回](#toc)
 
