@@ -369,13 +369,15 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | VOID类型 | void | Unit |
 | int类型 | int | scala.Int |
 | string类型 | java.lang.String | 相同，也是java.lang.String |
+| 字符串格式化 | String中没有 | 直接使用String类的format方法 "s=%s d=%d".format(s,d) 方法来格式化字符串，类似c语言的format格式 |
 | 字符串/int转换 | Integer.parseInt(s)<br>String.valueOf(i) | s.toInt, java.lang.String没有这个方法，scala编译器会转换<br>i.toString|
+| 字符串中特殊字符转码 | 只有 "..." | 可以用"...", <br>也可用 """...""", """包围的字符串里特殊字符不用转码 |
 | 对象比较 | equals()<br>!equals() | ==<br>!= |
 | 对象== | == | eq 一般不用 |                                                              
 | 泛型 | <> | [] |                                                              
 | 数组下标 | [] | () |                                                              
 | import | 文件开头 | 文件开头<br>类内(仅在该类内有用)<br>函数内(仅在该函数内有用) |                                                              
-| import所有类 | import java.util.* | import jvmdbbroker.core._;<br>import java.util.{ArrayList,HashMap}; <br>可一行引入多个单独类 |                                                              
+| import所有类 | import java.util.* | import java.util._;<br>import java.util.{ArrayList,HashMap}; <br>可一行引入多个单独类 |                                                              
 | ?:表达式  | int a = ok ? 1 : 0; | val a = if ok 1 else 0 |                                                              
 | ++运算符 |  ++i 或 --i  | 用 i += 1 代替 |
 | 条件判断 | if ... else if ... else | 相同 |
@@ -385,54 +387,22 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | 循环中break | 有 | 无此关键字, 但可用<br>import scala.util.control.Breaks._;  <br>breakable { ... } 来实现 |
 | 循环中continue | 有 | 无此关键字 |
 | switch | switch {<br>case ... <br>case ... <br>default ... <br>} <br>每个case后需要break | xxx match { <br>case ... => ... ; <br>case ... => ...; <br>case _ => ...; <br>} <br>case 后不需要break, <br>scala的match非常非常强大!!|
-| 异常 | try { ... } <br>catch(Exception e) { ... } <br>finally { ... } | try { ... } <br>catch { <br>case a:Exception => ... <br>} finally {...} <br>catch里面的语法也是match语法 |
+| 异常 | try { ... } <br>catch(Exception e) { ... } <br>catch(Exception e) { ... } <br>finally { ... } | try { ... } <br>catch { <br>case a:Exception => ... <br>case a:Exception => ... <br>} finally {...} <br>catch里面的语法也是match语法 |
 | 异常catch | 非runtime exception需要catch | 不需要 |
 | 定长数组 | new String[3] | new Array[String](3) |
 | 链表 | ArrayList| scala.collection.mutable.ArrayBuffer  功能等价于java的ArrayList，加数据可以用  buff += a|
 | MAP | HashMap | scala.collection.mutable.HashMap 功能等价于java的HashMap  注意其中的get和java的不一样，用getOrElse(key,defaultValue)才是java里的get|
+| map.get() | String s = map.get("abc") | val s = map.getOrElse("abc",null)<br>scala里HashMap.get返回的是Option对象，一般不用 |
 | 集合 | HashSet | scala.collection.mutable.HashSet 功能等价于java的HashSet |
-
-
 | Tuple | 无 | Tuple2,Tuple3,... 对象，非常好用 |
 | 多重赋值 | 不支持 | val (ret1,ret2,...) = xxx, 可使用此方法从Tuple中直接取值, <br>scalabpe的flow使用这个从并行调用中获取结果  |
-| feature | java | scala |
-| feature | java | scala |
-| feature | java | scala |
-
-                                                                  
-
-                                                           
-                                                                         
-
-    列表LIST                  无                                         scala里的List和java的List没任何关系，也完全不是一回事; 
-                                                                         主要是用来做函数式编程的, 在scalabpe里请勿使用!
-
-    对象根                    Object                                     Any, 一切都是对象; Object是Any的一个子类
-
-    类的静态成员              static                                     class 内都是实例成员, 静态成员放在一个同名的object单例对象内; 
-                                                                         也可单独定义没有class的object对象
-
-    接口申明                  interface                                  trait 可有具体实现代码
-
-    抽象类                    abstract class                             trait
-
-    类继承                    只能继承(extends)一个类，实现(implements)  只能继承(extends)一个类, 但可混入(with)多个trait, 此设计非常强大!!
-
-    函数也是对象              不支持                                     支持,jvmdbbroker里invoke的callback就是函数; 
-                                                                         java中只能传递字符串然后通过反射找到对应方法
-
-    类申明                    class  SocRequest { ... }                  可同时申明实例成员, 可带默认值  class SocRequest (
-                                                                            val requestId : String,
-                                                                            val serviceId : Int,
-                                                                            val msgId : Int,
-                                                                            val body : HashMapStringAny,
-                                                                            val encoding : Int = AvenueCodec.ENCODING_UTF8,
-                                                                            val xhead : HashMapStringAny = new HashMapStringAny() ) { ... } 就申明一个类，里面有requestId,serviceId,msgId,body,encoding,xhead几个实例变量。
-
-    字符串格式化              String中没有                               直接使用String类的format方法 "s=%s d=%d".format(s,d) 方法来格式化字符串，类似c语言的format格式
-
-    map.get()                 String s = map.get("abc")                  val s = map.getOrElse("abc",null) 
-                                                                         scala里HashMap.get返回的是Option对象，一般不用
-
+| 列表LIST | 无 | scala里的List和java的List没任何关系，也完全不是一回事; <br>主要是用来做函数式编程的, 在scalabpe里请勿使用! |
+| 对象根 | Object | Any, 一切都是对象; Object是Any的一个子类 |
+| 类的静态成员 | static | class 内都是实例成员, 静态成员放在一个同名的object单例对象内; 也可单独定义没有class的object对象  |
+| 接口申明 | interface | trait 可有具体实现代码 |
+| 抽象类 | abstract class | trait |
+| 类继承 | 只能继承(extends)一个类，实现(implements)多个接口 | 只能继承(extends)一个类, 但可混入(with)多个trait, 此设计非常强大!! |
+| 函数也是对象 | 不支持, java中只能根据字符串然后通过反射找到对应方法 | 支持,scalabpe里invoke的callback就是函数;  |
+| 类申明 | class  Address { ... } | 可同时申明实例成员, 并可带默认值, 如 class Address (val province:String, val:city:String, val: street:String ) |
 
 [返回](#toc)
