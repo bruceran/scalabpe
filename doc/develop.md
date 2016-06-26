@@ -402,7 +402,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | 接口申明 | interface | trait 可有具体实现代码 |
 | 抽象类 | abstract class | trait |
 | 类继承 | 只能继承(extends)一个类，实现(implements)多个接口 | 只能继承(extends)一个类, 但可混入(with)多个trait, 此设计非常强大!! |
-| 函数也是对象 | 不支持, java中只能根据字符串然后通过反射找到对应方法 | 支持,scalabpe里invoke的callback就是函数;  |
+| 函数也是对象 | 不支持 | 支持,scalabpe里invoke的callback就是函数;  |
 | 类申明 | class  Address { ... } | 可同时申明实例成员, 并可带默认值, 如 class Address (val province:String, val:city:String, val: street:String ) |
 
 [返回](#toc)
