@@ -4,8 +4,6 @@
 
 [服务描述文件](#service)
 
-[框架基础知识](#framework)
-
 [FLOW文件格式](#flow)
 
 [启动时编译](#compile)
@@ -270,21 +268,11 @@ __而内部使用的服务描述文件则放在子目录下__
 
 [返回](#toc)
 
-# <a name="framework">框架基础知识</a>
-
-todo
-
-[返回](#toc)
-
 # <a name="flow">FLOW文件格式</a>
 
-compose_conf 目录下可以有2种文件：
+## 目录结构
 
-.scala后缀的纯scala文件, 如一些辅助类文件，轻量级插件类等
-对.scala后缀的类文件，包名建议统一用jvmdbbroker.flow，简化import语句
-
-.flow结尾的流程文件, 服务描述文件中的每个消息都对应一个.flow的文件
-所有flow文件的包名会自动设置为jvmdbbroker.flow
+compose_conf 目录下可以有2种文件：scala文件和flow文件
 
 __建议将scala后缀的文件直接放在compose_conf下__
 
@@ -292,12 +280,24 @@ __而flow文件则根据服务名分别放在对应服务名的子目录下__
 
 __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
+## 文件类型
+
+    .scala后缀的纯scala文件, 一般是一些辅助类，轻量级插件类等, 也可以直接写流程
+    对.scala后缀的类文件，包名建议统一用jvmdbbroker.flow，简化import语句
+
+    .flow结尾的流程文件, 每个flow就是服务描述文件中的一个消息的实现
+    每个flow文件在编译时会自动转换成scala类，编写flow文件，实际就是写scala类
+    所以scala的语法在flow里可以没有限制的使用
+    所有flow文件的包名会自动设置为jvmdbbroker.flow, 并自动加上对jvmdbbroker.core的import
+
 ## flow文件内的特殊标记
 
-    * 示例：//$service999.updateUserInfo
+    * 消息申明：//$service999.updateUserInfo
 
       说明：//$指定该流程对应的服务名和消息名, 此行不一定要是第一行，前面可以有import语句
             流程和消息是通过//$后的申明来对应的，而和该flow的文件名没有关系
+            申明时服务名和消息名不区分大小写
+
 
     * 入口地址：//#receive
 
@@ -307,7 +307,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     * 回调函数地址：//#nnn
 
       说明：在流程中每个异步调用都需要指定一个回调函数，在异步请求完成后框架会自动调用该函数
-          继续流程， 回调函数名可以自己随便定义
+            继续流程， 回调函数名可以自己随便定义, 回调函数可以有任意多个，根据自己需要定义
 
           在流程中通过invoke系列方法进行异步调用，如：
 
@@ -315,7 +315,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
           这里 querycallback 就是一个回调函数，需用//#querycallback定义
 
-## flow流程的基类
+## 流程的基类
 
       默认流程都继承类jvmdbbroker.core.Flow, 使用特殊语法可以修改继承的基类
 
@@ -334,7 +334,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     如果scala文件或flow文件有编译错误，都会给出精确地行号以便快速定位
 
     每个flow文件在启动的时候会转换为scala类文件，转换后的文件保存在temp/src目录下
-    所有scala文件会编译成.class文件再启动程序
+    flow转换后再编译scala文件，所有scala文件会编译成.class文件再启动程序
 
     编译过程比较耗时，为加快启动速度，scalabpe使用增量编译，规则如下：
 
