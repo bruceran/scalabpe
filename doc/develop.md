@@ -357,30 +357,26 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | feature | java | scala |
 | ------- | ---- | ----- |
 |类型申明|int a; <br>String b; |var a=0; <br>var b="";|
-    =====================================================================================================================================
+| val申明的变量 | 相当于final对象，不可再赋值 | val a=2; 必须初始化,不可再赋值 |
+| var申明的变量 | 相当于非final对象，可再赋值 | var a=3;  a=4; |
+| 行尾的分号 | 必须 | 可省略; 一行多个语句时不能省略 |
+| 无参数方法调用 | a.xxx()  | 可省略成a.xxx |
+| 非void函数return关键字 | 必须写 | 一般函数最后的return能省略的都省略，最后一个表达式的值就是返回值; 函数中间过程的return不能省略 |
+| 函数参数默认值 | 无 | 可以，可减少重复的函数定义 |
+| Getter/Setter | 一般都使用bean此风格申明类 | scala里不使用java bean风格, 直接引用变量 |
+| 类型推导 | 无 | 凡是能推导出类型的地方都可不写类型<br>val a = 1;  a则是Int; <br>val b = "" 则b是String;<br>val c = null;  这时c类型不明确，<br>一般用 val c:String = null 或者 val c:String = _ 或者 val c = null:String |
+| feature | java | scala |
+| feature | java | scala |
+| feature | java | scala |
+| feature | java | scala |
+| feature | java | scala |
+| feature | java | scala |
+| feature | java | scala |
 
-    类型申明                  int a; String b;                           var a=0; var b="";
-
-    val申明的变量             相当于final对象，不可再赋值，              scala里建议尽量用val
-                              必须初始化    val a=2;  不可再赋值 ;       
-
-    var申明的变量             相当于非final变量，可再赋值                var a=3;  a=4;
-
-    行尾的分号                必须                                       可省略; 一行多个语句时不能省略
-
-    无参数方法调用            a.xxx()                                    可省略成a.xxx
-
-    非void函数return关键字    必须写                                     一般函数最后的return能省略的都省略，最后一个表达式
-                                                                         的值就是返回值; 函数中间过程的return不能省略
-
-    函数参数默认值            无                                         可以，可减少重复的函数定义
-
-    Getter/Setter            一般都使用bean此风格申明类                  scala里不使用java bean风格, 直接引用变量
-
-    类型推导                  无                                         val a = 1;  a则是Int; val b = "" 则b是String;
-                                                                         val c = null;  这时c类型不明确，一般用 val c:String = null 
-                                                                         或者 val c:String = _ 或者 val c = null:String
-                                                                         凡是能推导出类型的地方都可不写类型
+                                                               
+                                                                         
+                                                                         
+                                                                         
 
     函数定义                  int add(int a,int b) { return a + b }      def add(a:Int,b:Int): Int = { a + b } 根据是否能自动推导，
                                                                          可有多个变体:
