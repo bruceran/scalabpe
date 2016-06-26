@@ -313,28 +313,29 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
               invoke(querycallback,3000,"userId"->"123")
 
-          这里 querycallback 就是一个回调函数，需用//#querycallback定义
+          这里 querycallback 就是一个回调函数
 
 ## 流程的基类
 
       默认流程都继承类jvmdbbroker.core.Flow, 使用特殊语法可以修改继承的基类
 
       使用//$xxx.xxx.withsyncedinvoke语法可以让流程继承jvmdbbroker.core.SyncedFlow, 
-      继承后可以使用syncedInvoke语法, 在支持数据库事务的流程中使用此方法会更方便
+      继承后可以使用syncedInvoke系列函数, 在支持数据库事务的流程中使用此方法会更方便
 
       使用//$xxx.xxx.with(baseclass)语法可以让流程继承一个用户自定义的基类baseclass,
       baseclass必须继承jvmdbbroker.core.Flow, 用户可以在基类中做一些特殊处理，
-      如在每个流程开始前自动从redis中加载http的session信息到内存中，通过session变量给流程使用
+      如在每个流程开始前自动从redis中加载http的session信息到内存中的session变量中，
+      流程中只要操作session变量就能读写会话信息
 
 [返回](#toc)
 
 # <a name="compile">启动时编译</a>
 
     框架在启动时会对compose_conf下的文件进行编译
-    如果scala文件或flow文件有编译错误，都会给出精确地行号以便快速定位
+    如果scala文件或flow文件有编译错误，会给出精确的行号以便快速定位
 
     每个flow文件在启动的时候会转换为scala类文件，转换后的文件保存在temp/src目录下
-    flow转换后再编译scala文件，所有scala文件会编译成.class文件再启动程序
+    flow转换完毕后再编译scala文件，所有scala文件会编译成.class文件再启动程序
 
     编译过程比较耗时，为加快启动速度，scalabpe使用增量编译，规则如下：
 
