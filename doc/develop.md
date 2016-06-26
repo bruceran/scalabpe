@@ -369,9 +369,9 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | VOID类型 | void | Unit |
 | int类型 | int | scala.Int |
 | string类型 | java.lang.String | 相同，也是java.lang.String |
+| 字符串中 | 只有 "..." | 可以用"...", <br>也可用 """...""", """包围的字符串里特殊字符不用转码 |
 | 字符串格式化 | String中没有 | 直接使用String类的format方法 "s=%s d=%d".format(s,d) 方法来格式化字符串，类似c语言的format格式 |
 | 字符串/int转换 | Integer.parseInt(s)<br>String.valueOf(i) | s.toInt, java.lang.String没有这个方法，scala编译器会转换<br>i.toString|
-| 字符串中特殊字符转码 | 只有 "..." | 可以用"...", <br>也可用 """...""", """包围的字符串里特殊字符不用转码 |
 | 对象比较 | equals()<br>!equals() | ==<br>!= |
 | 对象== | == | eq 一般不用 |                                                              
 | 泛型 | <> | [] |                                                              
@@ -386,9 +386,9 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | for循环2 | for( a <- b ) | 有，功能很强，不是传统的循环，scala的for很强大! |
 | 循环中break | 有 | 无此关键字, 但可用<br>import scala.util.control.Breaks._;  <br>breakable { ... } 来实现 |
 | 循环中continue | 有 | 无此关键字 |
-| switch | switch {<br>case ... <br>case ... <br>default ... <br>} <br>每个case后需要break | xxx match { <br>case ... => ... ; <br>case ... => ...; <br>case _ => ...; <br>} <br>case 后不需要break, <br>scala的match非常非常强大!!|
-| 异常 | try { ... } <br>catch(Exception e) { ... } <br>catch(Exception e) { ... } <br>finally { ... } | try { ... } <br>catch { <br>case a:Exception => ... <br>case a:Exception => ... <br>} finally {...} <br>catch里面的语法也是match语法 |
-| 异常catch | 非runtime exception需要catch | 不需要 |
+| switch | switch {<br>case v: ... <br>case v: ... <br>default ... <br>} <br>每个case后需要break | xxx match { <br>case ... => ... ; <br>case ... => ...; <br>case _ => ...; <br>} <br>case 后不需要break, <br>scala的match非常非常强大!!|
+| 异常 | try { ... } <br>catch(Exception1 e) { ... } <br>catch(Exception2 e) { ... } <br>finally { ... } | try { ... } catch { <br>case a:Exception1 => ... <br>case a:Exception2 => ... <br>} finally {...} <br>catch里面的语法也是match语法 |
+| runtime exception | 需要catch | 不需要catch |
 | 定长数组 | new String[3] | `new Array[String](3)` |
 | 链表 | ArrayList| scala.collection.mutable.ArrayBuffer  功能等价于java的ArrayList，加数据可以用  buff += a|
 | MAP | HashMap | scala.collection.mutable.HashMap 功能等价于java的HashMap|
