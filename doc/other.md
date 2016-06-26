@@ -15,7 +15,7 @@
 
 * 流程中的callback function除了可以作为invoke的回调函数调用，也可以直接调用
 
-* 使用*传递多个参数 invoke(..., "*" -> req, "appId" -> 233 )  
+* 使用 * 传递多个参数 invoke(..., "*" -> req, "appId" -> 233 )  
 
         假设req中已经包括appId 101, 则后设置的233会覆盖前面*传入的值
         超过5个以上的参数建议都用*号传递参数; jvmdbbroker在转发消息前

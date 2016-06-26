@@ -4,6 +4,8 @@
 
 [日志文件目录](#dir)
 
+[日志文件格式](#format)
+
 [logback.xml配置文件](#logback)
 
 [框架使用到的错误码](#error)
@@ -64,6 +66,192 @@
     * linux下脚本默认直接在/opt/logs下建立日志目录
     * windows下/opt/目录会自动在项目所在盘符的根目录下创建
     * 在流程中可以直接使用println(..)输出信息到all.log来分析问题
+
+[返回](#toc)
+
+# <a name="format">日志文件格式</a>
+
+## auditlog/request_audit.log
+
+    该文件分割符为: 一个逗号2个空格
+
+    示例：
+        2015-11-05 00:00:03.144,
+        10.129.20.129,
+        43939,
+        10.129.20.129,
+        43939,
+        -10086,
+        -10087,
+        10.129.20.126:38700,
+        020128144665280011510000,
+        1,
+        55611,
+        2,
+        10.129.20.128,
+        2015-11-05 00:00:00.115,
+        3,
+        ,
+        ,
+        ,
+        ,
+        ,
+        appId:991001023^_^username:991001023-0-769431828^_^socId:180.112.238.183:40462^_^platform:1,
+        failReason:,
+        0
+
+    格式：
+        TIMESTAMP  输出日志的时间戳
+        PROXY_IP 代理IP
+        PROXY_PORT 代理端口
+        CLIENT_IP 客户端IP
+        CLIENT_PORT 客户端端口
+        APPID  扩展包头的APPID
+        AREAID  扩展包头的AREAID
+        SOCID  客户端标识
+        REQUESTID 请求ID
+        DUMMY 无意义
+        SERVICEID  服务号
+        MSGID  消息号
+        SERVER_IP 服务端IP
+        RECEIVE_TIME 收到请求的的时间
+        ELAPSE_TIME, 耗时，等于 TIMESTAMP - RECEIVE_TIME
+        DUMMY 无意义
+        DUMMY 无意义
+        IDX1  索引字段1
+        IDX2  索引字段2
+        IDX3  索引字段3
+        REQUEST_BODY 请求参数，参数之间分割符为 ^_^
+        RESPONSE_BODY 响应参数，参数之间分割符为 ^_^
+        RESPONSE_CODE 错误码
+
+## auditlog/csos_audit.log 
+
+    该文件分割符为: 一个逗号2个空格
+
+    示例：
+        2016-04-22 00:00:00.002,
+        020021146125439999210000:4,
+        302,
+        101,
+        312,
+        1,
+        10.129.20.22:12052,
+        ,
+        ,
+        miscservice.phoneuserinfocontrol,
+        user_client_ip:127.0.0.1^_^src_code:10^_^type:1^_^phone:^_^xid:1003260494^_^mid:1003260494^_^nickname:^_^image_id:^_^u_sex:^_^u_career:^_^u_phone:^_^u_qq:^_^u_email:^_^u_city:^_^u_birthday:^_^mail_address:^_^b_uid:^_^other_flag:,
+        fail_reason:^_^mid:2165378584^_^phone:18689939034^_^nickname:�����������^_^image_id:http://gmm.sdo.com/gmm/img/8.jpg^_^u_sex:-1^_^u_career:^_^u_phone:18689939034^_^u_qq:350127202^_^u_email:^_^u_city:^_^u_birthday:1971-01-01^_^create_time:2015-12-28 21:33:09^_^homepage_header_url:^_^credit_info:{"s_sharing_hours":24,"s_fee_discount":100,"b_eval_total":0,"s_judge_hours":72,"s_credit_value":5,"b_credit_lvl":0,"s_eval_total":0,"b_eval_good":0,"s_credit_lvl":0,"s_eval_good":0,"b_wait_verify_hours":24,"b_credit_value":5}^_^b_uid:1003258903^_^is_complete:0^_^mail_address:,
+        4,
+        0
+
+    格式：
+        TIMESTAMP 输出日志的时间戳
+        REQUESTID 请求ID
+        OUTSERVICEID 外部服务号
+        OUTMSGID  外部消息号
+        INSERVICEID 内部服务号
+        INMSGID 内部消息号
+        SOS_ADDR 被调用服务的地址
+        DUMMY 无意义
+        DUMMY 无意义
+        SERVICE_NAME 服务名.消息名
+        REQUEST_BODY 请求参数，参数之间分割符为 ^_^
+        RESPONSE_BODY 响应参数，参数之间分割符为 ^_^
+        ELAPSE_TIME 耗时
+        RESPONSE_CODE 错误码
+
+    csos_stat.log和request_audit.log文件通过REQUESTID关联
+    根据request_audit.log里的REQUESTID查找csos_stat.log就能查到该请求的所有处理过程
+
+## auditlog/http/request_audit.log 
+
+    该文件分割符为: 一个逗号2个空格
+
+    示例：
+        2016-06-24 09:04:04 475,   
+        10.152.21.16:63292,   
+        /ticketpay/listcard,   
+        266,   
+        9,   
+        -1,   
+        -1,   
+        ,   
+        ,   
+        ,   
+        channelAmount=0&rmbAmount=0&DeviceId=358239056710181&LogId=e78238ef-2c83-42b3-a6d6-713935daec5b&jsessionId=f4afd085ea2a456c90c8cdac68d81191,   
+        10.152.21.55:8861,   
+        13,   
+        0,   
+        {"data":{"listIsNotNull":0,"find":0},"return_code":0,"return_message":"success"},   
+        tmstamp:0,   
+        sigstat:0,   
+        3e86956d61084893bb69728c74ef4797,   
+        fh.sdo.com
+
+    格式：
+        TIMESTAMP  输出日志的时间戳
+        CLIENT_IP 客户端IP:PORT
+        HTTP_URI 路径
+        SERVICEID  服务号
+        MSGID  消息号
+        DUMMY 无意义        
+        DUMMY 无意义        
+        DUMMY 无意义        
+        DUMMY 无意义        
+        DUMMY 无意义        
+        REQUEST_BODY 请求参数
+        SERVER_IPPORT 服务端IP:PORT
+        ELAPSE_TIME  耗时
+        RESPONSE_CODE 错误码
+        CONTENT 响应内容
+        DUMMY 无意义        
+        DUMMY 无意义   
+        REQUESTID 请求ID
+        HTTP_HOST 域名                
+
+## auditlog/http/access.log 
+
+    该文件分割符为: tab字符
+
+    示例：
+        2016-06-24 09:03:00.018 53      
+        10.152.21.16:63164      
+        10.152.21.16:63164      
+        GET     
+        fh.sdo.com      
+        /fh/pay/entrance        
+        token=T6DE8D398FFCF4C6690A8A051BB0FD117&sign= ...       
+        302     
+        0  
+        Mozilla/5.0 (Linux; Android 5.1.1; Nexus 5 Build ...
+
+    格式：
+        TIMESTAMP  输出日志的时间戳
+        CLIENT_IP 客户端IP:PORT
+        PROXY_IP 代理IP:PORT
+        HTTP_METHOD 方法
+        HTTP_HOST  域名
+        HTTP_URI  路径
+        PARAMETERS 参数
+        HTTP CODE  HTTP状态码
+        CONTENT_LENGTH  输出长度
+        USER_AGENT 用户代理
+
+## auditlog/request_stat.log
+
+    示例：2014-11-24 00:00:00,  301,  55,  127.0.0.1:10070,  1,  0,  0,  1,  0,  0,  0,  0
+    格式：时间（1分钟输出一次，无数据不输出），服务号，消息号，客户端连接标识，成功数，失败数，10ms数，50ms数， 250ms数， 1秒数，3秒数，其它数
+
+## auditlog/sos_stat.log
+
+    示例：2014-11-24 00:02:00,  350,  2,  12,  0,  0,  12,  0,  0,  0,  0,  0
+    格式：时间（1分钟输出一次，无数据不输出），服务号，消息号，成功数，失败数，10ms数，50ms数， 150ms数，250ms数， 1秒数，其它数, 超时数(-10242504数量)
+
+## auditlog/request_summary.log
+
+    示例：2014-11-24 00:00:00,  request[1/1/0],  client[0/0/17]
+    格式：时间（1分钟输出一次，无数据不输出），request[总数/成功数/失败数] 客户端连接[新建连接数/断开连接数/当前连接数]
 
 [返回](#toc)
 
