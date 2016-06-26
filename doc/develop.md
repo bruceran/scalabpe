@@ -389,7 +389,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | switch | switch {<br>case ... <br>case ... <br>default ... <br>} <br>每个case后需要break | xxx match { <br>case ... => ... ; <br>case ... => ...; <br>case _ => ...; <br>} <br>case 后不需要break, <br>scala的match非常非常强大!!|
 | 异常 | try { ... } <br>catch(Exception e) { ... } <br>catch(Exception e) { ... } <br>finally { ... } | try { ... } <br>catch { <br>case a:Exception => ... <br>case a:Exception => ... <br>} finally {...} <br>catch里面的语法也是match语法 |
 | 异常catch | 非runtime exception需要catch | 不需要 |
-| 定长数组 | new String[3] | new Array [ String ]  (3) |
+| 定长数组 | new String[3] | `new Array[String](3)` |
 | 链表 | ArrayList| scala.collection.mutable.ArrayBuffer  功能等价于java的ArrayList，加数据可以用  buff += a|
 | MAP | HashMap | scala.collection.mutable.HashMap 功能等价于java的HashMap|
 | map.get() | String s = map.get("abc") | val s = map.getOrElse("abc",null)<br>scala里HashMap.get返回的是Option对象，一般不用 |
