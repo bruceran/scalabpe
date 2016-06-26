@@ -1530,11 +1530,11 @@
   g++ -shared -fPIC sec.cpp -I /opt/jdk1.6.0_31/include/ 
       -I /opt/jdk1.6.0_31/include/linux -o libsec.so
 
-  如果要用openssl，则增加-l crypto
+  其中include的JDK路径根据实际调整；如果要用openssl，则增加-l crypto
 
   g++ -shared -fPIC sec.cpp -l crypto -I /opt/jdk1.6.0_31/include/ 
       -I /opt/jdk1.6.0_31/include/linux -o libsec.so
 
-  编译后可得到libsec.so，复制到lib/linux-jdk32或lib/linux-jdk64目录下即可。
+  编译后可得到libsec.so，复制到lib/linux-jdk32或lib/linux-jdk64目录下即可使用。
 
 [返回](#toc)
