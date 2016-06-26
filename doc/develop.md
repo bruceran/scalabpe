@@ -4,7 +4,11 @@
 
 [服务描述文件](#service)
 
-[FLOW文件语法和启动时编译](#flow)
+[框架基础知识](#framework)
+
+[FLOW文件格式](#flow)
+
+[启动时编译](#compile)
 
 # <a name="avenue">Avenue协议</a>
 
@@ -266,17 +270,21 @@ __而内部使用的服务描述文件则放在子目录下__
 
 [返回](#toc)
 
-# <a name="flow">FLOW文件语法和启动时编译</a>
+# <a name="framework">框架基础知识</a>
 
-    compose_conf 目录下可以有2种文件：
+todo
 
-    .scala后缀的纯scala文件, 如一些辅助类文件，轻量级插件类等
-    对.scala后缀的类文件，包名建议统一用jvmdbbroker.flow，简化import语句
+[返回](#toc)
 
-    .flow结尾的流程文件, 服务描述文件中的每个消息都对应一个.flow的文件
-    所有flow文件的包名会自动设置为jvmdbbroker.flow
+# <a name="flow">FLOW文件格式</a>
 
-## compose_conf目录结构约定
+compose_conf 目录下可以有2种文件：
+
+.scala后缀的纯scala文件, 如一些辅助类文件，轻量级插件类等
+对.scala后缀的类文件，包名建议统一用jvmdbbroker.flow，简化import语句
+
+.flow结尾的流程文件, 服务描述文件中的每个消息都对应一个.flow的文件
+所有flow文件的包名会自动设置为jvmdbbroker.flow
 
 __建议将scala后缀的文件直接放在compose_conf下__
 
@@ -284,7 +292,7 @@ __而flow文件则根据服务名分别放在对应服务名的子目录下__
 
 __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
-## flow 文件格式
+## flow文件内的特殊标记
 
     * 示例：//$service999.updateUserInfo
 
@@ -307,7 +315,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
           这里 querycallback 就是一个回调函数，需用//#querycallback定义
 
-    * 流程的基类
+## flow流程的基类
 
       默认流程都继承类jvmdbbroker.core.Flow, 使用特殊语法可以修改继承的基类
 
@@ -318,10 +326,15 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
       baseclass必须继承jvmdbbroker.core.Flow, 用户可以在基类中做一些特殊处理，
       如在每个流程开始前自动从redis中加载http的session信息到内存中，通过session变量给流程使用
 
-## 启动时编译
+[返回](#toc)
 
-    框架在启动时会对compose_conf下的文件进行编译;
+# <a name="compile">启动时编译</a>
+
+    框架在启动时会对compose_conf下的文件进行编译
+    如果scala文件或flow文件有编译错误，都会给出精确地行号以便快速定位
+
     每个flow文件在启动的时候会转换为scala类文件，转换后的文件保存在temp/src目录下
+    所有scala文件会编译成.class文件再启动程序
 
     编译过程比较耗时，为加快启动速度，scalabpe使用增量编译，规则如下：
 
