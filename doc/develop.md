@@ -389,9 +389,9 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | switch | switch {<br>case ... <br>case ... <br>default ... <br>} <br>每个case后需要break | xxx match { <br>case ... => ... ; <br>case ... => ...; <br>case _ => ...; <br>} <br>case 后不需要break, <br>scala的match非常非常强大!!|
 | 异常 | try { ... } <br>catch(Exception e) { ... } <br>catch(Exception e) { ... } <br>finally { ... } | try { ... } <br>catch { <br>case a:Exception => ... <br>case a:Exception => ... <br>} finally {...} <br>catch里面的语法也是match语法 |
 | 异常catch | 非runtime exception需要catch | 不需要 |
-| 定长数组 | new String[3] | new Array[String](3) |
+| 定长数组 | new String[3] | new Array [ String ]  (3) |
 | 链表 | ArrayList| scala.collection.mutable.ArrayBuffer  功能等价于java的ArrayList，加数据可以用  buff += a|
-| MAP | HashMap | scala.collection.mutable.HashMap 功能等价于java的HashMap  注意其中的get和java的不一样，用getOrElse(key,defaultValue)才是java里的get|
+| MAP | HashMap | scala.collection.mutable.HashMap 功能等价于java的HashMap|
 | map.get() | String s = map.get("abc") | val s = map.getOrElse("abc",null)<br>scala里HashMap.get返回的是Option对象，一般不用 |
 | 集合 | HashSet | scala.collection.mutable.HashSet 功能等价于java的HashSet |
 | Tuple | 无 | Tuple2,Tuple3,... 对象，非常好用 |
@@ -401,8 +401,8 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | 类的静态成员 | static | class 内都是实例成员, 静态成员放在一个同名的object单例对象内; 也可单独定义没有class的object对象  |
 | 接口申明 | interface | trait 可有具体实现代码 |
 | 抽象类 | abstract class | trait |
-| 类继承 | 只能继承(extends)一个类，实现(implements)多个接口 | 只能继承(extends)一个类, 但可混入(with)多个trait, 此设计非常强大!! |
+| 类继承 | 只能继承(extends)一个类，实现(implements)多个接口 | 只能继承(extends)一个类, <br>但可混入(with)多个trait, <br>此特性非常好用!! |
 | 函数也是对象 | 不支持 | 支持,scalabpe里invoke的callback就是函数;  |
-| 类申明 | class  Address { ... } | 可同时申明实例成员, 并可带默认值, 如 class Address (val province:String, val:city:String, val: street:String ) |
+| 类申明 | class  Address { ... } | 可同时申明实例成员, 并可带默认值, 如 class Address (val province:String, val:city:String, val: street:String = "") |
 
 [返回](#toc)
