@@ -996,18 +996,22 @@
     sessionFieldName 服务描述文件中哪一项对应的是HTTP会话ID，默认是jsessionId
     sessionCookieName HTTP会话ID对应的cookie名，默认是JSESSIONID
     sessionMode sessionId模式 1=自动 2=手工，默认是自动
-        自动模式 request中若无sessionId,会自动创建，会自动输出新的sessionId到cookie中,即使服务描述文件输出中未定义
-        手工模式 request中若无sessionId,不会自动创建，由业务流程自己创建，要输出sessionId到cookie中,必须在服务描述文件输出中进行定义
+        自动模式 request中若无sessionId,会自动创建，会自动输出新的sessionId到cookie中,即使服务描
+                 述文件输出中未定义
+        手工模式 request中若无sessionId,不会自动创建，由业务流程自己创建，要输出sessionId到cookie中,
+                 必须在服务描述文件输出中进行定义
     sessionIpBind sessionId是否和客户端ip绑定
     logUserAgent 是否在日志中输出UserAgent, 默认为0
     maxContentLength http请求post最大允许长度
     cacheEnabled 对静态文件，是否启用cache功能，默认为启用
     cacheFileSize 对静态文件，低于此size的文件启用cache功能, 默认为25000字节
     cacheFiles 对静态文件，哪些后缀会启用cache功能，用空格分隔多个后缀，默认为 html htm css js
-    httpCacheSeconds 对静态文件，输出的http头(expire,cache-control)允许客户端多长的缓存时间,默认为86400秒,若为0则不允许客户端缓存
+    httpCacheSeconds 对静态文件，输出的http头(expire,cache-control)允许客户端多长的缓存时间,默认为86400秒,
+                    若为0则不允许客户端缓存
     httpTemplateCache 对模板文件，是否启用缓存功能, 默认为true
     httpTemplateCheckInterval 对模板文件，多长时间检查一下时间戳是否发生变化，默认为60秒
-    skipMinFile 对静态文件，如果访问的是.min.js .min.css 等带.min.文件，是否改为访问不带.min.的文件，默认为false
+    skipMinFile 对静态文件，如果访问的是.min.js .min.css 等带.min.文件，
+                是否改为访问不带.min.的文件，默认为false
     enableMock 是否支持url mock, 若开启，则自动给所有url增加/mock再进行匹配，默认为false
     urlArgs 访问静态文件时的参数，默认配置为?, 仅用于输出到模板中
     devMode 开发模式下的总开关，若设置为true,则会自动调整其它开关：
@@ -1033,22 +1037,24 @@
 
 ## url mapping
 
-    UrlMapping为url映射表，每一项Item代表一个配置, 每个配置有若干配置项，每个配置项都有默认值，一般不需要配置，具体如下：
+    UrlMapping为url映射表，每一项Item代表一个配置, 每个配置有若干配置项，每个配置项都有默认值，具体如下：
 
         url 可以为固定路径，也可以配置为动态路径，目前动态路径最多支持2个连续动态参数，
         如 path1/.../pathN/:a/:b, 在解析的时候会从路径中取参数a和b
 
         caseInsensitive 获取参数是否区分大小写，默认为false, 区分大小写; 注意：url比较总是不区分大小写的
         charset 输入输出的字符集
-        requestContentType 输入内容格式，默认为application/x-www-form-urlencoded, 若非这种形式则必须定义plugin来解析
+        requestContentType 输入内容格式，默认为application/x-www-form-urlencoded, 若非这种形式则必须定义plugin
         responseContentType 输出内容格式，默认为application/json, 若非这种形式则必须定义plugin来处理输出
         verify 是否要签名检查，若未配置则取defaultVerify
-            如果要验签名：有配置verify plugin, 则优先使用插件校验，否则使用hps标准校验方法进行校验：md5校验, ip校验，权限校验
+            如果要验签名：有配置verify plugin, 则优先使用插件校验，
+            否则使用hps标准校验方法进行校验：md5校验, ip校验，权限校验
         whiteIps 白名单IP, 可配置多个ip组，如"ipgrp1,ipgrp2", 每个对应一个Parameter配置项
             <Parameter name="ipgrp1">127.0.0.3,127.0.0.2</Parameter>
             <Parameter name="ipgrp2">127.0.0.3,127.0.0.2</Parameter>
             白名单IP验证机制和verify验证机制独立，互不影响
-        logFilters 输出日志要隐藏哪些内容，可配多个正则表达式，如"regex1,regex2,regex3", 每个对应一个Parameter配置项
+        logFilters 输出日志要隐藏哪些内容，可配多个正则表达式，如"regex1,regex2,regex3", 
+                   每个对应一个Parameter配置项
             <Parameter name="regex1"><![CDATA[&?a=[^&]*]]></Parameter>
             <Parameter name="regex2"><![CDATA[&?b=[^&]*]]></Parameter>
             <Parameter name="regex3"><![CDATA[\"items\":\"[^\"]*\",?]]></Parameter>
@@ -1058,7 +1064,8 @@
         plugin="plain|redirect|template|..."
         plugin中允许的值为预定义的值或者类名, 预定义的值有：
             1) plain 输出纯文本，从plainText参数中取值，若要调整参数名，可以用plugin="plain:参数名"形式
-            2) redirect 输出一段html进行跳转，从redirectUrl参数中取值，若要调整参数名，可以用plugin="redirect:参数名"形式
+            2) redirect 输出一段html进行跳转，从redirectUrl参数中取值，若要调整参数名，
+               可以用plugin="redirect:参数名"形式
             3) template 根据模板输出内容，必须用plugin="template:模板名"形式来指定模板;
                 模板必须放在 template目录下，不带后缀名
             4) 类名, 支持以下几种插件
@@ -1090,13 +1097,15 @@
 ## 服务描述文件扩展：cookie支持
 
     接口入参中 <field name="a" type="a_type" cookieName="xxx"/> 表示a的值从cookie xxx中获取
-    接口出参中 <field name="a" type="a_type" cookieName="xxx" cookieOption="Path=/;Domain=.sdo.com;..."/> 表示把a作为cookie输出，cookieOption配置cookie选项，可选
+    接口出参中 <field name="a" type="a_type" cookieName="xxx" cookieOption="Path=/;Domain=.sdo.com;..."/> 
+               表示把a作为cookie输出，cookieOption配置cookie选项，可选
     sessionId作为一种特殊的cookie, 无需上述这样配置，可直接通过sessionFieldName,sessionCookieName简化配置
 
 ## 服务描述文件扩展：增加classex用于json转换
 
     avenue协议只支持int,String，实际输出json的时候有时候需要将int转成string, 或将string转成number
-    对深度嵌套的json, avenue协议不能支持，但avenue协议可以将后台拼好的json串以string形式返回，在输出时转换成json就可支持深度嵌套
+    对深度嵌套的json, avenue协议不能支持，但avenue协议可以将后台拼好的json串以string形式返回，在输出时转换
+    成json就可支持深度嵌套
     通过对服务描述文件的type项和struct里的field项支持classex属性来进行这种额外的转换
     classex可以配置几个值：
       string 将int转成string输出
@@ -1106,7 +1115,8 @@
 
 ## 文件上传
 
-    如果url mapping配置中RequestContentType配置为 multipart/form-data, 则表明该请求为上传文件请求，对上传的文件，接收参数是一个名为files的结构体数组,
+    如果url mapping配置中RequestContentType配置为 multipart/form-data, 则表明该请求为上传文件请求，对上传的
+    文件，接收参数是一个名为files的结构体数组,
 
       结构体为：
         filename 文件名
@@ -1115,6 +1125,18 @@
         size 文件长度
         contentType 文件mimetype
         file 临时文件名, 保存在webapp/upload目录下以.tmp为后缀
+
+      服务描述文件中应如下定义该结构体：
+
+      <type name="file_type" class="struct" code="xxxx">
+        <field name="name" type="systemstring" />
+        <field name="filename" type="systemstring" />
+        <field name="contentType" type="systemstring" />
+        <field name="ext" type="systemstring" />
+        <field name="size" type="int" />
+        <field name="file" type="systemstring" />
+      </type>
+      <type name="file_array_type" class="array" itemType="file_type"/>
 
 ## jsonp支持
     
@@ -1128,21 +1150,24 @@
     请求格式可以为：
         1) get方法  /jsonrpc?data=json
         2) post方法 /jsonrpc  post的内容为json
-    json体为一个json数组，数组每一项为一个对象: jsonrpc为版本号，固定为2.0，id从1开始编号, method为url, params为参数，参数可以是url_encoded形式或json对象形式
+    json体为一个json数组，数组每一项为一个对象: jsonrpc为版本号，固定为2.0，id从1开始编号, method为url, 
+                                                params为参数，参数可以是url_encoded形式或json对象形式
     json请求示例：
         [
             {"jsonrpc":"2.0","id":"1","method":"/path/url1","params":"a=1&b=2"},
             {"jsonrpc":"2.0","id":"2","method":"/path/url2","params":{"a":"1","b":"2"}}
         ]
     响应格式为json数组
-    json体为一个json数组，数组每一项为一个对象: jsonrpc为版本号，固定为2.0，id从1开始编号, result为一个json对象，就是hps的标准返回内容
+    json体为一个json数组，数组每一项为一个对象: jsonrpc为版本号，固定为2.0，id从1开始编号, result为一个json
+                                                对象，就是hps的标准返回内容
     json请求示例：
         [
             {"jsonrpc":"2.0","id":"1","result":{"return_code":0,"return_message":"success","data":{...}}},
             {"jsonrpc":"2.0","id":"2","result":{"return_code":-1,"return_message":"error","data":{...}}},
         ]
 
-    使用jsonrpc一次发多个调用的时候，日志不是一条，而是每个请求单独输出一条日志，从requestId可区分，jsonrpc的requestId都带rpc前缀并带id序号
+    使用jsonrpc一次发多个调用的时候，日志不是一条，而是每个请求单独输出一条日志，从requestId可区分，
+    jsonrpc的requestId都带rpc前缀并带id序号
 
 ## 静态文件支持
 
@@ -1180,7 +1205,8 @@
       
       domainName 域名
       contextPath url的根一级目录
-      urlArgs 静态文件的url参数，默认为?, 通过配置为不同值，如?v1, ?v2可强制客户端所有js,css,html失效重新从服务器下载最新版本
+      urlArgs 静态文件的url参数，默认为?, 通过配置为不同值，如?v1, ?v2可强制客户端所有js,css,html失效重新从
+              服务器下载最新版本
 
 [返回](#toc)
 
