@@ -370,46 +370,27 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | int类型 | int | scala.Int |
 | string类型 | java.lang.String | 相同，也是java.lang.String |
 | 字符串/int转换 | Integer.parseInt(s)<br>String.valueOf(i) | s.toInt, java.lang.String没有这个方法，scala编译器会转换<br>i.toString|
-| 对象比较 | equals(),!equals() | scala |
+| 对象比较 | equals()<br>!equals() | ==<br>!= |
 | 对象== | == | eq 一般不用 |                                                              
 | 泛型 | <> | [] |                                                              
 | 数组下标 | [] | () |                                                              
 | import | 文件开头 | 文件开头，类内(仅在该类内有用)，函数内(仅在该函数内有用) |                                                              
-| import所有类 | import java.util.* | import jvmdbbroker.core._;<br>import jvmdbbroker.plugin.{SplitTablePlugin,SplitDbPlugin}; 一行引入多个类 |                                                              
+| import所有类 | import java.util.* | import jvmdbbroker.core._;<br>import java.util.{ArrayList,HashMap}; <br>可一行引入多个单独类 |                                                              
 | ?:表达式  | int a = ok ? 1 : 0; | val a = if ok 1 else 0 |                                                              
-| ++运算符 | 有   ++i  | 用 i += 1 代替 |
+| ++运算符 |  ++i 或 --i  | 用 i += 1 代替 |
 | 条件判断 | if ... else if ... else | 相同 |
 | while, do while | while, do while | 相同 |
-| 循环中break | 有 | 无 |
-| 循环中continue | 有 | 无 |
 | for循环1 | for(;;) | 不支持 |
 | for循环2 | for( a <- b ) | 有，功能很强，不是传统的循环，scala的for很强大! |
-| feature | java | scala |
-| feature | java | scala |
+| 循环中break | 有 | 无此关键字, 但可用import scala.util.control.Breaks._;  breakable { ... } 来实现 |
+| 循环中continue | 有 | 无此关键字 |
+| switch | switch {case ... case ... default ... } 每个case后需要break | xxx match { case ... => ... ; case ... => ...; case _ => ...; } case 后不需要break, <br>scala的match非常非常强大!!|
+| 异常 | try { ... } catch(Exception e) { ... } finally { ... } | try { ... } catch { case a:Exception => ... } finally {...} catch里面的语法也是match语法 |
+| 异常catch | 非runtime exception需要catch | 不需要 |
+| 常用数据结构 | List,Set,Map | java的类库都可使用，但一般情况下用scala自己的集合类库，<br>不能满足需求再用java类库的，scala常用： <br>scala.collection.mutable.ArrayBuffer  功能等价于java的ArrayList，加数据可以用  buff += a <br>scala.collection.mutable.HashMap 功能等价于java的HashMap  注意其中的get和java的不一样，用getOrElse(key,defaultValue)才是java里的get <br>scala.collection.mutable.HashSet 功能等价于java的HashSet |
+| 定长数组 | new String[3] | new Array[String](3)  固定大小数组，动态数组用ArrayBuffer[String] |
 
-             
 
-
-    switch                    switch {                                   xxx match {   
-                                 case ...                                    case ... => ...
-                                 case ...                                    case ... => ...
-                                 default ...                                 case _  => ...
-                                } // case后需要break                     }  // case后不需要break
-                                                                         scala的match非常非常强大!!
-
-    异常                      try { ... }                                try { ... }
-                              catch(Exception e) { ... }                 catch { case a:Exception => ... }
-                              finally                                    finally {...} 也是用match的case语法
-
-    异常catch                 非runtime exception需要catch               不需要
-
-    常用数据结构              List,Set,Map                               java的类库都可使用，但一般情况下用scala自己的集合类库，
-                                                                         不能满足需求再用java类库的，scala常用：
-                                                                           scala.collection.mutable.ArrayBuffer  功能等价于java的ArrayList，加数据可以用  buff += a
-                                                                           scala.collection.mutable.HashMap 功能等价于java的HashMap  注意其中的get和java的不一样，用getOrElse(key,defaultValue)才是java里的get
-                                                                           scala.collection.mutable.HashSet 功能等价于java的HashSet
-
-    定长数组                  new String[3]                              new Array[String](3)  固定大小数组，动态数组用ArrayBuffer[String]
 
     Tuple                     无                                         Tuple2,Tuple3,... 对象，非常好用
 
