@@ -14,4 +14,12 @@
   	return
   }
 
-  reply(0, "*" -> u)
+  reply(0, 
+    "*" -> u,
+    "hobbies" -> ArrayBufferString("swim","skate","box"),
+    "shippingtos" -> 
+      ArrayBufferMap(
+        HashMapStringAny( "province"->"上海", "city"->"上海", "street"->"张江碧波路10号"),
+        HashMapStringAny( "province"->"浙江", "city"->"杭州", "street"->"杭州中山路10号") 
+      )
+    )

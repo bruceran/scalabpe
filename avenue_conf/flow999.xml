@@ -5,6 +5,15 @@
 	<type name="name_type" class="string" code="2"/>
 	<type name="height_type" class="int" code="3"/>
  	<type name="intro_type" class="string" code="4"/>
+ 	<type name="hobby_type" class="string" code="5"/>
+	<type name="hobby_array_type" class="array" itemType="hobby_type"/>
+
+	<type name="shippingto_type" class="struct" code="7">
+		<field name="province" type="systemstring"/>
+		<field name="city" type="systemstring"/>
+		<field name="street" type="systemstring"/>
+	</type>
+	<type name="shippingto_array_type" class="array" itemType="shippingto_type"/>
 
 	<message name="queryUserInfo" id="1">
 		<requestParameter>
@@ -15,6 +24,8 @@
 			<field name="name" type="name_type"/>
 			<field name="height" type="height_type"/>
 			<field name="intro" type="intro_type"/>
+			<field name="hobbies" type="hobby_array_type"/>
+			<field name="shippingtos" type="shippingto_array_type"/>
 		</responseParameter>
 	</message>
 

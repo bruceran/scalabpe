@@ -1,6 +1,7 @@
 # <a name="toc">目录</a>
 
 [Avenue协议](#avenue)
+
 [服务描述文件](#service)
 
 # <a name="avenue">Avenue协议</a>
@@ -104,6 +105,91 @@
 
 # <a name="service">服务描述文件</a>
 
+## 介绍
+
+  所有服务（访问数据库，操作缓存，调用外部http服务，调用Avenue服务等）都通过服务描述文件来抽象,
+  可以抽象为
+
+## 格式说明
+
+    示例:  参考 avenue_conf/flow999.xml
+
+* type定义
+
+      name 名称自定义，不区分大小写，建议以_type结尾, 在同一个服务描述文件中必须唯一
+      code 对应的tlv编码值，在同一个服务描述文件中必须唯一
+      class 共有3种:
+
+        int 整数
+        string 字符串， 其长度最大为64K (一个short), long,float,double等类型都必须转成string
+        struct 对象类型, 每个struct由多个field组成
+        array 数组类型
+
+        注：二进制类型数据不是一个单独的class, 而是特殊的string, 设置了isbytes为1的string则表示是二进制内容
+
+* struct里的field定义
+
+        int
+        systemstring 无需指定长度
+        string 需通过len定义长度，主要是为兼容老版本, 若是最后一个field，可不指定len
+
+* array定义
+
+         itemType 该数组每个元素对应的type的name
+
+* 服务描述文件中的类型和ScalaBPE数据类型的对应关系
+
+    int             scala.Int
+    bytes           scala.Array[scala.Byte]
+    string          java.lang.String
+    struct          jvmdbbroker.core.HashMapStringAny 继承自 scala.collection.mutable.HashMap[String,Any]
+    int array       jvmdbbroker.core.ArrayBufferInt 继承自 scala.collection.mutable.ArrayBuffer[Int]
+    string array    jvmdbbroker.core.ArrayBufferString 继承自 scala.collection.mutable.ArrayBuffer[String]        
+    struct array    jvmdbbroker.core.ArrayBufferMap 继承自 scala.collection.mutable.ArrayBuffer[jvmdbbroker.core.HashMapStringAny]
+
+## 默认值 default value
+
+* default系列标签可以出现在<type>内 或者请求/响应中的<field>内 或 struct里的 <field>内, 请求响应中的配置优先于type上的配置
+* 未设置default属性和设置default=""含义不同，一个表示NULL,一个表示空串; 只有入参为null时，default值才会起作用
+
+## validator
+
+* validator系列标签可以出现在<type>内 或者请求/响应中的<field>内 或 struct里的 <field>内, 请求响应中的配置优先于type上的配置
+
+* validator系列标签有3个：validator 、validatorParam、returnCode分别表示验证名、验证参数、验证失败后的返回码
+
+* 若请求字段校验失败，直接返回错误码。若响应字段校验失败，包体不变，包头code为修改为错误码。原响应包code!=0时不触发校验。
+
+大类  validator    validatorParam      参数说明        returnCode      实现说明
+
+必填  Required      不需要             不需要           默认-10242400  用于判断必填，其中空字符串算做有值
+正则类 Regex        配置为正则表达式   是否符合正则     默认-10242400  最基础的validator
+        Email       不需要             不需要           默认-10242400  通过正则内置实现，等价于正则参数：([0-9A-Za-z\\-_\\.]+)@([a-zA-Z0-9_-])+(.[a-zA-Z0-9_-])+
+        Url         不需要             不需要           默认-10242400  通过正则内置实现
+范围类  NumberRange 数字1,数字2        左闭由闭区间     默认-10242400  用于判断整数范围
+        LengthRange 数字1,数字2        左闭由闭区间     默认-10242400  用于判断字符串长度范围
+        TimeRange   字符串1,字符串2    左闭由闭区间     默认-10242400  用于判断时间范围 示例：2011-1-2 13:00:05.231,2018-2-3 15:00:00.345
+集合类  NumberSet   A|b|C|d|e|…                         默认-10242400  用于整数枚举类型，示例 0|1
+        Regex       A|b|C|d|e|…                         默认-10242400  完全同正则validator，普通正则实现
+
+## encoder
+
+* encoder系列标签可以出现在<type>内 或者请求/响应中的<field>内, 或者struct里的<field>内, 请求响应中的配置优先于type上的配置
+
+* encoder系列标签有2个：encoder、encoderParam分别表示编码名、编码参数
+
+* encoder对请求、响应均有效
+
+* 实现的Encoder有：
+
+encoder             encoderParam          参数说明      实现说明
+
+NormalEncoder     A,b|c,d|<,&lt         |是大分割符，逗号是小分隔符，代表将A转义为b,将c转义为d, |,\三个字符实现为关键字，要输入实际这三个字符使用\转义，比如\|   \,  \\
+HtmlEncoder         无                     无            基于NormalEncoder实现，等价于： &,&amp;|<,&lt;|>,&gt;|",&quot;|',&#x27;|/,&#x2f;
+HtmlFilter          无                     无            基于NormalEncoder实现，等价于： &,|<,|>,|",|',|/,|\\,
+NocaseEncoder       无                     无            不区分大小写的NormalEncoder编码转换
+AttackFilter        无                     无            基于NocaseEncoder,等价于： script,|exec,|select,|update,|delete,|insert,|create,|alter,|drop,|truncate,|&,|<,|>,|",|',|/,|\\,
+
 [返回](#toc)
 
 26) 增量编译
@@ -161,51 +247,4 @@
     为兼容老版本，如果发现avenue包头设置了"必达消息位"，即使服务描述文件中未申明也会作为必达消息处理
 
     必达消息的持久化数据保存在data/mustreach目录下，以服务名_消息名为队列名。
-
-
-34) 服务描述文件里的default value, validator, encoder
-
-default value 定义为：
-
-1、	default系列标签可以出现在<type>内 或者请求/响应中的<field>内 或 struct里的 <field>内, 请求响应中的配置优先于type上的配置
-2、	未设置default属性和设置default=""含义不同，一个表示未NULL,一个表示未空串; 只有入参为null时，default值才会起作用
-
---------------
-
-validator定义为：
-
-1、	validator系列标签可以出现在<type>内 或者请求/响应中的<field>内 或 struct里的 <field>内, 请求响应中的配置优先于type上的配置
-2、	validator系列标签有3个：validator 、validatorParam、returnCode分别表示验证名、验证参数、验证失败后的返回码
-3、	若请求字段校验失败，直接返回错误码。若响应字段校验失败，包体不变，包头code为修改为错误码。原响应包code!=0时不触发校验。
-
-大类	validator	validatorParam	    参数说明	    returnCode	    实现说明
-
-必填	Required    不需要	            不需要	        默认-10242400	用于判断必填，其中空字符串算做有值
-正则类	Regex	    配置为正则表达式	是否符合正则	默认-10242400	最基础的validator
-        Email	    不需要	            不需要	        默认-10242400	通过正则内置实现，等价于正则参数：([0-9A-Za-z\\-_\\.]+)@([a-zA-Z0-9_-])+(.[a-zA-Z0-9_-])+
-        Url	        不需要	            不需要	        默认-10242400	通过正则内置实现
-范围类 	NumberRange	数字1,数字2	        左闭由闭区间	默认-10242400	用于判断整数范围
-        LengthRange	数字1,数字2	        左闭由闭区间	默认-10242400	用于判断字符串长度范围
-        TimeRange	字符串1,字符串2	    左闭由闭区间	默认-10242400	用于判断时间范围 示例：2011-1-2 13:00:05.231,2018-2-3 15:00:00.345
-集合类 	NumberSet	A|b|C|d|e|…	                     默认-10242400	 用于整数枚举类型，示例 0|1
-        Regex	    A|b|C|d|e|…		                 默认-10242400 	完全同正则validator，普通正则实现
-
---------------
-
-encoder定义为：
-
-1、	encoder系列标签可以出现在<type>内 或者请求/响应中的<field>内, 或者struct里的<field>内, 请求响应中的配置优先于type上的配置
-2、	encoder系列标签有2个：encoder、encoderParam分别表示编码名、编码参数
-3、	encoder对请求、响应均有效
-4、	拟实现的Encoder有：
-
-encoder	            encoderParam	        参数说明	    实现说明
-
-NormalEncoder	    A,b|c,d|<,&lt	        |是大分割符，逗号是小分隔符，代表将A转义为b,将c转义为d, |,\三个字符实现为关键字，要输入实际这三个字符使用\转义，比如\|   \,  \\
-HtmlEncoder	        无	                    无	        基于NormalEncoder实现，等价于： &,&amp;|<,&lt;|>,&gt;|",&quot;|',&#x27;|/,&#x2f;
-HtmlFilter	        无	                    无	        基于NormalEncoder实现，等价于： &,|<,|>,|",|',|/,|\\,
-NocaseEncoder       无	                    无	        不区分大小写的NormalEncoder编码转换
-AttackFilter        无	                    无	        基于NocaseEncoder,等价于： script,|exec,|select,|update,|delete,|insert,|create,|alter,|drop,|truncate,|&,|<,|>,|",|',|/,|\\,
-
-
 
