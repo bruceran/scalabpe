@@ -1288,7 +1288,7 @@
 
     <MqCfg plugin="xxx">
         <ServiceId>991,992</ServiceId>
-        <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=test password=test</Connection>
+        <Connection>service=tcp://10.132.17.201:61616 username=test password=test</Connection>
         <Destination serviceId="991" queueName="com.sdo.billing.test1" persistent="true"/>
         <Destination serviceId="992" queueName="com.sdo.billing.test2" persistent="true"/>
     </MqCfg>
@@ -1302,7 +1302,8 @@
       messageTimestamp 时间
       messageType 消息号
 
-    收到消息会立即写入本地queue文件，然后从本地queue文件取出发送给远程MQ, 所以不管远程网络是否可用总是立即返回成功;
+    收到消息会立即写入本地queue文件，然后从本地queue文件取出发送给远程MQ, 所以不管远程网络是否可用总是立即
+    返回成功;
     本地queue文件中的消息不会丢失，重启后也继续存在，会一直重试直到发送成功
     唯一可能失败就是出现本地 IO失败, 比如磁盘慢，有坏道等
     一般使用invokeWithReply发送消息到此服务就可以
@@ -1313,21 +1314,23 @@
 
     内部实现时每个队列对应一个发送线程，避免队列之间彼此影响。
 
-    如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqSelialize接口, 自定义插件类不再插入默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
+    如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqSelialize接口, 自定义插件类
+    不再插入默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
 
 [返回](#toc)
 
 # <a name="mqreceiver">消息队列接受者配置</a>
 
     <MqReceiverCfg receiverServiceId="879" maxSendTimes="5" retryInterval="5000" plugin="xxx">
-        <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=test password=test</Connection>
-        <Connection>service=failover:(tcp://10.132.17.201:61616)?timeout=1000 username=test password=test</Connection>
+        <Connection>service=tcp://10.132.17.201:61616 username=test password=test</Connection>
+        <Connection>service=tcp://10.132.17.201:61616 username=test password=test</Connection>
         <Destination queueName="com.sdo.billing.test1" />
         <Destination queueName="com.sdo.billing.test2" />
         ...
     </MqReceiverCfg>
 
-    消息接收者插件和MQ队列插件配套使用， 接收到MQ服务器的数据，先写到本地队列中，再使用和本地队列一样的方式调用receiverServiceId
+    消息接收者插件和MQ队列插件配套使用， 接收到MQ服务器的数据，先写到本地队列中，再使用和本地队列一样的方式
+    调用receiverServiceId
 
     接受者一般对每个MQ服务器单独配置Connection,而不是放在一个Connection中，否则有些服务器上的消息队列会接收不到。
     Destination可配置多个，会认为每个Connection上都有对应的Destination存在；
@@ -1346,7 +1349,8 @@
         x_isLastSend 含义同本地队列
         x_sendTimeUsed 含义同本地队列
 
-    如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqDeselialize接口, 自定义插件类不再支持默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
+    如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqDeselialize接口, 自定义插件类
+    不再支持默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
 
 [返回](#toc)
 
