@@ -28,7 +28,7 @@
 ## [配置指南](doc/config.md) 
 
 	了解confg.xml的所有细节
-	[密码加密](doc/config.md#pwd) 
+	数据库密码加密后配置
 
 ## [测试指南](doc/test.md) 
 

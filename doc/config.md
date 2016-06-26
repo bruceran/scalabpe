@@ -1360,18 +1360,181 @@
 
 # <a name="pwd">密码加密</a>
 
+## 配置
+
     在数据库配置或MQ配置的时候会需要配置连接的密码，以上配置中都是用明文配置，
     在实际生产环境，密码可能需要配置为密文
-
-    db: <DefaultConn>service=master_connect_string user=riskcontrol password=riskcontrol</DefaultConn>
-    mq: <Connection>service=tcp://10.132.17.201:61616 username=test password=test</Connection>
-
-    使用如下的方式配置密码：
+    目前在Windows下不支持密码加密，只能配置为明文，在linux下可如下配置加密密码：
 
     db: <DefaultConn>service=master_connect_string user=riskcontrol password=前缀:密文</DefaultConn>
     mq: <Connection>service=tcp://10.132.17.201:61616 username=test password=前缀:密文</Connection>
 
     前缀目前支持 des, desx, rsa 分别对应不同的加密方法
-    
+
+    加密方法的实现由一个动态链接库libsec.so完成,
+
+    lib/目录下有linux-jdk32, linux-jdk64目录，用于保存编译后32位和64位的libsec.so文件。
+
+    service启动脚本会根据jdk版本自动设置好so加载路径。
+
+    libsec的源码不开源，但本文档会提供libsec的框架代码，由开发者自己实现并编译出libsec.so。
+
+## libsec 框架代码
+
+### sec.h
+
+        #include "jni.h"
+
+        #ifndef _Included_jvmdbbroker_plugins
+        #define _Included_jvmdbbroker_plugins
+
+        #ifdef __cplusplus
+        extern "C" {
+        #endif
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDes(JNIEnv *env, jobject obj, jstring jstr);
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDesX(JNIEnv *env, jobject obj, jstring jstr);
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptRsa(JNIEnv *env, jobject obj, jstring jstr);
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptDes(JNIEnv *env, jobject obj, jstring jstr);
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptDesX(JNIEnv *env, jobject obj, jstring jstr);
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptRsa(JNIEnv *env, jobject obj, jstring jstr);
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptDes(JNIEnv *env, jobject obj, jstring jstr);
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptDesX(JNIEnv *env, jobject obj, jstring jstr);
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptRsa(JNIEnv *env, jobject obj, jstring jstr);
+
+        #ifdef __cplusplus
+        }
+        #endif
+        #endif
+
+
+### sec.cpp
+
+        // #include <openssl/des.h>    // 如果要用openssl的des算法，需include此文件
+        // #include <openssl/rsa.h>    // 如果要用openssl的rsa算法，需include此文件
+        #include <string>  
+        #include <string.h>  
+        #include <stdio.h>   
+        #include "sec.h"
+
+        using namespace std;
+
+        string decrypt_des(string s) { return s+ "_after_des";} // 改成你自己的算法
+        string decrypt_desx(string s) { return s+ "_after_desx";} // 改成你自己的算法
+        string decrypt_rsa(string s) { return s+ "_after_rsa";} // 改成你自己的算法
+
+        string jstring2string(JNIEnv* env, jstring jstr)
+        {     
+            jclass clsstring = env->FindClass("java/lang/String");
+            jmethodID mid = env->GetMethodID(clsstring, "getBytes", "(Ljava/lang/String;)[B");
+            jstring strencode = env->NewStringUTF("utf-8");
+            jbyteArray barr = (jbyteArray)env->CallObjectMethod(jstr, mid, strencode);
+            jsize alen = env->GetArrayLength(barr);
+            jbyte* ba = env->GetByteArrayElements(barr, 0);
+            string retstr;
+            if (alen > 0)
+            {
+                char* buff = new char[alen + 1];
+                memcpy(buff, ba, alen);
+                buff[alen] = 0;
+                retstr = buff;
+                delete [] buff;
+            }
+            env->ReleaseByteArrayElements(barr, ba, 0);
+            return retstr;
+        }
+
+        jstring string2jstring(JNIEnv* env, string pat)
+        {
+            jclass strClass = env->FindClass("java/lang/String");
+            jmethodID ctorID = env->GetMethodID(strClass, "<init>", "([BLjava/lang/String;)V");
+            jbyteArray bytes = env->NewByteArray(strlen(pat.c_str()));
+            env->SetByteArrayRegion(bytes, 0, strlen(pat.c_str()), (jbyte*)pat.c_str());
+            jstring encoding = env->NewStringUTF("utf-8");
+            return (jstring)env->NewObject(strClass, ctorID, bytes, encoding);
+        }
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDes
+          (JNIEnv *env, jobject obj, jstring jstr) {
+            string s  = jstring2string(env,jstr);
+            string ns = decrypt_des(s);
+            return string2jstring(env,ns);
+        }
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDesX
+          (JNIEnv *env, jobject obj, jstring jstr) {
+            string s  = jstring2string(env,jstr);
+            string ns = decrypt_desx(s);
+            return string2jstring(env,ns);
+        }
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptRsa
+          (JNIEnv *env, jobject obj, jstring jstr) {
+            string s  = jstring2string(env,jstr);
+            string ns = decrypt_rsa(s);
+            return string2jstring(env,ns);
+        }
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptDes
+        (JNIEnv *env, jobject obj, jstring jstr) {
+            string s  = jstring2string(env,jstr);
+            string ns = decrypt_des(s);
+            return string2jstring(env,ns);
+        }
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptDesX
+        (JNIEnv *env, jobject obj, jstring jstr){
+            string s  = jstring2string(env,jstr);
+            string ns = decrypt_desx(s);
+            return string2jstring(env,ns);
+        }
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptRsa
+        (JNIEnv *env, jobject obj, jstring jstr) {
+            string s  = jstring2string(env,jstr);
+            string ns = decrypt_rsa(s);
+            return string2jstring(env,ns);
+        }
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptDes
+        (JNIEnv *env, jobject obj, jstring jstr) {
+            string s  = jstring2string(env,jstr);
+            string ns = decrypt_des(s);
+            return string2jstring(env,ns);
+        }
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptDesX
+        (JNIEnv *env, jobject obj, jstring jstr){
+            string s  = jstring2string(env,jstr);
+            string ns = decrypt_desx(s);
+            return string2jstring(env,ns);
+        }
+
+        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptRsa
+        (JNIEnv *env, jobject obj, jstring jstr) {
+            string s  = jstring2string(env,jstr);
+            string ns = decrypt_rsa(s);
+            return string2jstring(env,ns);
+        }
+
+### 编译指令
+
+  g++ -shared -fPIC sec.cpp -I /opt/jdk1.6.0_31/include/ 
+      -I /opt/jdk1.6.0_31/include/linux -o libsec.so
+
+  如果要用openssl，则增加-l crypto
+
+  g++ -shared -fPIC sec.cpp -l crypto -I /opt/jdk1.6.0_31/include/ 
+      -I /opt/jdk1.6.0_31/include/linux -o libsec.so
+
+  编译后可得到libsec.so，复制到lib/linux-jdk32或lib/linux-jdk64目录下即可。
 
 [返回](#toc)
