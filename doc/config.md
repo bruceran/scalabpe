@@ -48,6 +48,8 @@
 
 [消息队列接受者配置](#mqreceiver)
 
+[密码加密](#pwd)
+
 # <a name="rule">约定</a>
 
     config.xml中所有节点名都是首字母大写，属性名都是首字母小写
@@ -1354,3 +1356,22 @@
 
 [返回](#toc)
 
+[密码加密](#pwd)
+
+# <a name="pwd">密码加密</a>
+
+    在数据库配置或MQ配置的时候会需要配置连接的密码，以上配置中都是用明文配置，
+    在实际生产环境，密码可能需要配置为密文
+
+    db: <DefaultConn>service=master_connect_string user=riskcontrol password=riskcontrol</DefaultConn>
+    mq: <Connection>service=tcp://10.132.17.201:61616 username=test password=test</Connection>
+
+    使用如下的方式配置密码：
+
+    db: <DefaultConn>service=master_connect_string user=riskcontrol password=前缀:密文</DefaultConn>
+    mq: <Connection>service=tcp://10.132.17.201:61616 username=test password=前缀:密文</Connection>
+
+    前缀目前支持 des, desx, rsa 分别对应不同的加密方法
+    
+
+[返回](#toc)
