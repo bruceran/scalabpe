@@ -10,6 +10,8 @@
 
 [流程编写基础知识](#writeflow)
 
+[流程中如何实现循环](#loop)
+
 [Avenue协议](#avenue)
 
 # <a name="compare">Scala/Java语法对比</a>
@@ -279,9 +281,6 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
       默认流程都继承类jvmdbbroker.core.Flow, 使用特殊语法可以修改继承的基类
 
-      使用//$xxx.xxx.withsyncedinvoke语法可以让流程继承jvmdbbroker.core.SyncedFlow, 
-      继承后可以使用syncedInvoke系列函数, 在支持数据库事务的流程中使用此方法会更方便
-
       使用//$xxx.xxx.with(baseclass)语法可以让流程继承一个用户自定义的基类baseclass,
       baseclass必须继承jvmdbbroker.core.Flow, 用户可以在基类中做一些特殊处理，
       如在每个流程开始前自动从redis中加载http的session信息到内存中的session变量中，
@@ -311,6 +310,16 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 [返回](#toc)
 
 # <a name="writeflow">流程编写基础知识</a>
+
+## 定义流程变量
+
+    在//#receive入口函数的前面可以定义流程变量, 流程变量不需做多线程同步处理
+    
+    var a = ""  // 定义一个字符串
+    var i = 0 // 定义一个int
+    var r:InvokeReult = _ // 定义一个保存调用结果的变量
+
+    事实上, 可以使用任何scala语法定义变量，流程内的公共函数，甚至嵌套类
 
 ## 获取入参
 
@@ -501,12 +510,47 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
 [返回](#toc)
 
+# <a name="loop">流程中如何实现循环</a>
+
+    传统的循环使用while,for等, 在ScalaBPE里，不涉及到invoke异步调用的地方可以用传统的循环。
+    但是如果一个循环中包含invoke异步调用，就必须调整流程的编写模式
+
+    将要循环的数据保存到流程变量loopData中, 通过loopIdx每次以异步的方式处理一条数据，直到
+    loopIdx >= loopData.size
+
+        var loopData: ArrayBufferMap = _ // 或其他数据结构 Array, ArrayBuffer等
+        var loopIdx = -1 
+
+    示例代码：
+
+        loopData = ...  // 赋值
+        doLoop  // 进入第一次循环
+
+        //#doLoop
+
+        loopIdx += 1
+        if( loopIdx >= loopData.size) return // 结束整个流程
+
+        val data = loopData(loopIdx) // 获取当前数据
+
+        invoke(abc,"svr.msg",3000,"*"->data) // 以异步的方式处理data
+
+        //#abc
+
+        val ret = lastresult()
+
+        // 处理ret
+
+        doLoop // 重新跳到循环入口
+
+[返回](#toc)
+
 # <a name="avenue">Avenue协议</a>
 
 ## 介绍
 
   avenue协议是自定义的TCP长连接协议，ScalaBPE框架使用此协议和其它Avenue服务通讯
-  但在进行流程开发的时候不需要涉及到底层通讯协议
+  了解底层通讯协议有助于更好地理解ScalaBPE框架
 
 ## 请求格式
 
