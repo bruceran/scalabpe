@@ -17,6 +17,15 @@
 	框架目录结构
 	框架依赖的jar包说明
 
+## [开发指南](doc/develop.md)
+
+	Scala/Java语法对比
+	服务描述文件
+	流程文件格式
+	流程编译
+	流程编写基础知识
+	Avenue协议
+
 ## [配置指南](doc/config.md) 
 
 	了解confg.xml的所有细节
@@ -29,15 +38,6 @@
 	日志格式说明
 	如何调整日志输出
 	框架用到的错误码
-
-## [开发指南](doc/develop.md)
-
-	Scala语法和Java语法对比
-	Avenue协议
-	服务描述文件
-	FLOW文件格式
-	启动时编译
-	流程编写基础知识
 
 ## [插件开发指南](doc/plugin.md) 
 

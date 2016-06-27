@@ -1,18 +1,18 @@
 # <a name="toc">目录</a>
 
-[Scala语法和Java语法对比](#compare)
-
-[Avenue协议](#avenue)
+[Scala/Java语法对比](#compare)
 
 [服务描述文件](#service)
 
-[FLOW文件格式](#flow)
+[流程文件格式](#flow)
 
-[启动时编译](#compile)
+[流程编译](#compile)
 
 [流程编写基础知识](#writeflow)
 
-# <a name="compare">Scala语法和Java语法对比</a>
+[Avenue协议](#avenue)
+
+# <a name="compare">Scala/Java语法对比</a>
 
 | feature | java | scala |
 | ------- | ---- | ----- |
@@ -64,105 +64,6 @@
 | 类继承 | 只能继承(extends)一个类，实现(implements)多个接口 | 只能继承(extends)一个类, <br>但可混入(with)多个trait, <br>此特性非常好用!! |
 | 函数也是对象 | 不支持 | 支持,scalabpe里invoke的callback就是函数;  |
 | 类申明 | class  Address { ... } | 可同时申明实例成员, 并可带默认值, 如 class Address (val province:String, val:city:String, val: street:String = "") |
-
-[返回](#toc)
-
-# <a name="avenue">Avenue协议</a>
-
-## 介绍
-
-  avenue协议是自定义的TCP长连接协议，ScalaBPE框架使用此协议和其它服务通讯
-
-## 请求格式
-
-    
-    0........ 8........16........24........32
-    1  |--0xA1---|headLen-|--version-|----M---| //协议标记,头长,版本号,路由数
-    2  |---------------packetLen--------------| //包长 
-    3  |---------------serviceId--------------| //服务id
-    4  |----------------msgId-----------------| //请求id
-    5  |---------------sequence---------------| //序列号
-    6  |---------------optional---------------| //可选标记位
-    7  |---------------priority---------------| //优先级
-    8  |-------------signature----------------|
-    9  |-------------signature----------------|
-    10 |-------------signature----------------|
-    11 |-------------signature----------------| //16字节签名
-    
-    headLen 填44 + 扩展包头长度
-    
-    version 固定填1, 
-    M 固定填0x0F
-    packageLen 填实际包长
-    
-    serviceid   服务编号
-    msgid 消息编号
-    
-    serviceid,msgid 都为0表示心跳，这时无body
-    
-    sequence为序列号
-    
-    optional    标志位：
-    
-        context 固定填0 
-        mustReach 必达标志位 填0表示一般的包，填1表示必达包
-        format 填 0 表示 tlv, 填 1 表示 json, 目前仅用到0
-        encoding 填 0 表示 gbk, 填 1 表示 utf-8
-    
-    priority： 0 一般 1 高 实际未用到
-    
-    signature 全部填0
-    
-    body: 格式和编码取决于format和encoding
-
-## 响应格式
-        
-    使用标准的Avenue协议包头, 无扩展包头: 
-
-    0........ 8........16........24........32
-    1  |--0xA2---|headLen-|--version-|reserve-| //协议标记，头长，版本号，保留位
-    2  |---------------packetLen--------------| //包长 
-    3  |---------------serviceId--------------| //服务id
-    4  |----------------msgId-----------------| //请求id
-    5  |---------------sequence---------------| //序列号
-    6  |---------------optional---------------| //可选标记位
-    7  |-----------------code-----------------| //响应码
-    8  |-------------signature----------------|
-    9  |-------------signature----------------|
-    10 |-------------signature----------------|
-    11 |-------------signature----------------| //16字节签名
-    
-    其中：
-    
-    headLen 填44 + 扩展包头长度
-    
-    version 固定填1
-    reserve 固定填0
-    packetLen 填实际包长; 对心跳包和ack包，固定式44
-    
-    serviceid   服务编号
-    msgid 消息编号
-    
-    serviceid,msgid 都为0表示心跳，这时无body
-    
-    sequence为序列号,需和请求中的一致
-    
-    optional    标志位：
-    
-        context 固定填0 
-        mustReach 必达标志位 对响应包忽略
-        format 填 0 表示 tlv, 填 1 表示 json
-        encoding 填 0 表示 gbk, 填 1 表示 utf-8
-    
-    code：
-    
-        填0表示正常响应
-        填100表示ack响应包
-        其它值为错误码
-    
-    signature 全部填 0
-    
-    body: 格式和编码取决于format和encoding
 
 [返回](#toc)
 
@@ -327,7 +228,7 @@ __而内部使用的服务描述文件则放在子目录下__
 
 [返回](#toc)
 
-# <a name="flow">FLOW文件格式</a>
+# <a name="flow">流程文件格式</a>
 
 ## 目录结构
 
@@ -388,7 +289,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
 [返回](#toc)
 
-# <a name="compile">启动时编译</a>
+# <a name="compile">流程编译</a>
 
     框架在启动时会对compose_conf下的文件进行编译
     如果scala文件或flow文件有编译错误，会给出精确的行号以便快速定位
@@ -597,6 +498,106 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     sleep(callbackfunction,timeout)
 
     在timeout时间过后流程会继续
+
+[返回](#toc)
+
+# <a name="avenue">Avenue协议</a>
+
+## 介绍
+
+  avenue协议是自定义的TCP长连接协议，ScalaBPE框架使用此协议和其它Avenue服务通讯
+  但在进行流程开发的时候不需要涉及到底层通讯协议
+
+## 请求格式
+
+    
+    0........ 8........16........24........32
+    1  |--0xA1---|headLen-|--version-|----M---| //协议标记,头长,版本号,路由数
+    2  |---------------packetLen--------------| //包长 
+    3  |---------------serviceId--------------| //服务id
+    4  |----------------msgId-----------------| //请求id
+    5  |---------------sequence---------------| //序列号
+    6  |---------------optional---------------| //可选标记位
+    7  |---------------priority---------------| //优先级
+    8  |-------------signature----------------|
+    9  |-------------signature----------------|
+    10 |-------------signature----------------|
+    11 |-------------signature----------------| //16字节签名
+    
+    headLen 填44 + 扩展包头长度
+    
+    version 固定填1, 
+    M 固定填0x0F
+    packageLen 填实际包长
+    
+    serviceid   服务编号
+    msgid 消息编号
+    
+    serviceid,msgid 都为0表示心跳，这时无body
+    
+    sequence为序列号
+    
+    optional    标志位：
+    
+        context 固定填0 
+        mustReach 必达标志位 填0表示一般的包，填1表示必达包
+        format 填 0 表示 tlv, 填 1 表示 json, 目前仅用到0
+        encoding 填 0 表示 gbk, 填 1 表示 utf-8
+    
+    priority： 0 一般 1 高 实际未用到
+    
+    signature 全部填0
+    
+    body: 格式和编码取决于format和encoding
+
+## 响应格式
+        
+    使用标准的Avenue协议包头, 无扩展包头: 
+
+    0........ 8........16........24........32
+    1  |--0xA2---|headLen-|--version-|reserve-| //协议标记，头长，版本号，保留位
+    2  |---------------packetLen--------------| //包长 
+    3  |---------------serviceId--------------| //服务id
+    4  |----------------msgId-----------------| //请求id
+    5  |---------------sequence---------------| //序列号
+    6  |---------------optional---------------| //可选标记位
+    7  |-----------------code-----------------| //响应码
+    8  |-------------signature----------------|
+    9  |-------------signature----------------|
+    10 |-------------signature----------------|
+    11 |-------------signature----------------| //16字节签名
+    
+    其中：
+    
+    headLen 填44 + 扩展包头长度
+    
+    version 固定填1
+    reserve 固定填0
+    packetLen 填实际包长; 对心跳包和ack包，固定式44
+    
+    serviceid   服务编号
+    msgid 消息编号
+    
+    serviceid,msgid 都为0表示心跳，这时无body
+    
+    sequence为序列号,需和请求中的一致
+    
+    optional    标志位：
+    
+        context 固定填0 
+        mustReach 必达标志位 对响应包忽略
+        format 填 0 表示 tlv, 填 1 表示 json
+        encoding 填 0 表示 gbk, 填 1 表示 utf-8
+    
+    code：
+    
+        填0表示正常响应
+        填100表示ack响应包
+        其它值为错误码
+    
+    signature 全部填 0
+    
+    body: 格式和编码取决于format和encoding
 
 [返回](#toc)
 
