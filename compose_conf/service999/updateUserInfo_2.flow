@@ -1,0 +1,21 @@
+//$service999.updateUserInfo
+
+//#receive
+
+  val userId = req.s("userId")
+  if( userId == null ) {
+  	reply(-100)
+  	return
+  }
+
+  val u = HashMapStringAny(
+  	"userId"->userId,
+  	"name"->req.s("name"),
+  	"height"->req.i("height"),
+  	"intro"->req.s("intro") )
+
+  println("u="+u.mkString(",")) // a debug line
+
+  Users.map.put(userId,u)
+
+  reply(0)
