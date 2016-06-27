@@ -32,11 +32,12 @@
 
 ## [开发指南](doc/develop.md)
 
-	了解Avenue协议
-	了解服务描述文件
+	Scala语法和Java语法对比
+	Avenue协议
+	服务描述文件
 	FLOW文件格式
 	启动时编译
-	Scala语法和Java语法对比
+	流程编写基础知识
 
 ## [插件开发指南](doc/plugin.md) 
 

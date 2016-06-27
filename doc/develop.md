@@ -10,6 +10,8 @@
 
 [Scala语法和Java语法对比](#compare)
 
+[流程编写基础知识](#writeflow)
+
 # <a name="avenue">Avenue协议</a>
 
 ## 介绍
@@ -406,3 +408,186 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | 类申明 | class  Address { ... } | 可同时申明实例成员, 并可带默认值, 如 class Address (val province:String, val:city:String, val: street:String = "") |
 
 [返回](#toc)
+
+# <a name="writeflow">流程编写基础知识</a>
+
+## 获取入参
+
+    流程中可直接访问req对象获取入参
+
+    class Request (
+
+        val requestId : String,
+        val connId : String,
+        val sequence : Int,
+        val encoding : Int,
+
+        val serviceId : Int,
+        val msgId : Int,
+
+        val xhead : HashMapStringAny,
+        val body : HashMapStringAny,
+        val sender: Actor
+    )
+
+    Request对象有如下方法可以使用来简化参数获取:
+
+    .s(name)  从body中获取一个字符串, 会自动进行类型转换
+    .s(name,defaultValue) 带默认值的 .s
+
+    .i(name)  从body中获取一个int, 会自动进行类型转换
+    .i(name,defaultValue) 带默认值的 .i
+
+    .m(name)  从body中获取一个HashMapStringAny, 对应服务描述文件里的struct
+
+    .ls(name)  从body中获取一个字符串数组, 对应服务描述文件里的string array
+    .li(name)  从body中获取一个int数组, 对应服务描述文件里的int array
+    .lm(name)  从body中获取一个对象数组, 对应服务描述文件里的struct array
+
+    .xs(name)  从xhead中获取一个字符串, 会自动进行类型转换
+    .xs(name,defaultValue) 带默认值的 .xs
+    .xi(name)  从xhead中获取一个int, 会自动进行类型转换
+
+    .remoteIp 取对端IP
+    .remoteAddr 取对端IP和端口
+    .clientIp 取客户端IP
+
+## 调用服务
+
+    使用invoke系列方法来调用接口
+
+    调用1个接口：
+        invoke(callbackfunction,"servicename.msgname",timeout,动态参数列表)
+
+    并行调用2个接口：    
+        invoke2(callbackfunction,
+             invokeFuture("servicename.msgname",timeout,动态参数列表),
+             invokeFuture("servicename.msgname",timeout,动态参数列表)   )
+
+    并行调用3,4,5个接口：    
+        分别使用invoke4,invoke4,invoke5方法
+
+    并行调用5个以上的接口：    
+        invokeMulti(callbackfunction,ArrayBuffer[InvokeInfo]) 
+        调用invokeFuture可生成InvokeInfo对象
+        使用invokeMulti可动态生成并行调用的请求
+
+## 动态参数列表
+
+    动态参数列表的个数是没有限制的，可以有多种方式传递参数
+
+    每个参数按名称指定：
+
+        "appId"->req.i("appId"),"areaId"->2,"userId"->"123"
+
+    如果多个参数appId,areaId都来源于Request对象，可以这样：
+
+        "appId,areaId"->req,"userId"->"123"
+
+    如果个别参数appId,areaId调用新接口时名称不一样，可以这样：
+    
+        "appId:appId2,areaId:areaId2"->req,"userId"->"123"
+
+        新接口里的入参名是appId2和areaId2
+
+    如果所有参数appId,areaId,userId都来源于Request对象，可以这样：
+
+        "*"->req
+
+    如果所有参数appId,areaId,userId都来源于Request对象，但个别值，比如userId需要调整，可以这样：
+
+        "*"->req,"userId"->"123"    后指定的值会覆盖前面指定的值
+
+    类似上面从Request取参数，还可以用*从HashMapStringAny或InvokeResult对象取值
+
+    如:
+        val m = HashMapStringAny("appId"->,"areaId"->2,"userId"->"123")
+        invoke(callbackfunction,"a.b",3000,"*" -> m)
+
+    和
+
+        val ret = lastresult()
+        invoke(callbackfunction,"a.b",3000,"*" -> ret)
+
+## 获取调用结果
+
+    并行调用，只有所有接口都得到响应或超时后回调才会执行
+
+    对于invoke:
+        val ret = lastresult()
+
+    对于invoke2:
+        val (ret1,ret2) = lastresults2()
+
+    对于invoke3:
+        val (ret1,ret2,ret3) = lastresults3()
+
+    对于invoke4:
+        val (ret1,ret2,ret3,ret4) = lastresults4()
+
+    对于invoke5:
+        val (ret1,ret2,ret3,ret4,ret5) = lastresults5()
+
+    对于invokeMulti:
+        val rets = allresults() // 可用rets(i)取对应的结果，结果顺序和调用顺序一致
+
+
+    每个调用得到的结果是一个 InvokeResult 对象
+
+    class InvokeResult(val requestId:String, val code:Int, val res:HashMapStringAny)
+
+    InvokeResult 的code 是错误码, res是调用的具体信息
+    InvokeResult 同Request对象一样，具有 s i m ls li lm 方法简化从结果中获取对象
+
+## 输出响应
+
+    reply(code,动态参数列表)
+    
+    code为错误码，也就是avenue协议头的code位
+
+    ScalaBPE约定，code=0表明成功 code<0表示错误
+
+    动态参数列表 的使用同invoke调用时, 示例：
+
+    val ret = lastresult()
+
+    reply(0,"appId"->1,"areaId"->2,"userId"->"123")
+
+    reply(0,"appId,areaId"->req,"userId"->"123")
+
+    reply(0,"*"->req)
+
+    reply(0,"*"->ret)
+
+    reply(0,"*"->ret,"userId"->"123")
+
+## 投递
+
+    当你想调用一个方法，而并不关心其返回结果可以使用invokeWithNoReply方法
+
+    invokeWithNoReply("servicename.msgname",动态参数列表)
+
+    invokeWithNoReply方法不用指定回调函数和超时时间
+
+## 调用有状态的服务器
+
+    如果一个服务器连接多个远程服务器，需要将消息按一定规则分发给指定目标而不是随机分发
+
+    这时可使用 ToAddr系列方法:
+
+    invokeWithToAddr(callbackfunction,"servicename.msgname",timeout,toAddr,动态参数列表)
+    invokeFutureWithToAddr("servicename.msgname",timeout,toAddr,动态参数列表)
+    invokeWithNoReplyWithToAddr("servicename.msgname",toAddr,动态参数列表)
+
+    toAddr为远程服务器的IP:PORT
+
+## 睡眠
+
+    传统的睡眠会挂起当前线程，如果你希望流程睡眠一段时间但又不挂起当前线程，可以使用sleep函数
+
+    sleep(callbackfunction,timeout)
+
+    在timeout时间过后流程会继续
+
+[返回](#toc)
+
