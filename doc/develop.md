@@ -1,5 +1,7 @@
 # <a name="toc">目录</a>
 
+[Scala语法和Java语法对比](#compare)
+
 [Avenue协议](#avenue)
 
 [服务描述文件](#service)
@@ -8,9 +10,62 @@
 
 [启动时编译](#compile)
 
-[Scala语法和Java语法对比](#compare)
-
 [流程编写基础知识](#writeflow)
+
+# <a name="compare">Scala语法和Java语法对比</a>
+
+| feature | java | scala |
+| ------- | ---- | ----- |
+|类型申明|int a; <br>String b; |var a=0; <br>var b="";|
+| val申明的变量 | 相当于final对象，不可再赋值 | val a=2; 必须初始化,不可再赋值 |
+| var申明的变量 | 相当于非final对象，可再赋值 | var a=3;  a=4; |
+| 行尾的分号 | 必须 | 可省略; 一行多个语句时不能省略 |
+| 无参数方法调用 | a.xxx()  | 可省略成a.xxx |
+| 非void函数return关键字 | 必须写 | 一般函数最后的return能省略的都省略，最后一个表达式的值就是返回值; 函数中间过程的return不能省略 |
+| 函数参数默认值 | 无 | 可以，可减少重复的函数定义 |
+| Getter/Setter | 一般都使用bean此风格申明类 | scala里不使用java bean风格, 直接引用变量 |
+| 类型推导 | 无 | 凡是能推导出类型的地方都可不写类型<br>val a = 1;  a则是Int; <br>val b = "" 则b是String;<br>val c = null;  这时c类型不明确，一般用 val c:String = null 或者 val c:String = _ 或者 val c = null:String |
+| 函数定义 | int add(int a,int b) { return a + b }  | def add(a:Int,b:Int): Int = { a + b } 根据是否能自动推导，可有多个变体:<br>def add(a:Int,b:Int) = { a + b }  Int可自动推导出; <br>def add(a:Int,b:Int) = a + b  还可省略大括号, 注意等号不能省略； |
+| VOID类型 | void | Unit |
+| int类型 | int | scala.Int |
+| string类型 | java.lang.String | 相同，也是java.lang.String |
+| 字符串中 | 只有 "..." | 可以用"...", <br>也可用 """...""", """包围的字符串里特殊字符不用转码 |
+| 字符串格式化 | String中没有 | 直接使用String类的format方法 "s=%s d=%d".format(s,d) 方法来格式化字符串，类似c语言的format格式 |
+| 字符串/int转换 | Integer.parseInt(s)<br>String.valueOf(i) | s.toInt, java.lang.String没有这个方法，scala编译器会转换<br>i.toString|
+| 对象比较 | equals()<br>!equals() | ==<br>!= |
+| 对象== | == | eq 一般不用 |                                                              
+| 泛型 | <> | [] |                                                              
+| 数组下标 | [] | () |                                                              
+| import | 文件开头 | 文件开头<br>类内(仅在该类内有用)<br>函数内(仅在该函数内有用) |                                                              
+| import所有类 | import java.util.* | import java.util._;<br>import java.util.{ArrayList,HashMap}; <br>可一行引入多个单独类 |                                                              
+| ?:表达式  | int a = ok ? 1 : 0; | val a = if ok 1 else 0 |                                                              
+| ++运算符 |  ++i 或 --i  | 用 i += 1 代替 |
+| 条件判断 | if ... else if ... else | 相同 |
+| while, do while | while, do while | 相同 |
+| for循环1 | for(;;) | 不支持 |
+| for循环2 | for( a <- b ) | 有，功能很强，不是传统的循环，scala的for很强大! |
+| 循环中break | 有 | 无此关键字, 但可用<br>import scala.util.control.Breaks._;  <br>breakable { ... } 来实现 |
+| 循环中continue | 有 | 无此关键字 |
+| switch | switch {<br>case v: ... <br>case v: ... <br>default ... <br>} <br>每个case后需要break | xxx match { <br>case ... => ... ; <br>case ... => ...; <br>case _ => ...; <br>} <br>case 后不需要break, <br>scala的match非常非常强大!!|
+| 异常 | try { ... } <br>catch(Exception1 e) { ... } <br>catch(Exception2 e) { ... } <br>finally { ... } | try { ... } catch { <br>case a:Exception1 => ... <br>case a:Exception2 => ... <br>} finally {...} <br>catch里面的语法也是match语法 |
+| runtime exception | 需要catch | 不需要catch |
+| 定长数组 | new String[3] | `new Array[String](3)` |
+| 链表 | ArrayList| scala.collection.mutable.ArrayBuffer  功能等价于java的ArrayList，加数据可以用  buff += a|
+| MAP | HashMap | scala.collection.mutable.HashMap 功能等价于java的HashMap|
+| map.get() | String s = map.get("abc") | val s = map.getOrElse("abc",null)<br>scala里HashMap.get返回的是Option对象，一般不用 |
+| 集合 | HashSet | scala.collection.mutable.HashSet 功能等价于java的HashSet |
+| Tuple | 无 | Tuple2,Tuple3,... 对象，非常好用 |
+| 多重赋值 | 不支持 | val (ret1,ret2,...) = xxx, 可使用此方法从Tuple中直接取值, <br>scalabpe的flow使用这个从并行调用中获取结果  |
+| 列表LIST | 无 | scala里的List和java的List没任何关系，也完全不是一回事; <br>主要是用来做函数式编程的, 在scalabpe里请勿使用! |
+| 对象根 | Object | Any, 一切都是对象; Object是Any的一个子类 |
+| 类的静态成员 | static | class 内都是实例成员, 静态成员放在一个同名的object单例对象内; 也可单独定义没有class的object对象  |
+| 接口申明 | interface | trait 可有具体实现代码 |
+| 抽象类 | abstract class | trait |
+| 类继承 | 只能继承(extends)一个类，实现(implements)多个接口 | 只能继承(extends)一个类, <br>但可混入(with)多个trait, <br>此特性非常好用!! |
+| 函数也是对象 | 不支持 | 支持,scalabpe里invoke的callback就是函数;  |
+| 类申明 | class  Address { ... } | 可同时申明实例成员, 并可带默认值, 如 class Address (val province:String, val:city:String, val: street:String = "") |
+
+[返回](#toc)
 
 # <a name="avenue">Avenue协议</a>
 
@@ -354,61 +409,6 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
 [返回](#toc)
 
-# <a name="compare">Scala语法和Java语法对比</a>
-
-| feature | java | scala |
-| ------- | ---- | ----- |
-|类型申明|int a; <br>String b; |var a=0; <br>var b="";|
-| val申明的变量 | 相当于final对象，不可再赋值 | val a=2; 必须初始化,不可再赋值 |
-| var申明的变量 | 相当于非final对象，可再赋值 | var a=3;  a=4; |
-| 行尾的分号 | 必须 | 可省略; 一行多个语句时不能省略 |
-| 无参数方法调用 | a.xxx()  | 可省略成a.xxx |
-| 非void函数return关键字 | 必须写 | 一般函数最后的return能省略的都省略，最后一个表达式的值就是返回值; 函数中间过程的return不能省略 |
-| 函数参数默认值 | 无 | 可以，可减少重复的函数定义 |
-| Getter/Setter | 一般都使用bean此风格申明类 | scala里不使用java bean风格, 直接引用变量 |
-| 类型推导 | 无 | 凡是能推导出类型的地方都可不写类型<br>val a = 1;  a则是Int; <br>val b = "" 则b是String;<br>val c = null;  这时c类型不明确，一般用 val c:String = null 或者 val c:String = _ 或者 val c = null:String |
-| 函数定义 | int add(int a,int b) { return a + b }  | def add(a:Int,b:Int): Int = { a + b } 根据是否能自动推导，可有多个变体:<br>def add(a:Int,b:Int) = { a + b }  Int可自动推导出; <br>def add(a:Int,b:Int) = a + b  还可省略大括号, 注意等号不能省略； |
-| VOID类型 | void | Unit |
-| int类型 | int | scala.Int |
-| string类型 | java.lang.String | 相同，也是java.lang.String |
-| 字符串中 | 只有 "..." | 可以用"...", <br>也可用 """...""", """包围的字符串里特殊字符不用转码 |
-| 字符串格式化 | String中没有 | 直接使用String类的format方法 "s=%s d=%d".format(s,d) 方法来格式化字符串，类似c语言的format格式 |
-| 字符串/int转换 | Integer.parseInt(s)<br>String.valueOf(i) | s.toInt, java.lang.String没有这个方法，scala编译器会转换<br>i.toString|
-| 对象比较 | equals()<br>!equals() | ==<br>!= |
-| 对象== | == | eq 一般不用 |                                                              
-| 泛型 | <> | [] |                                                              
-| 数组下标 | [] | () |                                                              
-| import | 文件开头 | 文件开头<br>类内(仅在该类内有用)<br>函数内(仅在该函数内有用) |                                                              
-| import所有类 | import java.util.* | import java.util._;<br>import java.util.{ArrayList,HashMap}; <br>可一行引入多个单独类 |                                                              
-| ?:表达式  | int a = ok ? 1 : 0; | val a = if ok 1 else 0 |                                                              
-| ++运算符 |  ++i 或 --i  | 用 i += 1 代替 |
-| 条件判断 | if ... else if ... else | 相同 |
-| while, do while | while, do while | 相同 |
-| for循环1 | for(;;) | 不支持 |
-| for循环2 | for( a <- b ) | 有，功能很强，不是传统的循环，scala的for很强大! |
-| 循环中break | 有 | 无此关键字, 但可用<br>import scala.util.control.Breaks._;  <br>breakable { ... } 来实现 |
-| 循环中continue | 有 | 无此关键字 |
-| switch | switch {<br>case v: ... <br>case v: ... <br>default ... <br>} <br>每个case后需要break | xxx match { <br>case ... => ... ; <br>case ... => ...; <br>case _ => ...; <br>} <br>case 后不需要break, <br>scala的match非常非常强大!!|
-| 异常 | try { ... } <br>catch(Exception1 e) { ... } <br>catch(Exception2 e) { ... } <br>finally { ... } | try { ... } catch { <br>case a:Exception1 => ... <br>case a:Exception2 => ... <br>} finally {...} <br>catch里面的语法也是match语法 |
-| runtime exception | 需要catch | 不需要catch |
-| 定长数组 | new String[3] | `new Array[String](3)` |
-| 链表 | ArrayList| scala.collection.mutable.ArrayBuffer  功能等价于java的ArrayList，加数据可以用  buff += a|
-| MAP | HashMap | scala.collection.mutable.HashMap 功能等价于java的HashMap|
-| map.get() | String s = map.get("abc") | val s = map.getOrElse("abc",null)<br>scala里HashMap.get返回的是Option对象，一般不用 |
-| 集合 | HashSet | scala.collection.mutable.HashSet 功能等价于java的HashSet |
-| Tuple | 无 | Tuple2,Tuple3,... 对象，非常好用 |
-| 多重赋值 | 不支持 | val (ret1,ret2,...) = xxx, 可使用此方法从Tuple中直接取值, <br>scalabpe的flow使用这个从并行调用中获取结果  |
-| 列表LIST | 无 | scala里的List和java的List没任何关系，也完全不是一回事; <br>主要是用来做函数式编程的, 在scalabpe里请勿使用! |
-| 对象根 | Object | Any, 一切都是对象; Object是Any的一个子类 |
-| 类的静态成员 | static | class 内都是实例成员, 静态成员放在一个同名的object单例对象内; 也可单独定义没有class的object对象  |
-| 接口申明 | interface | trait 可有具体实现代码 |
-| 抽象类 | abstract class | trait |
-| 类继承 | 只能继承(extends)一个类，实现(implements)多个接口 | 只能继承(extends)一个类, <br>但可混入(with)多个trait, <br>此特性非常好用!! |
-| 函数也是对象 | 不支持 | 支持,scalabpe里invoke的callback就是函数;  |
-| 类申明 | class  Address { ... } | 可同时申明实例成员, 并可带默认值, 如 class Address (val province:String, val:city:String, val: street:String = "") |
-
-[返回](#toc)
-
 # <a name="writeflow">流程编写基础知识</a>
 
 ## 获取入参
@@ -447,6 +447,15 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     .xs(name)  从xhead中获取一个字符串, 会自动进行类型转换
     .xs(name,defaultValue) 带默认值的 .xs
     .xi(name)  从xhead中获取一个int, 会自动进行类型转换
+    .xls(name:String) : ArrayBufferString 用来取 gsInfos
+
+    扩展包头xhead中的key支持以下值，参见 src/codec.AvenueCodec object，常用的有以下几个：
+
+        gsInfoFirst  最远的调用者的IP:PORT
+        gsInfoLast   最近的调用者的IP:PORT
+        gsInfos"     所有的调用者，需用.xls来获取
+        socId        客户端标识
+        appId        应用ID
 
     .remoteIp 取对端IP
     .remoteAddr 取对端IP和端口
@@ -498,7 +507,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
         "*"->req,"userId"->"123"    后指定的值会覆盖前面指定的值
 
-    类似上面从Request取参数，还可以用*从HashMapStringAny或InvokeResult对象取值
+    类似上面从Request取参数，还可以从HashMapStringAny或InvokeResult对象取值
 
     如:
         val m = HashMapStringAny("appId"->,"areaId"->2,"userId"->"123")
@@ -537,7 +546,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     class InvokeResult(val requestId:String, val code:Int, val res:HashMapStringAny)
 
     InvokeResult 的code 是错误码, res是调用的具体信息
-    InvokeResult 同Request对象一样，具有 s i m ls li lm 方法简化从结果中获取对象
+    InvokeResult 同Request对象一样，具有 .s .i .m .ls .li .lm 方法简化从结果中获取对象
 
 ## 输出响应
 
