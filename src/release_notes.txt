@@ -8,7 +8,7 @@
 ================
 
 * (05/25)router里增加getRawConfig
-* (05/25)router里增加InitHook，可以调用第三方的类来加载配置参数, 为赵振华配置参数放在ucs服务里提供支持
+* (05/25)router里增加InitHook，可以调用第三方的类来加载配置参数, 为配置参数放在ucs服务里提供支持
 * (05/19)增加libsec.so, 解密密钥和算法移到jni代码中
 * (05/17)router启动的时候支持init bean, 会等待bean启动完毕才会继续启动服务
 * (05/17)config.xml支持使用@xxx定义变量，从config_parameter.xml文件中读取，用于分离敏感数据

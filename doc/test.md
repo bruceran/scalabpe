@@ -306,6 +306,11 @@
 
     查看AHT请求和响应原始内容，需设置<logger name="jvmdbbroker.plugin.http.HttpClientImpl" level="debug" ...
 
+## logVar
+    
+    request_audit.log日志文件中只有入参出参，如果希望将流程变量或中间变量也加入该日志，
+    可使用logVar(key,value)方法
+
 [返回](#toc)
 
 # <a name="error">框架使用到的错误码</a>

@@ -50,6 +50,8 @@
 
 [连接密码加密](#pwd)
 
+[参数文件](#paramfile)
+
 # <a name="rule">约定</a>
 
     config.xml中所有节点名都是首字母大写，属性名都是首字母小写
@@ -81,6 +83,7 @@
            pushToIpPort="0"
            pushToIp="0"
            pushToAny="0"
+           maxConns="100"
        >
             <ReverseIp>127.0.0.1</ReverseIp>
             <ReverseIp>127.0.0.2</ReverseIp>
@@ -104,6 +107,7 @@
       spsDisconnectNotifyTo sps向route服务发送连接断开消息, 默认为 55605:111
       isEncrypted 是否启用加密, 默认为0
       shakeHandsServiceIdMsgId 握手服务号消息号，默认为 1:5, isEncrypted 开启时只有此消息是明文，其他都是密文
+      maxConns 最大连接数 默认为 500000
 
       reverseServiceIds 定义反向调用的服务号, 默认为0, 多个用逗号分隔
       timeout 反向调用(从SOS主动发请求给SOC)的网络超时时间，默认为30000, 30秒
@@ -234,6 +238,11 @@
     <Parameter name="serviceIdsAllowed">45601,45602</Parameter>
 
     默认非流程服务都不对外开放, 可用serviceIdsAllowed调整；
+
+    <Parameter name="disabledMsgIdFrom_服务号">1000</Parameter>
+
+    可配置该服务号下从哪个msgId开始不允许外部调用, 只允许本机调用，
+    用在服务描述文件中的一些不对外的子接口
 
 # <a name="runtest">runtest目标地址</a>
 
@@ -1525,14 +1534,40 @@
 
 ### 编译指令
 
-  g++ -shared -fPIC sec.cpp -I /opt/jdk1.6.0_31/include/ 
-      -I /opt/jdk1.6.0_31/include/linux -o libsec.so
+    g++ -shared -fPIC sec.cpp -I /opt/jdk1.6.0_31/include/ 
+        -I /opt/jdk1.6.0_31/include/linux -o libsec.so
 
-  其中include的JDK路径根据实际调整；如果要用openssl，则增加-l crypto
+    其中include的JDK路径根据实际调整；如果要用openssl，则增加-l crypto
 
-  g++ -shared -fPIC sec.cpp -l crypto -I /opt/jdk1.6.0_31/include/ 
-      -I /opt/jdk1.6.0_31/include/linux -o libsec.so
+    g++ -shared -fPIC sec.cpp -l crypto -I /opt/jdk1.6.0_31/include/ 
+        -I /opt/jdk1.6.0_31/include/linux -o libsec.so
 
-  编译后可得到libsec.so，复制到lib/linux-jdk32或lib/linux-jdk64目录下即可使用。
+    编译后可得到libsec.so，复制到lib/linux-jdk32或lib/linux-jdk64目录下即可使用。
+
+[返回](#toc)
+
+# <a name="paramfile">参数文件</a>
+
+    参数文件用于集中管理敏感信息
+
+    用户可以将参数放入config_parameter.xml文件中，然后在config.xml中引用该文件中的变量。
+    如果变量未定义，则不替换; 
+
+    config.xml文件里的所有值都可以配置为变量参数;
+
+    config_parameter.xml必须和config.xml在同一个目录下
+
+    config_parameter.xml文件格式：
+
+      <?xml version="1.0" encoding="UTF-8" ?>
+      <parameters>
+          <assign>@jdbcurl=jdbc:oracle:thin:@10.240.17.37:1521:ebs</assign>
+          <assign>@user=abc</assign>
+          <assign>@pwd=123</assign>
+      </parameters>
+
+    然后可以在config.xml文件中引用变量@url, @user, @pwd, 如下：
+
+      <DefaultConn>service=@jdbcurl user=@user password=@pwd</DefaultConn>
 
 [返回](#toc)

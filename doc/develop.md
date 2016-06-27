@@ -12,6 +12,8 @@
 
 [流程中如何实现循环](#loop)
 
+[Json转换](#json)
+
 [Avenue协议](#avenue)
 
 # <a name="compare">Scala/Java语法对比</a>
@@ -371,6 +373,12 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     .remoteAddr 取对端IP和端口
     .clientIp 取客户端IP
 
+## 获取配置参数
+
+    获取config.xml里 <Parameter name="xxx">yyy</Parameter>
+
+    Flow.router.getConfig("xxx","")获取到yyy
+
 ## 调用服务
 
     使用invoke系列方法来调用接口
@@ -427,6 +435,16 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
         val ret = lastresult()
         invoke(callbackfunction,"a.b",3000,"*" -> ret)
+
+## 指定扩展包头里的参数
+
+    扩展包头的参数会自动继承当前req对象里的扩展包头参数，也可以额外添加或修改参数值
+
+    在invoke的时候，如果动态参数名是以head.开头的参数，则可设置扩展包头的参数，可能会有： 
+
+    head.encoding 指定发出调用的字符集，utf-8或gbk, 默认为utf-8
+    head.socId  客户端标识
+    head.appId  应用标识
 
 ## 获取调用结果
 
@@ -545,6 +563,24 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
 [返回](#toc)
 
+# <a name="json">Json转换</a>
+
+    在流程中可以直接使用 JsonCodec 类来处理json数据
+    JsonCodec常用方法：
+
+        def parseSimpleJson(s:String):HashMapStringAny // 解析无嵌套的json串 
+        def parseJson(s:String):Any // 解析嵌套json串，根据顶层类型可能是
+                                    // HashMapStringAny或ArrayBufferAny，需自己转换类型
+        def parseObject(s:String):HashMapStringAny // 解析嵌套对象
+        def parseArray(s:String):ArrayBufferAny // 解析嵌套数组
+        def mkString(m:HashMapStringAny): String // map转换成json串
+        def mkString(a:ArrayBufferInt): String // array转换成json串
+        def mkString(a:ArrayBufferString): String // array转换成json串
+        def mkString(a:ArrayBufferMap): String // array转换成json串
+        def mkString(a:ArrayBufferAny): String // array转换成json串
+
+[返回](#toc)
+
 # <a name="avenue">Avenue协议</a>
 
 ## 介绍
@@ -645,4 +681,3 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     body: 格式和编码取决于format和encoding
 
 [返回](#toc)
-
