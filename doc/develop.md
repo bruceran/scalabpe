@@ -730,9 +730,9 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
         在Avenue协议中，String/SystemString类型的数据都需要对齐到4字节，不足4字节用'\0'填充
 
-    Length扩展：
+    T0LV扩展编码方案:
 
-        上述编码方案中Length最大只能为65535, 超过此长度的改用以下的兼容的扩展编码方案
+        上述TLV编码方案中Length最大只能为65535, 超过此长度的需用向下兼容的T0LV扩展编码方案
 
 | T | 0 | L | V | 
 | --- | --- |--- | --- |
@@ -740,5 +740,26 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 | 类型 | 固定填0 | 长度 | 值 |        
 | 2字节 | 2字节 | 4字节 | 长度为Length-8 |
 
+## 扩展包头的TLV编码
+
+    通过服务描述文件，用户可以自己定义TLV, 但是无法自定义扩展包头的TLV;
+    扩展包头的Type是Avenue协议约定好的，每个Type都有特殊含义;
+    扩展包头里存放的信息一般较少，不支持 T0LV 扩展编码方案;
+
+    扩展包头定义参见 src/codec.AvenueCodec object，包括：
+
+| Type | code | 含义 | 类型 | 长度 | 
+| --- | --- | --- | --- |
+| socId | 1 | 客户端标识 | string | 可变 |
+| gsInfos | 2 | 调用者的IP:PORT | struct array { ip int, port int} | 每个struct 12字节 |
+| appId | 3 | 应用ID | int | 8 |
+| areaId | 4 | 区ID | int | 8 |
+| groupId | 5 | 组ID | int | 8 |
+| hostId | 6 | 主机ID | int | 8 |
+| spId | 7 | SP ID | int | 8 |
+| endpointId | 8 | 终端ID | string | 可变 |
+| uniqueId | 9 | 请求ID | string | 可变 |
+| spsId | 11 | SPS服务ID | string | 可变 |
+| httpType | 12 | 是否HTTPS | int | 8 |
 
 [返回](#toc)
