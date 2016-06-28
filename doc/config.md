@@ -1557,7 +1557,7 @@
 
     config_parameter.xml必须和config.xml在同一个目录下
 
-    config_parameter.xml文件格式：
+    config_parameter.xml文件格式示例：
 
       <?xml version="1.0" encoding="UTF-8" ?>
       <parameters>
@@ -1566,7 +1566,7 @@
           <assign>@pwd=123</assign>
       </parameters>
 
-    然后可以在config.xml文件中引用变量@url, @user, @pwd, 如下：
+      然后可以在config.xml文件中引用变量@url, @user, @pwd, 如下：
 
       <DefaultConn>service=@jdbcurl user=@user password=@pwd</DefaultConn>
 

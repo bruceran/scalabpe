@@ -375,9 +375,9 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
 ## 获取配置参数
 
-    获取config.xml里 <Parameter name="xxx">yyy</Parameter>
+    对config.xml里 <Parameter name="xxx">yyy</Parameter>
 
-    Flow.router.getConfig("xxx","")获取到yyy
+    可用Flow.router.getConfig("xxx","")获取到yyy
 
 ## 调用服务
 
@@ -679,5 +679,61 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     signature 全部填 0
     
     body: 格式和编码取决于format和encoding
+
+[返回](#toc)
+
+# <a name="tlv">TLV编码规范</a>
+
+## 介绍
+
+  tlv编码用于avenue协议的body和扩展包头的数据进行编码。
+
+## tlv编码基本知识
+
+    TLV是一种可变格式，意思是：
+
+| T | L | V | 
+| _ | _ | _ |
+| Type | Length | Value |
+| 类型 | 长度 | Value |
+| 2字节 | 2字节 | 长度可变 |
+
+    Type和Length的长度固定，一般是2或4个字节
+     
+    Avenue协议中约定Type和Length使用2字节, Length包括Type和Length自身的字节数, 所以Length最少为4
+
+    Avenue协议中约定所有Short,Int类型都采用网络字节序，包括Type,Length,Int类型的值，SystemString长度前缀等
+
+    Value的长度由Length指定, Avenue协议中Value的类型有以下几种：
+
+        1) Int类型， 这时Length固定为8
+
+        2) String类型，这时Length为String的实际长度+4, 需对齐, Length不包括填充的字节数
+
+        3) Struct类型，这时Length为Struct的实际长度+4, Length不包括填充的字节数
+
+            Struct类型由多个Field组成，每个Field可能有3种类型：
+
+                Int类型，其长度固定为4
+                SystemString类型，可变长度String, 每个SystemString由4字节的长度前缀和实际内容组成, 需对齐
+                String类型，用Len属性指定实际长度，需对齐, Len不包括填充的字节数, Len建议用4的倍数
+
+        4) Array类型, 包括Int Array, String Array, Struct Array
+
+            Avenue协议只需要对数组中每个元素单独编码即可
+
+    对齐和填充:
+
+        在Avenue协议中，String/SystemString类型的数据都需要对齐到4字节，不足4字节用'\0'填充
+
+    Length扩展：
+
+        上述编码方案中Length最大只能为65535, 超过此长度的改用以下的扩展编码方案
+
+| T | 0 | L | V | 
+| _ | _ | _ |
+| Type | | Length | Value |
+| 类型 | 固定填0 | 长度 | Value |        
+| 2字节 | 2字节 | 4字节 |长度可变 |
 
 [返回](#toc)
