@@ -16,6 +16,8 @@
 
 [Avenue协议](#avenue)
 
+[TLV编码规范](#tlv)
+
 # <a name="compare">Scala/Java语法对比</a>
 
 | feature | java | scala |
@@ -692,7 +694,6 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
     TLV是一种可变格式，意思是：
 
-
 | T | L | V | 
 | --- | --- | --- |
 | Type | Length | Value |
@@ -719,9 +720,11 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
                 SystemString类型，可变长度String, 每个SystemString由4字节的长度前缀和实际内容组成, 需对齐
                 String类型，用Len属性指定实际长度，需对齐, Len不包括填充的字节数, Len建议用4的倍数
 
+                多个Field按顺序连续编码
+
         4) Array类型, 包括Int Array, String Array, Struct Array
 
-            Avenue协议只需要对数组中每个元素单独编码即可
+            Avenue协议只需按顺序对数组中每个元素单独编码即可
 
     对齐和填充:
 
@@ -729,13 +732,13 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
     Length扩展：
 
-        上述编码方案中Length最大只能为65535, 超过此长度的改用以下的扩展编码方案
-
+        上述编码方案中Length最大只能为65535, 超过此长度的改用以下的兼容的扩展编码方案
 
 | T | 0 | L | V | 
 | --- | --- |--- | --- |
 | Type | 固定填0 | Length | Value |
 | 类型 | 固定填0 | 长度 | 值 |        
 | 2字节 | 2字节 | 4字节 | 长度为Length-8 |
+
 
 [返回](#toc)
