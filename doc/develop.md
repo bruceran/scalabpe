@@ -688,7 +688,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
 ## 介绍
 
-  tlv编码用于avenue协议的body和扩展包头的数据进行编码。
+  tlv编码用于avenue协议的包体body和扩展包头xhead的数据编码。
 
 ## tlv编码基本知识
 
@@ -749,7 +749,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     扩展包头定义参见 src/codec.AvenueCodec object，包括：
 
 | Type | code | 含义 | 类型 | 长度 | 
-| --- | --- | --- | --- |
+| --- | --- | --- | --- | --- |
 | socId | 1 | 客户端标识 | string | 可变 |
 | gsInfos | 2 | 调用者的IP:PORT | struct array { ip int, port int} | 每个struct 12字节 |
 | appId | 3 | 应用ID | int | 8 |
