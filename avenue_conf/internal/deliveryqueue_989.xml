@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service name="deliveryqueue" id="989" IsTreeStruct ="false">  
+
+    <type name="queueName_type" class="string" code="10000" />	<!-- 有固定含义，勿修改 -->
+    
+    <type name="appId_type" class="int" code="1"/>	
+    <type name="sndaId_type" class="string" code="2"/>	
+    <type name="amount_type" class="int" code="3"/>  
+    <type name="payTime_type" class="string" code="4"/>  
+
+    <message name="write1" id="1">		<!-- 假设此消息的内容需通知到目的地A -->
+        <requestParameter>		  
+            <field name="queueName" type="queueName_type" />			
+            <field name="appId" type="appId_type" />			
+            <field name="sndaId" type="sndaId_type" />		
+        </requestParameter>		
+        <responseParameter/>
+    </message>
+
+    <message name="write2" id="2">      <!-- 假设此消息的内容需通知到目的地B -->      
+        <requestParameter>        
+            <field name="queueName" type="queueName_type" />            
+            <field name="appId" type="appId_type" />            
+            <field name="sndaId" type="sndaId_type" />      
+            <field name="amount" type="amount_type" />      
+            <field name="payTime" type="payTime_type" />      
+        </requestParameter>     
+        <responseParameter/>
+    </message>
+
+    <!-- 可以定义更多的通知消息 -->
+
+</service>

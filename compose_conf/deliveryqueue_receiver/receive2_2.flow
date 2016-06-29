@@ -1,0 +1,10 @@
+//$deliveryqueue_receiver.receive2
+
+//#receive
+
+	// 实现自己的通知到B
+
+  	reply(0) // 返回0表示成功，返回其它错误码表示失败，框架会重新调用此流程，直到收到0或者超过最大重试次数
+
+  
+

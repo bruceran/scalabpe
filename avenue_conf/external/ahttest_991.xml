@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="ahttest" id="991" IsTreeStruct ="false">
+
+ 	<type name="a_type" class="string" code="1"/>
+	<type name="b_type" class="string" code="2"/>
+	<type name="c_type" class="string" code="3"/>
+	<type name="return_code_type" class="int" code="4"/>
+	<type name="return_message_type" class="string" code="5"/>
+	<type name="e_type" class="string" code="6"/>
+
+	<message name="test" id="1" signature="true">
+		<requestParameter>
+			<field name="a" type="a_type" />
+			<field name="b" type="b_type" />
+			<field name="c" type="c_type" />
+		</requestParameter>
+		<responseParameter>
+			<field name="return_code" type="return_code_type" path="return_code" isreturnfield="yes"/>
+			<field name="return_message" type="return_message_type" path="return_message"/>
+			<field name="e" type="e_type" path="data.e"/>
+		</responseParameter>
+	</message>
+
+</service>

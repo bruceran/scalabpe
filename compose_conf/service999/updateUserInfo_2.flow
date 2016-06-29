@@ -1,9 +1,11 @@
+import FlowHelper._
+
 //$service999.updateUserInfo
 
 //#receive
 
   val userId = req.s("userId")
-  if( userId == null ) {
+  if( isEmpty(userId) ) {
   	reply(-100)
   	return
   }

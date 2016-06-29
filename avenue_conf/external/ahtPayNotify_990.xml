@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="ahtPayNotify" id="990" IsTreeStruct ="false">
+
+	<type name="signatureKey_type" class="string" code="10000" />
+	<type name="notifyUrl_type" class="string" code="10001" />
+	
+	<type name="payOrderNo_type" class="string" code="1" />
+	<type name="traceNo_type" class="string" code="2" />
+	<type name="payerId_type" class="string" code="3" />
+	<type name="amount_type" class="int" code="4" />
+	<type name="bizType_type" class="int" code="5" />
+	<type name="appId_type" class="int" code="6" />
+	<type name="areaId_type" class="int" code="7" />
+	<type name="subject_type" class="string" code="8" />
+	<type name="itemDetail_type" class="string" code="9" />
+	<type name="memo_type" class="string" code="10" />
+	<type name="reqTime_type" class="string" code="11" />
+	<type name="payTime_type" class="string" code="12" />
+	<type name="notifyTime_type" class="string" code="13" />
+	<type name="resultCode_type" class="int" code="15" />
+	<type name="resultMsg_type" class="string" code="16" />
+	<type name="payChannel_type" class="int" code="17" />
+	
+	<message name="notifyPay" id="1" signature="true">
+		<requestParameter>
+			<field name="notifyUrl" type="notifyUrl_type" />  <!-- 动态传入 -->
+			<field name="signatureKey" type="signatureKey_type" />  <!-- 动态传入 -->
+			
+			<field name="payOrderNo" type="payOrderNo_type" />
+			<field name="traceNo" type="traceNo_type" />
+			<field name="userId" type="payerId_type" />
+			<field name="amount" type="amount_type" />
+			<field name="bizType" type="bizType_type" />
+			<field name="payChannel" type="payChannel_type" />
+			<field name="appId" type="appId_type" />
+			<field name="areaId" type="areaId_type" />
+			<field name="subject" type="subject_type" />
+			<field name="itemDetail" type="itemDetail_type" />
+			<field name="memo" type="memo_type" />
+			<field name="reqTime" type="reqTime_type" />
+			<field name="payTime" type="payTime_type" />
+			<field name="notifyTime" type="notifyTime_type" />
+		</requestParameter>
+		<responseParameter>
+			<field name="resultCode" type="resultCode_type" path="data.resultCode" isreturnfield="true" />
+			<field name="resultMsg" type="resultMsg_type" path="data.resultMsg" />
+		</responseParameter>
+	</message>
+	
+	<message name="notifyDelivery" id="2" signature="true">
+		<requestParameter>
+			<field name="notifyUrl" type="notifyUrl_type" />  <!-- 动态传入 -->
+			<field name="signatureKey" type="signatureKey_type" />  <!-- 动态传入 -->
+			
+			<field name="payOrderNo" type="payOrderNo_type" />
+			<field name="traceNo" type="traceNo_type" />
+			<field name="userId" type="payerId_type" />
+			<field name="amount" type="amount_type" />
+			<field name="bizType" type="bizType_type" />
+			<field name="payChannel" type="payChannel_type" />
+			<field name="appId" type="appId_type" />
+			<field name="areaId" type="areaId_type" />
+			<field name="subject" type="subject_type" />
+			<field name="itemDetail" type="itemDetail_type" />
+			<field name="memo" type="memo_type" />
+			<field name="reqTime" type="reqTime_type" />
+			<field name="payTime" type="payTime_type" />
+			<field name="notifyTime" type="notifyTime_type" />
+		</requestParameter>
+		<responseParameter>
+			<field name="resultCode" type="resultCode_type" path="data.resultCode" isreturnfield="true" />
+			<field name="resultMsg" type="resultMsg_type" path="data.resultMsg" />
+		</responseParameter>
+	</message>
+
+</service>

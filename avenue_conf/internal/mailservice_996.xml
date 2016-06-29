@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="mailservice" id="996" IsTreeStruct ="false">
+ 
+  	<type name="smtpHost_type" class="string" code="1"/>
+	<type name="smtpPort_type" class="string" code="2"/>
+	<type name="smtpAuth_type" class="string" code="3"/>
+	<type name="smtpSsl_type" class="string" code="4"/>
+	<type name="smtpUser_type" class="string" code="5"/>
+	<type name="smtpPwd_type" class="string" code="6"/>
+
+	<type name="from_type" class="string" code="10"/>
+	<type name="to_type" class="string" code="11"/>
+	<type name="cc_type" class="string" code="12"/>
+	<type name="subject_type" class="string" code="13"/>
+	<type name="content_type" class="string" code="14"/>
+	
+	<message name="send" id="1">
+		<requestParameter>
+
+			<field name="smtpHost" type="smtpHost_type" default="smtp.sina.com"/>
+			<field name="smtpPort" type="smtpPort_type" default="465"/>
+			<field name="smtpAuth" type="smtpAuth_type" default="true"/>
+			<field name="smtpSsl" type="smtpSsl_type" default="true"/>
+ 			<field name="smtpUser" type="smtpUser_type" default="xxxx@sina.com"/>
+			<field name="smtpPwd" type="smtpPwd_type" default="xxxxxxxx"/>
+					
+			<field name="from" type="from_type"/>
+			<field name="to" type="to_type"/>
+			<field name="cc" type="cc_type"/>
+			<field name="subject" type="subject_type"/>
+			<field name="content" type="content_type"/>
+		</requestParameter>
+		
+		<responseParameter>
+		</responseParameter>
+	</message>
+	
+</service>

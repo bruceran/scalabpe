@@ -54,6 +54,7 @@
 
 # <a name="rule">约定</a>
 
+    config.xml必须是无BOM的utf-8文件格式
     config.xml中所有节点名都是首字母大写，属性名都是首字母小写
 
 # <a name="sapport">TCP服务端口</a>
@@ -280,9 +281,12 @@
 
     <QuartzCfg>
       <Cron serviceId="999" msgId="2">0/2 * * * * ?</Cron>
-      <Repeat serviceId="999" msgId="1" startDelay="1" repeatInterval="1"/>
+      <Repeat serviceId="999" msgId="1" startDelay="1" repeatInterval="60"/>
       <Init serviceId="999" msgId="206" repeatInterval="10"/>
     </QuartzCfg>
+
+    startDelay 首次调用间隔时间，单位为秒
+    repeatInterval 每次调用间隔时间，单位为秒
 
     按服务号消息号定义定时任务：
 
@@ -380,7 +384,7 @@
 
     每一个CacheSosList节点都会启动独立的2个线程池，一个读，一个写；而不是共用线程池
 
-    <CacheSosList readThreadNum="2" writeThreadNum="5">
+    <CacheSosList readThreadNum="2" writeThreadNum="5" failOver="true" errorCountToSwitch="50">
         <ServiceId>990,45612</ServiceId>
         <ConHash/> 或 <ArrayHash/> 或不配置
         <ServerAddr>10.241.37.37:11211</ServerAddr>
@@ -389,6 +393,9 @@
     </CacheSosList>
 
     readThreadNum="2" writeThreadNum="5" 若未配置，则用默认值; 默认节点未配置则为1
+
+    failOver hash或数组模式下是否自动错误转移, 默认为 true
+    errorCountToSwitch hash或数组模式下达到多少次错误后自动故障转移, 默认为50
 
     3种模式：
 
@@ -440,6 +447,9 @@
     每一个RedisSosList节点都会启动独立的2个线程池，一个读，一个写；而不是共用线程池
 
     RedisSosList节点上的 readThreadNum="2" writeThreadNum="5" 若未配置，则用默认值; 默认节点未配置则为1
+
+    failOver hash或数组模式下是否自动错误转移, 默认为 true
+    errorCountToSwitch hash或数组模式下达到多少次错误后自动故障转移, 默认为50
 
     和memcache一样有3种模式
 

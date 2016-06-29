@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="userinfocache" id="993" IsTreeStruct ="false">
+	
+	<type name="exptime_type" class="int" code="10000" default="172800" />
+  
+  	<type name="userId_type" class="string" code="1"/>
+	  	  	  	
+	<type name="name_type"  class="string" code="10001"/>
+	<type name="nickname_type" class="string" code="10002"/>
+	
+	<!-- 数据信息的缓存 -->
+
+	<message name="get" id="1">
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+		</requestParameter>
+		
+		<responseParameter>
+			<field name="name" type="name_type"/>
+			<field name="nickName" type="nickName_type"/>
+		</responseParameter>
+	</message>
+	
+	<message name="set" id="2">
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+			<field name="name" type="name_type"/>
+			<field name="nickName" type="nickName_type"/>
+		</requestParameter>
+		
+		<responseParameter>			
+		</responseParameter>
+	</message>
+	
+	<message name="delete" id="3">
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+		</requestParameter>		
+		<responseParameter>			
+		</responseParameter>
+	</message>
+	
+</service>

@@ -114,7 +114,7 @@ __而内部使用的服务描述文件则放在子目录下__
 
     * struct里的field定义
 
-        name 对象的名称，__区分大小写__, 流程中使用此名称
+        name 对象的名称，区分大小写, 流程中使用此名称
         type 类型
           int 整数
           systemstring 字符串, 无需指定长度
@@ -394,7 +394,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
              invokeFuture("servicename.msgname",timeout,动态参数列表)   )
 
     并行调用3,4,5个接口：    
-        分别使用invoke4,invoke4,invoke5方法
+        分别使用invoke3,invoke4,invoke5方法
 
     并行调用5个以上的接口：    
         invokeMulti(callbackfunction,ArrayBuffer[InvokeInfo]) 
@@ -469,13 +469,13 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
     对于invokeMulti:
         val rets = allresults() // 可用rets(i)取对应的结果，结果顺序和调用顺序一致
-
+        invoke2,invoke3,invoke4,invoke5 也可使用 val rets = allresults() 来获取结果
 
     每个调用得到的结果是一个 InvokeResult 对象
 
     class InvokeResult(val requestId:String, val code:Int, val res:HashMapStringAny)
 
-    InvokeResult 的code 是错误码, res是调用的具体信息
+    InvokeResult 的code是错误码, res是调用的具体信息
     InvokeResult 同Request对象一样，具有 .s .i .m .ls .li .lm 方法简化从结果中获取对象
 
 ## 输出响应
@@ -500,6 +500,11 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
     reply(0,"*"->ret,"userId"->"123")
 
+    传统的同步编程返回响应总是在代码的最后，返回后就不可以再执行任何代码了
+    在ScalaBPE里，可以在流程中的任何地方调用reply, 调用完reply后可以继续执行代码
+
+    ScalaBPE里每个请求最多只允许调用一次reply。
+
 ## 投递
 
     当你想调用一个方法，而并不关心其返回结果可以使用invokeWithNoReply方法
@@ -510,7 +515,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
 ## 调用有状态的服务器
 
-    如果一个服务器连接多个远程服务器，需要将消息按一定规则分发给指定目标而不是随机分发
+    如果一个服务器连接多个远程服务器，需要将消息按一定规则分发给指定服务器而不是随机分发
 
     这时可使用 ToAddr系列方法:
 
@@ -519,6 +524,8 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     invokeWithNoReplyWithToAddr("servicename.msgname",toAddr,动态参数列表)
 
     toAddr为远程服务器的IP:PORT
+
+    如何确定toAddr由自己实现逻辑确定
 
 ## 睡眠
 
@@ -714,7 +721,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
         3) Struct类型，这时Length为Struct的实际长度+4, Length不包括填充的字节数
 
-            Struct类型由多个Field组成，每个Field可能有3种类型：
+            Struct类型由多个Field组成，Field的类型有3种：
 
                 Int类型，其长度固定为4
                 SystemString类型，可变长度String, 每个SystemString由4字节的长度前缀和实际内容组成, 需对齐
@@ -748,10 +755,10 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
     扩展包头定义参见 src/codec.AvenueCodec object，包括：
 
-| key | Type | 含义 | 类型 | Length | 
+| Key | Type | 含义 | 类型 | Length | 
 | --- | --- | --- | --- | --- |
 | socId | 1 | 客户端标识 | string | 可变 |
-| gsInfos | 2 | 调用者的IP:PORT | struct array { ip int, port int} | 每个struct 12字节 |
+| gsInfos | 2 | 所有调用者的IP:PORT | struct array { ip int, port int} | 每个struct 12字节 |
 | appId | 3 | 应用ID | int | 8 |
 | areaId | 4 | 区ID | int | 8 |
 | groupId | 5 | 组ID | int | 8 |

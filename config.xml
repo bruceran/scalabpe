@@ -6,6 +6,11 @@
     <SapPort>6210</SapPort>
     <CohPort>7210</CohPort>
 
+<!-- 以下是常用插件的最简配置示例，更多配置参数参考配置指南 -->
+
+
+<!-- http server 配置 -->
+<!-- 
     <HttpServerCfg port="8088" devMode="1">
 
         <UrlMapping>
@@ -14,6 +19,137 @@
         </UrlMapping>
 
     </HttpServerCfg>
+-->
+
+<!-- 定时任务配置 -->
+<!-- 
+    <QuartzCfg>
+        <Cron serviceId="999" msgId="101">0/2 * * * * ?</Cron>
+        <Repeat serviceId="999" msgId="102" startDelay="1" repeatInterval="1"/> 
+        <Init serviceId="999" msgId="103" repeatInterval="10"/>
+    </QuartzCfg>
+-->
+
+<!-- 远程avenue服务配置 -->
+<!-- 
+    <SosList>
+        <ServiceId>998</ServiceId>
+        <ServerAddr>192.168.30.100:1111</ServerAddr>
+        <ServerAddr>192.168.30.101:1111</ServerAddr>
+        <ServerAddr>192.168.30.102:1111</ServerAddr>
+    </SosList>
+-->
+
+<!-- 本地缓存示例 -->
+<!-- 
+    <ConfigDb>
+        <ServiceId>997,986</ServiceId>
+        <ConnString>service=jdbc:oracle:thin:@//192.168.30.103:1521/cfg user=cfg password=cfg</ConnString>
+    </ConfigDb>
+-->
+
+<!-- 错误码转换配置 -->
+<!-- 
+    <ErrorCodeCfg localCacheServiceId="997">
+        <Service serviceId="998" resultCodeField="resultCode" resultMsgField="resultMsg"/>
+    </ErrorCodeCfg>
+-->
+
+<!-- 发邮件配置 -->
+<!-- 
+    <MailCfg>
+        <ServiceId>996</ServiceId>
+    </MailCfg>
+-->
+
+<!-- 数据库配置 -->
+<!-- 
+    <DbSosList threadNum="8">
+        <ServiceId>995</ServiceId>
+        <MasterDb conns="8">
+            <DefaultConn>service=jdbc:oracle:thin:@192.168.30.104:1521/user user=test password=test</DefaultConn>
+        </MasterDb>
+    </DbSosList>
+-->
+
+<!-- 同步数据库配置 -->
+<!-- 
+    <DbSosList threadNum="8">
+        <ServiceId>994</ServiceId>
+        <MasterDb conns="8">
+            <DefaultConn>service=jdbc:oracle:thin:@192.168.30.104:1521/user user=test password=test</DefaultConn>
+        </MasterDb>
+    </DbSosList>
+-->
+
+<!-- memcached配置 -->
+<!-- 
+    <CacheSosList readThreadNum="2" writeThreadNum="2">
+        <ServiceId>993,992</ServiceId>
+        <ServerAddr>192.168.30.104:11211</ServerAddr>
+        <ServerAddr>192.168.30.105:11211</ServerAddr>
+    </CacheSosList>
+-->
+
+<!-- redis配置, 服务描述文件和memcache完全一样 -->
+<!-- 
+    <RedisSosList readThreadNum="2" writeThreadNum="2">
+        <ServiceId>993,992</ServiceId>
+        <ServerAddr>192.168.30.104:6379</ServerAddr>
+        <ServerAddr>192.168.30.105:6379</ServerAddr>
+    </RedisSosList>
+-->
+
+<!-- http client 配置 -->
+<!-- 
+
+    <AhtCfg>
+
+    <ServiceId>991,990</ServiceId>
+    <TimeOut>15</TimeOut>
+
+    <Service>
+        <Item>
+            <ServiceId>991</ServiceId>
+            <MsgId>1</MsgId>
+            <ServerUrl>http://192.168.30.1/a</ServerUrl>
+        </Item>
+
+        <Item>
+            <ServiceId>990</ServiceId>
+            <MsgId>-1</MsgId>
+            <NeedSignature>true</NeedSignature>
+            <Method>POST</Method>
+            <CharSet>UTF-8</CharSet>
+            <RequestContentType>application/x-www-form-urlencoded</RequestContentType>
+            <ServerUrl>dynamic</ServerUrl>
+        </Item>
+
+        <Item>
+            <ServiceId>990</ServiceId>
+            <MsgId>1</MsgId>
+        </Item>
+
+        <Item>
+            <ServiceId>990</ServiceId>
+            <MsgId>2</MsgId>
+        </Item>
+
+    </Service>
+
+    </AhtCfg>
+-->
+
+<!-- 本地队列 -->
+<!-- 
+    <LocalQueueCfg receiverServiceId="988" maxSendTimes="5" retryInterval="5000">
+        <ServiceId>989</ServiceId>
+    </LocalQueueCfg>
+或
+    <ConnLocalQueueCfg receiverServiceId="988" concurrentNum="20"  maxSendTimes="5" retryInterval="30000">
+        <ServiceId>989</ServiceId>
+    </ConnLocalQueueCfg>
+-->
 
 </parameters>
 

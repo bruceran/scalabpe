@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="userpaycntcache" id="992" IsTreeStruct ="false">
+	
+	<type name="exptime_type" class="int" code="10000" default="172800" />
+  
+  	<type name="userId_type" class="string" code="1"/>
+  	<type name="date_type" class="string" code="2"/>
+	  	  	  	
+	<type name="cnt_type"  class="int" code="10001"/>
+	
+	<!-- 数据累加的缓存 -->
+
+	<message name="get" id="1">
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+			<field name="date" type="date_type"/>
+		</requestParameter>
+		
+		<responseParameter>
+			<field name="cnt" type="cnt_type"/>
+		</responseParameter>
+	</message>
+
+	<message name="incrby" id="6">
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+			<field name="date" type="date_type"/>
+			<field name="cnt" type="cnt_type"/>
+		</requestParameter>		
+		<responseParameter>			
+			<field name="cnt" type="cnt_type"/>
+		</responseParameter>
+    </message>
+
+	<message name="decrby" id="7">
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+			<field name="date" type="date_type"/>
+			<field name="cnt" type="cnt_type"/>
+		</requestParameter>		
+		<responseParameter>			
+			<field name="cnt" type="cnt_type"/>
+		</responseParameter>
+	</message>
+	
+</service>

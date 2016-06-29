@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="synceduserdb" id="994" IsTreeStruct ="false">
+
+	<type name="rowcount_type" class="int" code="1"/>
+	<type name="userId_type" class="string" code="2"/>
+	<type name="name_type" class="string" code="3"/>
+	<type name="nickName_type" class="string" code="4"/>
+	<type name="createTime_type" class="string" code="5"/>
+	<type name="updateTime_type" class="string" code="6"/>
+
+	<message name="beginTransaction" id="10000" />  <!-- 必须显示调用 -->
+	<message name="commit" id="10001" /> <!-- 必须显示调用 -->
+	<message name="rollback" id="10002" /> <!-- 异常时无需显示调用，非异常时想回滚需要显示调用 -->
+	
+	<message name="queryUser" id="1">
+		<sql><![CDATA[
+			select id, name, nickname, createtime, updatetime from tb_user where id = :userid
+		]]></sql>
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="rowcount" type="rowcount_type"/>
+			<field name="name" type="name_type"/>
+			<field name="nickName" type="nickName_type"/>
+			<field name="createTime" type="createTime_type"/>
+			<field name="updateTime" type="updateTime_type"/>
+		</responseParameter>
+	</message>
+	
+	<message name="insert" id="2">
+		<sql><![CDATA[
+			insert into tb_user(id,name,nickname,createtime,updatetime) 
+			values(seq_user.nextval, :name, :nickname, sysdate, sysdate)
+		]]></sql>
+		<requestParameter>
+			<field name="name" type="name_type"/>
+			<field name="nickName" type="nickName_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="rowcount" type="rowcount_type"/>
+		</responseParameter>
+	</message>
+	
+	<message name="update" id="3">
+		<sql><![CDATA[
+			update tb_user set name = :name,
+			nickname = :nickname,
+			updatetime = sysdate
+			where id = :userid
+		]]></sql>
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+			<field name="name" type="name_type"/>
+			<field name="nickName" type="nickName_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="rowcount" type="rowcount_type"/>
+		</responseParameter>
+	</message>
+	
+	<message name="delete" id="4">
+		<sql><![CDATA[
+			delete from tb_user where id = :userid
+		]]></sql>
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="rowcount" type="rowcount_type"/>
+		</responseParameter>
+	</message>
+
+	<message name="deleteAllUsers" id="5">
+		<sql><![CDATA[
+			delete from tb_user 
+		]]></sql>
+		<requestParameter>
+		</requestParameter>
+		<responseParameter>
+			<field name="rowcount" type="rowcount_type"/>
+		</responseParameter>
+	</message>
+	
+</service>
+

@@ -41,4 +41,25 @@
 		</responseParameter>
 	</message>
 
+	<message name="jobtest1" id="101">
+		<requestParameter>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+
+	<message name="jobtest2" id="102">
+		<requestParameter>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+
+	<message name="jobtest3" id="103">
+		<requestParameter>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+
 </service>

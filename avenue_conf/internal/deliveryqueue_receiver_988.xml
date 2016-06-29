@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service name="deliveryqueue_receiver" id="988" IsTreeStruct ="false">	
+
+    <type name="x_isLast_type" class="int" code="1"/>   
+    <type name="x_sendCount_type" class="int" code="2"/>    
+    <type name="x_sendTimeUsed_type" class="int" code="3"/> 
+
+    <type name="appId_type" class="int" code="10"/>
+    <type name="sndaId_type" class="string" code="11"/>
+    <type name="amount_type" class="int" code="12"/>  
+    <type name="payTime_type" class="string" code="13"/>  
+
+    <message name="receive1" id="1">	<!-- 根据id和write1对应，用户实现自己的通知流程到A，此流程由框架调用 -->	
+        <requestParameter>		
+            <field name="appId" type="appId_type" />
+            <field name="sndaId" type="sndaId_type" />    
+            <field name="x_sendCount" type="x_sendCount_type" />   <!-- 有固定含义，name 是固定的，type可自定义 -->
+            <field name="x_isLastSend" type="x_isLast_type" />     <!-- 有固定含义，name 是固定的，type可自定义 -->
+            <field name="x_sendTimeUsed" type="x_sendTimeUsed_type" />	<!-- 有固定含义，name 是固定的，type可自定义 -->
+        </requestParameter>	
+        <responseParameter/>	
+    </message>	
+    
+    <message name="receive2" id="2">    <!-- 根据id和write2对应，用户实现自己的通知流程到B，此流程由框架调用 --> 
+        <requestParameter>			
+            <field name="appId" type="appId_type" />		
+            <field name="sndaId" type="sndaId_type" />   
+            <field name="amount" type="amount_type" />      
+            <field name="payTime" type="payTime_type" />      
+            <field name="x_sendCount" type="x_sendCount_type" />    <!-- 有固定含义，name 是固定的，type可自定义 -->
+            <field name="x_isLastSend" type="x_isLast_type" />      <!-- 有固定含义，name 是固定的，type可自定义 -->
+            <field name="x_sendTimeUsed" type="x_sendTimeUsed_type" />	<!-- 有固定含义，name 是固定的，type可自定义 --> 
+        </requestParameter>		
+        <responseParameter/>	
+    </message>
+
+</service>

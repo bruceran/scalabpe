@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<service  name="payservice" id="998" IsTreeStruct ="false">
+
+ 	<type name="resultCode_type" class="int" code="1"/>
+	<type name="resultMsg_type" class="string" code="2"/>
+
+ 	<type name="userId_type" class="string" code="3"/>
+ 	<type name="channelId_type" class="int" code="4"/>
+ 	<type name="amount_type" class="int" code="5"/>
+
+	<message name="pay" id="1">
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+			<field name="channelId" type="channelId_type"/>
+			<field name="amount" type="amount_type"/>
+		</requestParameter>
+
+		<responseParameter>
+			<field name="resultCode" type="resultCode_type"/>
+			<field name="resultMsg" type="resultMsg_type"/>
+		</responseParameter>
+	</message>
+
+</service>

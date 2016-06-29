@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<service  name="appconfig" id="986" IsTreeStruct ="false">
+	
+	<!-- 小于10000的是key，可以多个，实际key由多个key组成 -->
+	<type name="appId_type" class="int" code="1"/>   
+
+	<!-- 大于10000的是value，可以多个，实际value由多个value组成 -->
+	<type name="allowPay_type" class="int" code="10001"/>
+	<type name="allowTransfer_type" class="int" code="10002"/> 
+	<type name="allowDeposit_type" class="int" code="10003"/> 
+	
+	<sql>SELECT appid,allowpay,allowtransfer,allowdeposit FROM TBAPP</sql>
+	
+	<message name="get" id="1">
+		<requestParameter>
+			<field name="appId" type="appId_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="allowPay" type="allowPay_type"/>
+			<field name="allowTransfer" type="allowTransfer_type"/>
+			<field name="allowDeposit" type="allowDeposit_type"/>
+		</responseParameter>
+	</message>
+	
+</service>

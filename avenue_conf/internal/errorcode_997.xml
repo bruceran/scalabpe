@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<service  name="errorCodeService" id="997" IsTreeStruct ="false">
+	
+	<type name="resultCode_type" class="int" code="1"/>
+	<type name="resultMsg_type" class="string" code="10001"/>
+	
+	<sql>SELECT code,msg FROM TBERRORCODE</sql>
+	
+	<message name="get" id="1">
+		<requestParameter>
+			<field name="resultCode" type="resultCode_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="resultMsg" type="resultMsg_type"/>
+		</responseParameter>
+	</message>
+	
+</service>
