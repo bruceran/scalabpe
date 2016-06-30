@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<parameters>
+
+	<HbaseCfg>
+		<ServiceId>980</ServiceId>
+	</HbaseCfg>
+
+</parameters>

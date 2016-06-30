@@ -4,6 +4,8 @@
 
 [重量级插件](#heavy)
 
+[Hbase插件开发示例](#hbase)
+
 # <a name="light">轻量级插件</a>
 
 	轻量级插件指的是框架或插件暴露出的一些接口，开发人员只要写一个类实现特定的接口就可完成某些
@@ -162,7 +164,7 @@
 
 ## 插件对象的定义
 
-	class PluginXxxClass(val router:Router,val cfgNode: Node)
+	class XxxPlugin(val router:Router,val cfgNode: Node)
 
 	每个插件对象的构造函数都一样：
 		router  框架的router对象
@@ -204,3 +206,23 @@
 
 [返回](#toc)
 
+# <a name="hbase">Hbase插件开发示例</a>
+
+	Hbase插件为一重量级插件， 在third_party/hadoop目录下
+
+	文件说明：
+
+		avenue_conf/  该插件支持的服务描述文件示例
+		src/	 源码，release notes， 插件配置文件
+		lib/ 编译和运行该插件需要的jar文件
+		build linux下编译脚本 
+		build.bat windows下编译脚本
+		config.xml 该插件的配置脚本示例
+
+	编译完成后做如下操作就可让框架启动时来加载该插件:
+
+		将lib/下所有文件复制到项目的lib/目录下
+		参照avenue_conf/hbase_980编写新的服务描述文件
+		参照config.xml修改项目的config.xml
+
+[返回](#toc)

@@ -97,6 +97,8 @@
 
 	service start 启动服务
 	service stop 停止服务
+	service restart 重启服务
+	service status 查看状态
 	service runtest 发送接口测试指令
 	service help 帮助
 
@@ -109,7 +111,7 @@
 
 ## 编译src/目录下的源码
 
-	运行 build 脚本进行编译
+	运行 build 脚本进行编译, build脚本只用于编译src/目录下的源代码, compose_conf下的在每次启动时编译
 	编译后会生成2个jar包：lib/scalabpe-core-1.1.x.jar 和 lib/scalabpe-plugins-1.1.jar 
 	每次修改src下的代码后需要重新编译再运行service脚本才能看到最新效果
 

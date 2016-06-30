@@ -1,0 +1,38 @@
+
+pluginname=hadoop
+pluginversion=1.0.0
+
+show_help()
+{
+cat << EOF
+		
+usage:
+
+./build                     # build all source files including test cases (default)
+./build runscala            # enter scala console with all jars in lib/
+./build clean               # remove temp files
+./build help                # this help
+
+EOF
+}
+
+case "$1" in 
+	clean)
+		rm -fr classes/*
+		rm -f  ./lib/scalabpe-plugin-$pluginname-$pluginversion.jar
+		;;
+	runscala)
+		env JAVA_OPTS="-Dfile.encoding=UTF-8"  scala -cp "classes:../../lib/*:lib/*:." 
+		;;	
+	help)
+		show_help
+		;;
+	*)
+		if [ ! -d classes ] ; then mkdir classes; fi;
+		env JAVA_OPTS="-Dfile.encoding=UTF-8" scalac -deprecation -encoding UTF8 -cp "../../lib/*:lib/*:."  -d "./classes"  src/*.scala
+		cp -f src/jvmdbbroker.plugins.conf ./classes/
+		cp -f src/release_notes.txt ./classes/
+		jar cf ./lib/scalabpe-plugin-$pluginname-$pluginversion.jar -C ./classes/  ./jvmdbbroker/plugin -C ./classes/ ./jvmdbbroker.plugins.conf -C ./classes/ ./release_notes.txt
+		;;
+esac
+	
