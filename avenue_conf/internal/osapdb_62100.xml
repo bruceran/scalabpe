@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="osap_db" id="62100" IsTreeStruct ="true">
+
+  <!-- 此文件用于http server插件里加载osap配置数据, 服务号可用 osapDbServiceId 配置参数调整 -->
+
+	<type name="rowCount_type" class="int" code="1" />
+	<type name="merchantname_type" class="string" code="2" />
+	<type name="merchantname_array_type" class="array" itemType="merchantname_type"/>  
+	<type name="spid_type" class="int" code="3" />	
+	<type name="spid_array_type" class="array" itemType="spid_type"/>  
+	<type name="appid_type" class="int" code="4" />  
+	<type name="appid_array_type" class="array" itemType="appid_type"/>  
+	<type name="areaid_type" class="int" code="5" />  
+	<type name="areaid_array_type" class="array" itemType="areaid_type"/>  
+	<type name="groupid_type" class="int" code="6" />  
+	<type name="groupid_array_type" class="array" itemType="groupid_type"/>  
+  <type name="key1_type" class="string" code="7" />  
+  <type name="key1_array_type" class="array" itemType="key1_type"/>  
+  <type name="key1starttime_type" class="string" code="8" />  
+  <type name="key1starttime_array_type" class="array" itemType="key1starttime_type"/>  
+  <type name="key1endtime_type" class="string" code="9" />  
+  <type name="key1endtime_array_type" class="array" itemType="key1endtime_type"/>  
+  <type name="key2_type" class="string" code="10" />  
+  <type name="key2_array_type" class="array" itemType="key2_type"/>  
+  <type name="key2starttime_type" class="string" code="11" />  
+  <type name="key2starttime_array_type" class="array" itemType="key2starttime_type"/>  
+  <type name="key2endtime_type" class="string" code="12" />  
+  <type name="key2endtime_array_type" class="array" itemType="key2endtime_type"/>  
+  <type name="ipaddr_type" class="string" code="13" />  
+  <type name="ipaddr_array_type" class="array" itemType="ipaddr_type"/>  
+  <type name="serviceid_type" class="int" code="14" />  
+  <type name="serviceid_array_type" class="array" itemType="serviceid_type"/>  
+  <type name="msgid_type" class="int" code="15" />  
+  <type name="msgid_array_type" class="array" itemType="msgid_type"/>  
+
+	 <message name="queryMerchants" id="1">
+    <sql><![CDATA[
+        select merchantname,spid,appid,areaid,groupid 
+        from tbmerchant where status = 1
+      ]]></sql>
+    <requestParameter>
+    </requestParameter>
+    <responseParameter>
+      <field name="rowcount" type="rowcount_type" />
+      <field name="merchantname_array" type="merchantname_array_type"/>
+      <field name="spid_array" type="spid_array_type"/>
+      <field name="appid_array" type="appid_array_type"/>
+      <field name="areaid_array" type="areaid_array_type"/>
+      <field name="groupid_array" type="groupid_array_type"/>
+    </responseParameter>
+  </message>
+
+   <message name="queryKeys" id="2">
+    <sql><![CDATA[
+				select a.merchantname,b.key1,b.key1starttime,b.key1endtime,b.key2,b.key2starttime,b.key2endtime
+				 from tbmerchant a , tbdigest b where a.merchantid = b.merchantid and a.status = 1 and b.digesttype = 1
+      ]]></sql>
+    <requestParameter>
+    </requestParameter>
+    <responseParameter>
+      <field name="rowcount" type="rowcount_type" />
+      <field name="merchantname_array" type="merchantname_array_type"/>
+      <field name="key1_array" type="key1_array_type"/>
+      <field name="key1starttime_array" type="key1starttime_array_type"/>
+      <field name="key1endtime_array" type="key1endtime_array_type"/>
+      <field name="key2_array" type="key2_array_type"/>
+      <field name="key2starttime_array" type="key2starttime_array_type"/>
+      <field name="key2endtime_array" type="key2endtime_array_type"/>
+    </responseParameter>
+  </message>
+  
+   <message name="queryIps" id="3">
+    <sql><![CDATA[
+      select a.merchantname,b.ipaddr 
+      from tbmerchant a , tbiplist b where a.merchantid = b.merchantid and a.status = 1 
+      ]]></sql>
+    <requestParameter>
+    </requestParameter>
+    <responseParameter>
+      <field name="rowcount" type="rowcount_type" />
+      <field name="merchantname_array" type="merchantname_array_type"/>
+      <field name="ipaddr_array" type="ipaddr_array_type"/>
+    </responseParameter>
+  </message>
+
+   <message name="queryPrivileges" id="4">
+    <sql><![CDATA[
+			select distinct merchantname,serviceid,msgid from (	select d.merchantname,e.servicecode as serviceid,c.msgcode as msgid from tbauth a, tbrolemsg b, tbmsg c, tbmerchant d, tbservice e
+			where a.roleid = b.roleid and b.msgid = c.msgid and c.serviceid =e.serviceid and a.merchantid = d.merchantid
+			union all select d.merchantname,e.servicecode as serviceid,b.msgcode as msgid from tbmerchantmsg a, tbmsg b , tbmerchant d, tbservice e
+			where a.msgid = b.msgid and b.serviceid =e.serviceid and a.merchantid = d.merchantid ) t_all 
+      ]]></sql>
+    <requestParameter>
+    </requestParameter>
+    <responseParameter>
+      <field name="rowcount" type="rowcount_type" />
+      <field name="merchantname_array" type="merchantname_array_type"/>
+      <field name="serviceid_array" type="serviceid_array_type"/>
+      <field name="msgid_array" type="msgid_array_type"/>
+    </responseParameter>
+  </message>
+   
+</service>

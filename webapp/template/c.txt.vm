@@ -1,0 +1,33 @@
+以下的velocity语法都是合法的
+
+<return_code>${return_code}</return_code>
+<contextPath>${context_path}</contextPath>
+
+输出内容中如果有a, a 是简单类型 string 或 int
+${a}
+
+如果m是结构体，有一个key的field，可用
+${m.key} 表示该值, 等价形式：${m.get("key")}   ${m["key"]}
+
+如果a_array是数组，可以这样遍历
+#foreach( $s in $a_Array )
+${s}
+#end
+
+可以这样直接引用数组里的值:
+$a_Array[0]
+
+
+如果m_array是结构体数组，可以这样遍历
+#foreach( $m in $m_Array )
+${m.key}
+#end
+
+可以这样直接引用数组里的值:
+$m_Array[0]["key"]
+
+可以这样包含其他文件
+#parse("c-inc.txt.vm")
+
+如果希望没有值的时候输出空串，可用$!{a} $!{m.key} $!{s}
+

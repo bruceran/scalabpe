@@ -1,0 +1,9 @@
+<!-- 
+xml velocity 模板, velocity模板都带.vm后缀
+
+根据文件名去掉.vm后的扩展名来取文件类型
+-->
+
+<xml>
+    <return_code>${return_code}</return_code>
+</xml>    

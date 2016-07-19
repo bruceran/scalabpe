@@ -1,0 +1,8 @@
+<!-- 
+xml 简单模板, 简单模板不带.vm后缀
+
+根据文件名的扩展名来取文件类型
+-->
+<xml>
+    <return_code>${return_code}</return_code>
+</xml>    
