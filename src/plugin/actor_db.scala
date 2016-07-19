@@ -1058,7 +1058,7 @@ class DbClient(
   }
 
   def parseFieldName(field:String):String = {
-    val trimedfield = field.trim
+    val trimedfield = field.trim.replace("`","") // ` is a special char in mysql
     val p1 = trimedfield.lastIndexOf(" ")
     if( p1 < 0 ) {
         val p2 = trimedfield.lastIndexOf(".")

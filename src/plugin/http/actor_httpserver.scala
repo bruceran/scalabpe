@@ -20,7 +20,7 @@ import java.text.{SimpleDateFormat,ParsePosition}
 
 import jvmdbbroker.core._
 
-object TimeHelper {
+object HttpTimeHelper {
 
     val FORMAT_TYPE_TIMESTAMP = "yyyy-MM-dd HH:mm:ss"
 
@@ -2298,13 +2298,13 @@ ETAGS: "xxx"
         var t = 0L
 
         try {
-            t = TimeHelper.convertTimestamp(s).getTime
+            t = HttpTimeHelper.convertTimestamp(s).getTime
         } catch {
             case e:Exception =>
                 return defaultValue
         }
 
-        if( TimeHelper.convertTimestamp(new Date(t)) != s ) {
+        if( HttpTimeHelper.convertTimestamp(new Date(t)) != s ) {
                 return defaultValue
         }
 

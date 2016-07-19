@@ -1,4 +1,10 @@
 
+1.1.1 (20160719)
+================
+
+* (07/19)HashMapStringAny的.lm .ls .li方法支持从ArrayBufferAny对象中取数据, 用于从JsonCodec解析出的对象取值
+* (07/19)增加LinkedHashMapStringAny，用于生成需要保持插入顺序的json数据
+
 1.1.0 (20160617)
 ================
 

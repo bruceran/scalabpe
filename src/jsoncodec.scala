@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.node._
 import java.io.StringWriter
+import scala.collection.mutable.LinkedHashMap
 
 object JsonCodec {
 
@@ -143,6 +144,74 @@ object JsonCodec {
                 case b:Boolean =>
                   jsonGenerator.writeBooleanField(key,b)
                 case map:HashMapStringAny =>
+                  jsonGenerator.writeFieldName(key)
+                  val s = mkString(map)
+                  jsonGenerator.writeRawValue(s)
+                case map:LinkedHashMapStringAny =>
+                  jsonGenerator.writeFieldName(key)
+                  val s = mkString(map)
+                  jsonGenerator.writeRawValue(s)
+                case buff:ArrayBufferString =>
+                  jsonGenerator.writeFieldName(key)
+                  val s = mkString(buff)
+                  jsonGenerator.writeRawValue(s)
+                case buff:ArrayBufferInt =>
+                  jsonGenerator.writeFieldName(key)
+                  val s = mkString(buff)
+                  jsonGenerator.writeRawValue(s)
+                case buff:ArrayBufferMap =>
+                  jsonGenerator.writeFieldName(key)
+                  val s = mkString(buff)
+                  jsonGenerator.writeRawValue(s)
+                case buff:ArrayBufferAny =>
+                  jsonGenerator.writeFieldName(key)
+                  val s = mkString(buff)
+                  jsonGenerator.writeRawValue(s)
+                case _ =>
+                  jsonGenerator.writeStringField(key, value.toString)
+              }
+
+          }
+
+        }
+
+        jsonGenerator.writeEndObject()
+        jsonGenerator.close()
+
+        writer.toString()
+
+    }
+
+    def mkString(m:LinkedHashMapStringAny): String = {
+        if( m == null ) return null
+        val writer = new StringWriter()
+        val jsonGenerator = jsonFactory.createGenerator(writer)
+        jsonGenerator.writeStartObject()
+
+        for( (key,value) <- m) {
+          
+          if( value == null ) {
+              jsonGenerator.writeNullField(key)
+          } else {
+
+              value match {
+                case s:String =>
+                  jsonGenerator.writeStringField(key,s)
+                case i:Int =>
+                  jsonGenerator.writeNumberField(key,i)
+                case l:Long =>
+                  jsonGenerator.writeNumberField(key,l)
+                case d:Double =>
+                  jsonGenerator.writeNumberField(key,d)
+                case d:Float =>
+                  jsonGenerator.writeNumberField(key,d)
+                case b:Boolean =>
+                  jsonGenerator.writeBooleanField(key,b)
+                case map:HashMapStringAny =>
+                  jsonGenerator.writeFieldName(key)
+                  val s = mkString(map)
+                  jsonGenerator.writeRawValue(s)
+                case map:LinkedHashMapStringAny =>
                   jsonGenerator.writeFieldName(key)
                   val s = mkString(map)
                   jsonGenerator.writeRawValue(s)

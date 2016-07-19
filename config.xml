@@ -65,7 +65,7 @@
 <!-- 数据库配置 -->
 <!-- 
     <DbSosList threadNum="8">
-        <ServiceId>995</ServiceId>
+        <ServiceId>995,62100</ServiceId>
         <MasterDb conns="8">
             <DefaultConn>service=jdbc:oracle:thin:@192.168.30.104:1521/user user=test password=test</DefaultConn>
         </MasterDb>

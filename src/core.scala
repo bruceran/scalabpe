@@ -3,6 +3,7 @@ package jvmdbbroker.core
 import java.util.concurrent.ConcurrentHashMap
 import java.nio.ByteBuffer
 import scala.collection.mutable.HashMap
+import scala.collection.mutable.LinkedHashMap
 import scala.collection.mutable.ArrayBuffer
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,6 +26,8 @@ class HashMapStringAny extends HashMap[String,Any] {
   def exists(names:String) : Boolean = TypeSafe.exists(names,this)
 }
 class ArrayBufferMap extends ArrayBuffer[HashMapStringAny]
+
+class LinkedHashMapStringAny extends LinkedHashMap[String,Any] {}
 
 object HashMapStringString {
   def apply(elems: Tuple2[String, String]*): HashMapStringString = {
@@ -467,6 +470,12 @@ object TypeSafe {
 
     if( value == null ) return null
     if( value.isInstanceOf[ ArrayBufferString ] ) return value.asInstanceOf[ ArrayBufferString  ]
+    if( value.isInstanceOf[ ArrayBufferAny ] ) {
+      val aa = value.asInstanceOf[ ArrayBufferAny ]
+      val as = new ArrayBufferString()
+      for( a <- aa if a.isInstanceOf[String]  ) as +=a.asInstanceOf[String]
+      return as
+    }    
     throw new RuntimeException("wrong data type, name="+name)
   }
   def li(name:String,body:HashMapStringAny) : ArrayBufferInt = {
@@ -474,6 +483,12 @@ object TypeSafe {
 
     if( value == null ) return null
     if( value.isInstanceOf[ ArrayBufferInt ] ) return value.asInstanceOf[ ArrayBufferInt ]
+    if( value.isInstanceOf[ ArrayBufferAny ] ) {
+      val aa = value.asInstanceOf[ ArrayBufferAny ]
+      val ai = new ArrayBufferInt()
+      for( a <- aa if a.isInstanceOf[Int]  ) ai +=a.asInstanceOf[Int]
+      return ai
+    }    
     throw new RuntimeException("wrong data type, name="+name)
   }
   def lm(name:String,body:HashMapStringAny) : ArrayBufferMap = {
@@ -481,6 +496,12 @@ object TypeSafe {
 
     if( value == null ) return null
     if( value.isInstanceOf[ ArrayBufferMap ] ) return value.asInstanceOf[ ArrayBufferMap ]
+    if( value.isInstanceOf[ ArrayBufferAny ] ) {
+      val aa = value.asInstanceOf[ ArrayBufferAny ]
+      val am = new ArrayBufferMap()
+      for( a <- aa if a.isInstanceOf[HashMapStringAny] ) am += a.asInstanceOf[HashMapStringAny]
+      return am
+    }
     throw new RuntimeException("wrong data type, name="+name)
   }
 

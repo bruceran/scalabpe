@@ -6,6 +6,8 @@
 
 [日志文件格式](#format)
 
+[日志数据上报和拦截](#report)
+
 [logback.xml配置文件](#logback)
 
 [框架使用到的错误码](#error)
@@ -258,6 +260,74 @@
 
 [返回](#toc)
 
+# <a name="report">日志数据上报和拦截</a>
+    
+## 格式
+
+    当config.xml里配置了
+
+        <ReportUrl>http://api.monitor.sdo.com/stat_more_actions.php</ReportUrl>
+
+        框架会以如下的方式上报 request_summary.log 里的数据
+
+        POST /stat_more_actions.php HTTP/1.0
+        Content-Type: application/x-www-form-urlencoded
+        action[]=1734|1739|1740|1743,0  间隔内连接数
+        &action[]=1734|1739|1740|1744,0 间隔内断开连接数
+        &action[]=1734|1739|1740|1745,568 当前连接数
+        &action[]=1734|1739|1740|1746,6520 间隔内请求数
+        &action[]=1734|1739|1740|1747,4339 间隔内成功应答数
+        &action[]=1734|1739|1740|1748,2181 间隔内失败应答数
+        &ip=10.129.58.21
+
+        action[]的格式为： 固定配置项,数量
+
+    当config.xml里配置了
+
+        <DetailReportUrl>http://api.monitor.sdo.com/stat_pages.php</DetailReportUrl>
+
+        框架会以如下的方式上报request_stat.log里的数据
+
+        POST /stat_pages.php HTTP/1.0
+        Content-Type: application/x-www-form-urlencoded
+        action[]=1734|1764|1780,16_206,2  对外业务请求数
+        &action[]=1734|1765|1783,16_206,2  对外业务响应成功数
+        &action[]=1734|1766|1786,16_206,0  对外业务响应失败数
+        &action[]=1734|1767|1789,16_206,0  对外业务10ms内响应数
+        &action[]=1734|1768|1792,16_206,2  对外业务50ms内响应数
+        &action[]=1734|1769|1795,16_206,0  对外业务250ms内响应数
+        &action[]=1734|1770|1798,16_206,0  对外业务1s内响应数
+        &action[]=1734|1771|1774,16_206,0  对外业务3s内响应数
+        &action[]=1734|1772|1777,16_206,0  对外业务other时间段响应数
+        &ip=10.129.58.21
+
+        action[]的格式为： 固定配置项,服务号_消息号,数量
+
+        框架会以如下的方式上报sos_stat.log里的数据
+
+        POST /stat_pages.php HTTP/1.0
+        Content-Type: application/x-www-form-urlencoded
+        action[]=1734|1749|1801,7,106  子服务请求数
+        &action[]=1734|1750|1804,7,2  子服务响应成功数
+        &action[]=1734|1751|1807,7,104  子服务响应失败数
+        &action[]=1734|1752|1810,7,106 子服务10ms内响应数
+        &action[]=1734|1753|1813,7,0 子服务50ms内响应数
+        &action[]=1734|1754|1816,7,0  子服务150ms内响应数
+        &action[]=1734|1755|1819,7,0  250ms内响应数
+        &action[]=1734|1756|1759,7,0  1s内响应数
+        &action[]=1734|1757|1762,7,0   子服务other时间段响应数
+        &action[]=1734|2893|2895,7,0  子服务响应超时数
+        &ip=10.129.58.21
+
+        action[]的格式为： 固定配置项,服务号,数量
+
+## 拦截
+
+    用户如希望实现自己的监控服务器，可实现自己的http服务器，只要按上述格式处理
+    上报的数据即可。
+
+[返回](#toc)
+
 # <a name="logback">logback.xml配置文件</a>
 
 ## 请求响应日志文件 request_audit.log 输出配置
@@ -310,6 +380,7 @@
     
     request_audit.log日志文件中只有入参出参，如果希望将流程变量或中间变量也加入该日志，
     可使用logVar(key,value)方法
+
 
 [返回](#toc)
 
