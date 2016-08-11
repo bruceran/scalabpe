@@ -62,4 +62,17 @@
 		</responseParameter>
 	</message>
 
+	<message name="redistest" id="104">
+		<requestParameter>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+	<message name="memcachetest" id="105">
+		<requestParameter>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+
 </service>

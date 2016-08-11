@@ -1,0 +1,54 @@
+//$service999.memcachetest.withsyncedinvoke
+
+//#receive
+
+    var ret:InvokeResult = null
+
+    //for( i <- 0 until 5 ) {
+        //ret = syncedInvoke("newmemcache.increment",3000,"key"->("bb"+i))
+        //println(ret.toString)
+    //}
+
+    //ret = syncedInvoke("newmemcache.mget",3000,"keys"->ArrayBufferString("bb1","bb2","bb3","bb0","bb4"))
+    //println(ret.toString)
+    
+    //ret = syncedInvoke("newmemcache.set",3000,"key"->"a1","value"->"1111")
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.set",3000,"key"->"a2","value"->"2222")
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.set",3000,"key"->"a3","value"->"3333","expire"->0)
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.mget",3000,"keys"->ArrayBufferString("a1","a2","a3"))
+    //println(ret.toString)
+
+    //ret = syncedInvoke("newmemcache.get",3000,"key"->"a")
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.set",3000,"key"->"a","value"->"345测试213","flags"->123,"cas"->ret.s("cas"))
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.set",3000,"key"->"a","value"->"345测试213","flags"->123,"cas"->"12")
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.set",3000,"key"->"a","value"->"9999345测试213","flags"->123)
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.add",3000,"key"->"a","value"->"222222","flags"->222)
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.replace",3000,"key"->"a","value"->"333333","flags"->333)
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.get",3000,"key"->"a")
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.get",3000,"key"->"a2")
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.delete",3000,"key"->"a")
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.get",3000,"key"->"a")
+    //println(ret.toString)
+
+    //ret = syncedInvoke("newmemcache.increment",3000,"key"->"d","step"->50,"init"->10)
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.decrement",3000,"key"->"e","step"->5,"init"->995)
+    //println(ret.toString)
+    //ret = syncedInvoke("newmemcache.decrement",3000,"key"->"f")
+    //println(ret.toString)
+
+    reply(0)
+  
+

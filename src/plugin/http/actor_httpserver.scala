@@ -61,12 +61,12 @@ class OsapMerchantCfg(val merchantName:String,val appId:Int,val areaId:Int,
     val privilegeSet:HashSet[String] = HashSet[String]() )
 
 class OsapRefreshData {
-  var merchants:InvokeResult = _
-  var keys:InvokeResult = _
-  var ips:InvokeResult = _
-  var privileges:InvokeResult = _
+    var merchants:InvokeResult = _
+    var keys:InvokeResult = _
+    var ips:InvokeResult = _
+    var privileges:InvokeResult = _
 
-  def allReplied() = merchants != null && keys != null && ips != null && privileges != null
+    def allReplied() = merchants != null && keys != null && ips != null && privileges != null
 }
 
 class RpcInfo(val requestId:String,val id:String, val uri:String,val bodyParams:HashMapStringAny,
@@ -76,24 +76,24 @@ class RpcInfo(val requestId:String,val id:String, val uri:String,val bodyParams:
 
 class RpcCall(val buff:ArrayBuffer[RpcInfo]) {
 
-  def updateResult(tpl: Tuple3[HttpSosRequestResponseInfo,HashMap[String,Cookie],HashMap[String,String]]):Unit = {
-    val (reqRes,cookies,headers) = tpl
-    for( info <- buff if info.requestId == reqRes.req.requestId ) {
-      info.reqRes = reqRes
-      info.cookies = cookies
-      info.headers = headers
+    def updateResult(tpl: Tuple3[HttpSosRequestResponseInfo,HashMap[String,Cookie],HashMap[String,String]]):Unit = {
+        val (reqRes,cookies,headers) = tpl
+        for( info <- buff if info.requestId == reqRes.req.requestId ) {
+            info.reqRes = reqRes
+            info.cookies = cookies
+            info.headers = headers
+        }
     }
-  }
 
-  def finished():Boolean = {
-    !buff.exists( _.reqRes == null )
-  }
+    def finished():Boolean = {
+        !buff.exists( _.reqRes == null )
+    }
 
 }
 
 
 class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
-    with BeforeClose  with Refreshable with AfterInit with HttpServer4Netty with Logging with Dumpable with Closable {
+with BeforeClose  with Refreshable with AfterInit with HttpServer4Netty with Logging with Dumpable with Closable {
 
     type ArrayBufferPattern = ArrayBuffer[Tuple2[Int,String]];
 
@@ -105,8 +105,8 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
     val MIMETYPE_HTML = "text/html"
     val MIMETYPE_PLAIN = "text/plain"
     val MIMETYPE_DEFAULT = "application/octet-stream"
-	val MIMETYPE_MULTIPART = "multipart/form-data"
-	
+    val MIMETYPE_MULTIPART = "multipart/form-data"
+
     val errorFormat = """{"return_code":%d,"return_message":"%s","data":{}}"""
     val rpcFormat = """{"jsonrpc":"2.0","id":"%s","result":%s}"""
 
@@ -114,12 +114,12 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
     val HTTP_DATE_GMT_TIMEZONE = "GMT";
 
     val df_tl = new ThreadLocal[SimpleDateFormat]() {
-                 override def initialValue() : SimpleDateFormat = {
-                     val df = new SimpleDateFormat(HTTP_DATE_FORMAT,Locale.US)
-                     df.setTimeZone(TimeZone.getTimeZone(HTTP_DATE_GMT_TIMEZONE));
-                     df
-             }
-          }
+        override def initialValue() : SimpleDateFormat = {
+            val df = new SimpleDateFormat(HTTP_DATE_FORMAT,Locale.US)
+            df.setTimeZone(TimeZone.getTimeZone(HTTP_DATE_GMT_TIMEZONE));
+            df
+        }
+    }
 
     var threadNum = 4
     val queueSize = 20000
@@ -146,9 +146,9 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
     var queryStringFieldName = "queryString"
     var contentTypeFieldName = "contentType"
     var contentDataFieldName = "contentData"
-	var maxContentLength = 5000000
+    var maxContentLength = 5000000
     var sessionEncKey = CryptHelper.toHexString("9*cbd35w".getBytes());
-	
+
     val classexMap = new HashMap[String,HashMap[String,String]]()
     val urlMapping = new HashMap[String,Tuple4[Int,Int,String,ArrayBufferPattern]]
     val msgAttrs = new HashMap[String,String]
@@ -163,21 +163,21 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
     val webappStaticDir = webappDir+File.separator+"static"
     val webappStaticDirExisted = new File(webappStaticDir).exists()
     val webappUploadDir = webappDir+File.separator+"upload"
-	
+
     var defaultMimeTypes =
-            """
-            text/html html htm
-            text/plain txt text
-            text/css css
-            text/javascript js
-            text/xml xml
-            application/json json
-            image/gif gif
-            image/jpeg jpeg jpg jpe
-            image/tiff tiff tif
-            image/png png
-            image/x-icon ico
-            """
+        """
+text/html html htm
+text/plain txt text
+text/css css
+text/javascript js
+text/xml xml
+application/json json
+image/gif gif
+image/jpeg jpeg jpg jpe
+image/tiff tiff tif
+image/png png
+image/x-icon ico
+    """
     var mimeTypeMap = new HashMapStringString
 
     var devMode = false
@@ -274,7 +274,7 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
 
         s = (cfgNode \ "@maxContentLength").text
         if( s != "" ) maxContentLength = s.toInt
-		
+
         val mimeItemlist = (cfgNode \ "MimeTypes" \ "Item").toList
         for( item <- mimeItemlist ) {
             var s = item.text.toString.trim
@@ -367,9 +367,9 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
             if( s != "" )
                 msgAttrs.put(serviceId+"-"+msgId+"-requestContentType",s)
             s = ( item \ "@responseContentType" ).text
-            if( s != "" )
-                msgAttrs.put(serviceId+"-"+msgId+"-responseContentType",s)
-            s = ( item \ "@caseInsensitive" ).text
+                if( s != "" )
+                    msgAttrs.put(serviceId+"-"+msgId+"-responseContentType",s)
+                s = ( item \ "@caseInsensitive" ).text
             if( s != "" )
                 msgAttrs.put(serviceId+"-"+msgId+"-caseInsensitive",s)
             s = ( item \ "@verify" ).text
@@ -386,33 +386,33 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
 
             s = ( item \ "@whiteIps" ).text
             if( s != "" ) {
-              val set = HashSet[String]()
-              val ss = s.split(",")
-              for( ts <- ss ) {
-                   val ipgrp = router.getConfig(ts)
-                   if( ipgrp != "") {
-                          val ss2 = ipgrp.split(",")
-                          for( ts2 <- ss2 ) set.add(ts2)
-                   } else {
-                     set.add(ts)
-                   }
-              }
-              whiteIpSet.put(serviceId+"-"+msgId,set)
+                val set = HashSet[String]()
+                val ss = s.split(",")
+                for( ts <- ss ) {
+                    val ipgrp = router.getConfig(ts)
+                    if( ipgrp != "") {
+                        val ss2 = ipgrp.split(",")
+                        for( ts2 <- ss2 ) set.add(ts2)
+                    } else {
+                        set.add(ts)
+                    }
+                }
+                whiteIpSet.put(serviceId+"-"+msgId,set)
             }
 
             s = ( item \ "@logFilters" ).text
             if( s != "" ) {
-              val buff = ArrayBuffer[Regex]()
-              val ss = s.split(",")
-              for( ts <- ss ) {
-                   val grp = router.getConfig(ts)
-                   if( grp != "") {
-                     buff += grp.r
-                   } else {
-                     buff += ts.r
-                   }
-              }
-              logFilterMap.put(serviceId+"-"+msgId,buff)
+                val buff = ArrayBuffer[Regex]()
+                val ss = s.split(",")
+                for( ts <- ss ) {
+                    val grp = router.getConfig(ts)
+                    if( grp != "") {
+                        buff += grp.r
+                    } else {
+                        buff += ts.r
+                    }
+                }
+                logFilterMap.put(serviceId+"-"+msgId,buff)
             }
 
             s = ( item \ "@plugin" ).text
@@ -438,17 +438,17 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
                 var plugin = s
                 try {
 
-                  val obj = Class.forName(plugin).getConstructors()(0).newInstance()
-                  if( !obj.isInstanceOf[HttpServerPlugin] ) {
-                    throw new RuntimeException("plugin %s is not HttpServerPlugin".format(plugin))
-                  }
-                  val pluginObj = obj.asInstanceOf[HttpServerPlugin]
-                  msgPlugins.put(serviceId+"-"+msgId,pluginObj)
+                    val obj = Class.forName(plugin).getConstructors()(0).newInstance()
+                    if( !obj.isInstanceOf[HttpServerPlugin] ) {
+                        throw new RuntimeException("plugin %s is not HttpServerPlugin".format(plugin))
+                    }
+                    val pluginObj = obj.asInstanceOf[HttpServerPlugin]
+                    msgPlugins.put(serviceId+"-"+msgId,pluginObj)
 
                 } catch {
-                  case e:Exception =>
-                    log.error("plugin {} cannot be loaded", plugin)
-                    throw e
+                    case e:Exception =>
+                        log.error("plugin {} cannot be loaded", plugin)
+                        throw e
                 }
 
             }
@@ -459,21 +459,21 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
                 val keyMap = tlvCodec.msgKeyToTypeMapForRes.getOrElse(msgId,TlvCodec.EMPTY_STRINGMAP)
 
                 for( (key,typeName) <- keyMap ) {
-                  val classex = tlvCodec.codecAttributes.getOrElse("classex-"+typeName,null)
-                  if( classex != null ) map.put(key,classex)
-                  val tlvType = tlvCodec.typeNameToCodeMap.getOrElse(typeName,null)
-                  if( tlvType.cls == TlvCodec.CLS_STRUCT ) {
+                    val classex = tlvCodec.codecAttributes.getOrElse("classex-"+typeName,null)
+                    if( classex != null ) map.put(key,classex)
+                    val tlvType = tlvCodec.typeNameToCodeMap.getOrElse(typeName,null)
+                if( tlvType.cls == TlvCodec.CLS_STRUCT ) {
                     for( n <- tlvType.structNames) {
-                      val classex2 = tlvCodec.codecAttributes.getOrElse("classex-"+tlvType.name+"-"+n,null)
-                      if( classex2 != null ) map.put(key+"-"+n,classex2)
+                        val classex2 = tlvCodec.codecAttributes.getOrElse("classex-"+tlvType.name+"-"+n,null)
+                        if( classex2 != null ) map.put(key+"-"+n,classex2)
                     }
-                  }
-                  if(  tlvType.cls == TlvCodec.CLS_STRUCTARRAY) {
+                }
+                if(  tlvType.cls == TlvCodec.CLS_STRUCTARRAY) {
                     for( n <- tlvType.structNames) {
-                      val classex2 = tlvCodec.codecAttributes.getOrElse("classex-"+tlvType.itemType.name+"-"+n,null)
-                      if( classex2 != null ) map.put(key+"-"+n,classex2)
+                        val classex2 = tlvCodec.codecAttributes.getOrElse("classex-"+tlvType.itemType.name+"-"+n,null)
+                        if( classex2 != null ) map.put(key+"-"+n,classex2)
                     }
-                  }
+                }
                 }
                 classexMap.put(serviceId+"-"+msgId,map)
             }
@@ -496,40 +496,40 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
                     msgAttrs.put(serviceId+"-"+msgId+"-"+contentTypeFieldName,"1")
                 if( keyMap1.contains(contentDataFieldName) )
                     msgAttrs.put(serviceId+"-"+msgId+"-"+contentDataFieldName,"1")
-	
+
                 val attributes = tlvCodec.msgAttributes.getOrElse(msgId,null)
 
                 val cookiebuff1 = ArrayBuffer[Tuple3[String,String,String]]()
                 for( (key,dummy) <- keyMap1 if key != sessionFieldName) {
-                  val s = attributes.getOrElse("req-"+key+"-cookieName","")
-                  if( s != "" )
-                    cookiebuff1 += new Tuple3[String,String,String](key,s,null)
+                    val s = attributes.getOrElse("req-"+key+"-cookieName","")
+                    if( s != "" )
+                        cookiebuff1 += new Tuple3[String,String,String](key,s,null)
                 }
                 if( cookiebuff1.size > 0 ) cookieMap.put(serviceId+"-"+msgId+"-req",cookiebuff1)
 
                 val cookiebuff2 = ArrayBuffer[Tuple3[String,String,String]]()
                 for( (key,dummy) <- keyMap2 if key != sessionFieldName) {
-                  val s = attributes.getOrElse("res-"+key+"-cookieName","")
-                  val opt = attributes.getOrElse("res-"+key+"-cookieOption","")
-                  if( s != "" )
-                    cookiebuff2 += new Tuple3[String,String,String](key,s,opt)
+                    val s = attributes.getOrElse("res-"+key+"-cookieName","")
+                    val opt = attributes.getOrElse("res-"+key+"-cookieOption","")
+                    if( s != "" )
+                        cookiebuff2 += new Tuple3[String,String,String](key,s,opt)
                 }
                 if( cookiebuff2.size > 0 ) cookieMap.put(serviceId+"-"+msgId+"-res",cookiebuff2)
 
 
                 val headerbuff1 = ArrayBuffer[Tuple2[String,String]]()
                 for( (key,dummy) <- keyMap1 ) {
-                  val s = attributes.getOrElse("req-"+key+"-headerName","")
-                  if( s != "" )
-                    headerbuff1 += new Tuple2[String,String](key,s)
+                    val s = attributes.getOrElse("req-"+key+"-headerName","")
+                    if( s != "" )
+                        headerbuff1 += new Tuple2[String,String](key,s)
                 }
                 if( headerbuff1.size > 0 ) headerMap.put(serviceId+"-"+msgId+"-req",headerbuff1)
 
                 val headerbuff2 = ArrayBuffer[Tuple2[String,String]]()
                 for( (key,dummy) <- keyMap2 ) {
-                  val s = attributes.getOrElse("res-"+key+"-headerName","")
-                  if( s != "" )
-                    headerbuff2 += new Tuple2[String,String](key,s)
+                    val s = attributes.getOrElse("res-"+key+"-headerName","")
+                    if( s != "" )
+                        headerbuff2 += new Tuple2[String,String](key,s)
                 }
                 if( headerbuff2.size > 0 ) headerMap.put(serviceId+"-"+msgId+"-res",headerbuff2)
 
@@ -574,15 +574,15 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
 
     def afterInit() {
 
-       if( osapDb ) {
-         timer = new Timer("httpserverrefreshtimer")
-         doRefresh()
-         return
-       }
+        if( osapDb ) {
+            timer = new Timer("httpserverrefreshtimer")
+            doRefresh()
+            return
+        }
 
-       nettyHttpServer.start()
-       listened.set(true)
-       log.info("netty httpserver started port("+port+")")
+        nettyHttpServer.start()
+        listened.set(true)
+        log.info("netty httpserver started port("+port+")")
     }
 
     def beforeClose() {
@@ -611,19 +611,19 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
 
     def refresh() {
 
-      if( timer == null ) return
+        if( timer == null ) return
 
-      log.info("httpserver osap config data refreshing ...")
+        log.info("httpserver osap config data refreshing ...")
 
-      if( timer != null ) {
-         timer.cancel()
-         timer = new Timer("httpserverrefreshtimer")
-      }
+        if( timer != null ) {
+            timer.cancel()
+            timer = new Timer("httpserverrefreshtimer")
+        }
 
-      timer.schedule( new TimerTask() {
-          def run() {
-            doRefresh()
-          }
+        timer.schedule( new TimerTask() {
+            def run() {
+                doRefresh()
+            }
         }, 500 )
 
     }
@@ -663,9 +663,9 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
         }
 
         if( dataMap.size >= 1000 )
-          log.warn("dataMap size is too large, dataMap.size="+dataMap.size)
+            log.warn("dataMap size is too large, dataMap.size="+dataMap.size)
         if( rpcMap.size >= 1000 )
-          log.warn("rpcMap size is too large, rpcMap.size="+rpcMap.size)
+            log.warn("rpcMap size is too large, rpcMap.size="+rpcMap.size)
 
     }
 
@@ -674,11 +674,11 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
         if( d == null ) return
 
         msgId match {
-          case 1 => d.merchants = InvokeResult.timeout(requestId)
-          case 2 => d.keys = InvokeResult.timeout(requestId)
-          case 3 => d.ips = InvokeResult.timeout(requestId)
-          case 4 => d.privileges = InvokeResult.timeout(requestId)
-          case _ =>
+            case 1 => d.merchants = InvokeResult.timeout(requestId)
+            case 2 => d.keys = InvokeResult.timeout(requestId)
+            case 3 => d.ips = InvokeResult.timeout(requestId)
+            case 4 => d.privileges = InvokeResult.timeout(requestId)
+            case _ =>
         }
 
         if( d.allReplied ) refreshData(d)
@@ -689,11 +689,11 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
         if( d == null ) return
 
         msgId match {
-          case 1 => d.merchants = result
-          case 2 => d.keys = result
-          case 3 => d.ips = result
-          case 4 => d.privileges = result
-          case _ =>
+            case 1 => d.merchants = result
+            case 2 => d.keys = result
+            case 3 => d.ips = result
+            case 4 => d.privileges = result
+            case _ =>
         }
 
         if( d.allReplied ) refreshData(d)
@@ -701,122 +701,122 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
 
     def refreshData(d:OsapRefreshData) {
 
-       osapRefreshData.set(null)
+        osapRefreshData.set(null)
 
-       val interval = if( listened.get() ) 600000 else 30000
+        val interval = if( listened.get() ) 600000 else 30000
 
-       if( d.merchants.code != 0 ||
-           d.keys.code != 0 ||
-           d.ips.code != 0 ||
-           d.privileges.code != 0 ) {
+        if( d.merchants.code != 0 ||
+            d.keys.code != 0 ||
+            d.ips.code != 0 ||
+            d.privileges.code != 0 ) {
+
+                timer.schedule( new TimerTask() {
+                    def run() {
+                        doRefresh()
+                    }
+                }, interval )
+
+                log.error("httpserver osap config data refresh failed, will retry after "+(interval/1000)+" seconds")
+                return
+            }
+
+            val map = new HashMap[String,OsapMerchantCfg]()
+
+            var merchantnames = d.merchants.ls("merchantname_array")
+            val appids = d.merchants.li("appid_array")
+            val areaids = d.merchants.li("areaid_array")
+
+            if( merchantnames != null) {
+
+                for( i <- 0 until merchantnames.size ) {
+                    val merchantname = merchantnames(i)
+                    val appid = appids(i)
+                    val areaid = areaids(i)
+                    map.put(merchantname,new OsapMerchantCfg(merchantname,appid,areaid))
+                }
+
+            }
+
+            merchantnames = d.keys.ls("merchantname_array")
+            val key1s = d.keys.ls("key1_array")
+            val key1starttimes = d.keys.ls("key1starttime_array")
+            val key1endtimes = d.keys.ls("key1endtime_array")
+            val key2s = d.keys.ls("key2_array")
+            val key2starttimes = d.keys.ls("key2starttime_array")
+            val key2endtimes = d.keys.ls("key2endtime_array")
+
+            if( merchantnames != null) {
+
+                for( i <- 0 until merchantnames.size ) {
+                    val merchantname = merchantnames(i)
+                    val key1 = key1s(i)
+                    val key1starttime = key1starttimes(i)
+                    val key1endtime = key1endtimes(i)
+                    val key2 = key2s(i)
+                    val key2starttime = key2starttimes(i)
+                    val key2endtime = key2endtimes(i)
+
+                    val cfg = map.getOrElse(merchantname,null)
+                    if( cfg != null ) {
+                        if( key1 != null && key1 != "")
+                            cfg.md5Key += new OsapKeyData(key1,strToDate(key1starttime,0),strToDate(key1endtime,Long.MaxValue))
+                        if( key2 != null && key2 != "")
+                            cfg.md5Key += new OsapKeyData(key2,strToDate(key2starttime,0),strToDate(key2endtime,Long.MaxValue))
+                    }
+                }
+
+            }
+
+            merchantnames = d.ips.ls("merchantname_array")
+            val ipaddrs = d.ips.ls("ipaddr_array")
+
+            if( merchantnames != null) {
+
+                for( i <- 0 until merchantnames.size ) {
+                    val merchantname = merchantnames(i)
+                    val ipaddr = ipaddrs(i)
+
+                    val cfg = map.getOrElse(merchantname,null)
+                    if( cfg != null ) {
+                        if( ipaddr != null && ipaddr != "")
+                            cfg.ipSet.add(ipaddr)
+                    }
+                }
+            }
+
+            merchantnames = d.privileges.ls("merchantname_array")
+            val serviceids = d.privileges.li("serviceid_array")
+            val msgids = d.privileges.li("msgid_array")
+
+            if( merchantnames != null) {
+
+                for( i <- 0 until merchantnames.size ) {
+                    val merchantname = merchantnames(i)
+                    val serviceid = serviceids(i)
+                    val msgid = msgids(i)
+
+                    val cfg = map.getOrElse(merchantname,null)
+                    if( cfg != null ) {
+                        cfg.privilegeSet.add(serviceid+"-"+msgid)
+                    }
+                }
+            }
+
+            merchantMap.set( map )
+
+            log.info("httpserver osap config data refreshed")
+
+            if( !listened.get() ) {
+                nettyHttpServer.start()
+                listened.set(true)
+                log.info("httpserver started port("+port+")")
+            }
 
             timer.schedule( new TimerTask() {
-              def run() {
-                doRefresh()
-              }
-            }, interval )
-
-         log.error("httpserver osap config data refresh failed, will retry after "+(interval/1000)+" seconds")
-         return
-       }
-
-       val map = new HashMap[String,OsapMerchantCfg]()
-
-       var merchantnames = d.merchants.ls("merchantname_array")
-       val appids = d.merchants.li("appid_array")
-       val areaids = d.merchants.li("areaid_array")
-
-       if( merchantnames != null) {
-
-           for( i <- 0 until merchantnames.size ) {
-               val merchantname = merchantnames(i)
-               val appid = appids(i)
-               val areaid = areaids(i)
-               map.put(merchantname,new OsapMerchantCfg(merchantname,appid,areaid))
-           }
-
-       }
-
-       merchantnames = d.keys.ls("merchantname_array")
-       val key1s = d.keys.ls("key1_array")
-       val key1starttimes = d.keys.ls("key1starttime_array")
-       val key1endtimes = d.keys.ls("key1endtime_array")
-       val key2s = d.keys.ls("key2_array")
-       val key2starttimes = d.keys.ls("key2starttime_array")
-       val key2endtimes = d.keys.ls("key2endtime_array")
-
-       if( merchantnames != null) {
-
-           for( i <- 0 until merchantnames.size ) {
-               val merchantname = merchantnames(i)
-               val key1 = key1s(i)
-               val key1starttime = key1starttimes(i)
-               val key1endtime = key1endtimes(i)
-               val key2 = key2s(i)
-               val key2starttime = key2starttimes(i)
-               val key2endtime = key2endtimes(i)
-
-               val cfg = map.getOrElse(merchantname,null)
-               if( cfg != null ) {
-                 if( key1 != null && key1 != "")
-                     cfg.md5Key += new OsapKeyData(key1,strToDate(key1starttime,0),strToDate(key1endtime,Long.MaxValue))
-                 if( key2 != null && key2 != "")
-                     cfg.md5Key += new OsapKeyData(key2,strToDate(key2starttime,0),strToDate(key2endtime,Long.MaxValue))
-               }
-           }
-
-       }
-
-       merchantnames = d.ips.ls("merchantname_array")
-       val ipaddrs = d.ips.ls("ipaddr_array")
-
-       if( merchantnames != null) {
-
-           for( i <- 0 until merchantnames.size ) {
-               val merchantname = merchantnames(i)
-               val ipaddr = ipaddrs(i)
-
-               val cfg = map.getOrElse(merchantname,null)
-               if( cfg != null ) {
-                 if( ipaddr != null && ipaddr != "")
-                     cfg.ipSet.add(ipaddr)
-               }
-           }
-       }
-
-       merchantnames = d.privileges.ls("merchantname_array")
-       val serviceids = d.privileges.li("serviceid_array")
-       val msgids = d.privileges.li("msgid_array")
-
-       if( merchantnames != null) {
-
-           for( i <- 0 until merchantnames.size ) {
-               val merchantname = merchantnames(i)
-               val serviceid = serviceids(i)
-               val msgid = msgids(i)
-
-               val cfg = map.getOrElse(merchantname,null)
-               if( cfg != null ) {
-                   cfg.privilegeSet.add(serviceid+"-"+msgid)
-               }
-           }
-       }
-
-       merchantMap.set( map )
-
-       log.info("httpserver osap config data refreshed")
-
-       if( !listened.get() ) {
-           nettyHttpServer.start()
-           listened.set(true)
-           log.info("httpserver started port("+port+")")
-       }
-
-        timer.schedule( new TimerTask() {
-          def run() {
-            doRefresh()
-          }
-        }, 600000 )
+                def run() {
+                    doRefresh()
+                }
+            }, 600000 )
 
     }
 
@@ -869,8 +869,8 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
                     return
                 }
                 if( data.req.serviceId == osapDbServiceId) {
-                  refreshTimeout(data.req.requestId,data.req.msgId)
-                  return
+                    refreshTimeout(data.req.requestId,data.req.msgId)
+                    return
                 }
 
                 val tpl = reply(data.req,ResultCodes.SERVICE_TIMEOUT,HashMapStringAny())
@@ -886,8 +886,8 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
                 data.timer.cancel()
 
                 if( data.req.serviceId == osapDbServiceId) {
-                  refreshResultReceived(data.req.requestId,data.req.msgId,res)
-                  return
+                    refreshResultReceived(data.req.requestId,data.req.msgId,res)
+                    return
                 }
 
                 val tpl = reply(data.req,res.code,res.res)
@@ -914,8 +914,8 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
 
         var uri = httpReq.getUri()
         if( uri == jsonRpcUrl || uri.startsWith(jsonRpcUrl+"?") ) {
-          processRequestJsonRpc(httpReq,connId,xhead,requestId)
-          return
+            processRequestJsonRpc(httpReq,connId,xhead,requestId)
+            return
         }
 
         processRequest(httpReq,connId,xhead,requestId,uri) // not jsonrpc
@@ -957,48 +957,48 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
         val rpcBuff = new ArrayBuffer[RpcInfo]()
         for( req <- reqs ) {
 
-          if( !req.isInstanceOf[HashMapStringAny] ) {
-            replyError(httpReq,connId,requestId,ResultCodes.TLV_DECODE_ERROR)
-            return
-          }
+            if( !req.isInstanceOf[HashMapStringAny] ) {
+                replyError(httpReq,connId,requestId,ResultCodes.TLV_DECODE_ERROR)
+                return
+            }
 
-          val map = req.asInstanceOf[HashMapStringAny]
-          val version = map.s("jsonrpc","")
-          if( version != "2.0" ) {
-            replyError(httpReq,connId,requestId,ResultCodes.TLV_DECODE_ERROR)
-            return
-          }
+            val map = req.asInstanceOf[HashMapStringAny]
+            val version = map.s("jsonrpc","")
+            if( version != "2.0" ) {
+                replyError(httpReq,connId,requestId,ResultCodes.TLV_DECODE_ERROR)
+                return
+            }
 
-          val id = map.s("id","")
-          if( id == "" || idSet.contains(id) ) {
-            replyError(httpReq,connId,requestId,ResultCodes.TLV_DECODE_ERROR)
-            return
-          }
+            val id = map.s("id","")
+            if( id == "" || idSet.contains(id) ) {
+                replyError(httpReq,connId,requestId,ResultCodes.TLV_DECODE_ERROR)
+                return
+            }
 
-          idSet.add(id)
+            idSet.add(id)
 
-          val uri = map.s("method","")
-          if( uri == null || uri == "" ) {
-            replyError(httpReq,connId,requestId,ResultCodes.TLV_DECODE_ERROR)
-            return
-          }
+            val uri = map.s("method","")
+            if( uri == null || uri == "" ) {
+                replyError(httpReq,connId,requestId,ResultCodes.TLV_DECODE_ERROR)
+                return
+            }
 
-          val params = map.getOrElse("params","")
-          var bodyParams : HashMapStringAny = null
+            val params = map.getOrElse("params","")
+            var bodyParams : HashMapStringAny = null
 
-          if( params.isInstanceOf[String] ) {
-            bodyParams = HashMapStringAny()
-            parseFormContent("UTF-8",params.asInstanceOf[String],bodyParams)
-          }
-          if( params.isInstanceOf[HashMapStringAny] )
-            bodyParams = params.asInstanceOf[HashMapStringAny]
+            if( params.isInstanceOf[String] ) {
+                bodyParams = HashMapStringAny()
+                parseFormContent("UTF-8",params.asInstanceOf[String],bodyParams)
+            }
+            if( params.isInstanceOf[HashMapStringAny] )
+                bodyParams = params.asInstanceOf[HashMapStringAny]
 
-          if( bodyParams == null ) {
-            replyError(httpReq,connId,requestId,ResultCodes.TLV_DECODE_ERROR)
-            return
-          }
+            if( bodyParams == null ) {
+                replyError(httpReq,connId,requestId,ResultCodes.TLV_DECODE_ERROR)
+                return
+            }
 
-          rpcBuff += new RpcInfo(rpcRequestId+"-"+id,id,uri,bodyParams)
+            rpcBuff += new RpcInfo(rpcRequestId+"-"+id,id,uri,bodyParams)
         }
 
         val rpcCall = new RpcCall(rpcBuff)
@@ -1010,7 +1010,7 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
     }
 
     def processRequest(httpReq:HttpRequest,connId:String,xhead:HashMapStringAny,requestId:String,uri:String,bodyParams:HashMapStringAny = null):
-        Tuple3[HttpSosRequestResponseInfo,HashMap[String,Cookie],HashMap[String,String]] = {
+    Tuple3[HttpSosRequestResponseInfo,HashMap[String,Cookie],HashMap[String,String]] = {
 
         val isRpc = requestId.startsWith("rpc")
 
@@ -1079,30 +1079,30 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
                     val tpl = replyError(httpReq,connId,requestId,-10250016,params,serviceId,msgId)
                     return tpl
                 }
-            } else {
-                val (ok,merchantName) = getMerchantInfo(body)
-                if( !ok ) {
-                    log.error("verify failed, merchant name parameter not found, uri="+uri)
-                    val params = if( isRpc ) uri + "?" + bodyToParams(bodyParams) else uri
-                    val tpl = replyError(httpReq,connId,requestId,-10250016,params,serviceId,msgId)
-                    return tpl
-                }
-                val cfg = merchantMap.get().getOrElse(merchantName,null)
-                if( cfg == null ) {
-                    log.error("verify failed, merchant cfg not found, uri="+uri)
-                    val params = if( isRpc ) uri + "?" + bodyToParams(bodyParams) else uri
-                    val tpl = replyError(httpReq,connId,requestId,-10250016,params,serviceId,msgId)
-                    return tpl
-                }
+                } else {
+                    val (ok,merchantName) = getMerchantInfo(body)
+                    if( !ok ) {
+                        log.error("verify failed, merchant name parameter not found, uri="+uri)
+                        val params = if( isRpc ) uri + "?" + bodyToParams(bodyParams) else uri
+                        val tpl = replyError(httpReq,connId,requestId,-10250016,params,serviceId,msgId)
+                        return tpl
+                    }
+                    val cfg = merchantMap.get().getOrElse(merchantName,null)
+                    if( cfg == null ) {
+                        log.error("verify failed, merchant cfg not found, uri="+uri)
+                        val params = if( isRpc ) uri + "?" + bodyToParams(bodyParams) else uri
+                        val tpl = replyError(httpReq,connId,requestId,-10250016,params,serviceId,msgId)
+                        return tpl
+                    }
 
-                val verifyOk = standardVerify(serviceId,msgId,xhead,body,cfg,uri)
-                if( !verifyOk ) {
-                    val params = if( isRpc ) uri + "?" + bodyToParams(bodyParams) else uri
-                    val tpl = replyError(httpReq,connId,requestId,-10250016,params,serviceId,msgId)
-                    return tpl
-                }
+                    val verifyOk = standardVerify(serviceId,msgId,xhead,body,cfg,uri)
+                    if( !verifyOk ) {
+                        val params = if( isRpc ) uri + "?" + bodyToParams(bodyParams) else uri
+                        val tpl = replyError(httpReq,connId,requestId,-10250016,params,serviceId,msgId)
+                        return tpl
+                    }
 
-            }
+                }
         }
 
         if( pluginObj != null && pluginObj.isInstanceOf[HttpServerRequestPostParsePlugin])
@@ -1112,9 +1112,9 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
         val bodyIncase = if( caseInsensitive ) convertBodyCaseInsensitive(serviceId,msgId,body) else body
 
         val encodeRequestFlag = isTrue ( msgAttrs.getOrElse(serviceId+"-"+msgId+"-encodeRequest","1") )
-//println("bodyIncase="+bodyIncase.mkString(","))
+        //println("bodyIncase="+bodyIncase.mkString(","))
         val (bodyReal,ec) = if( encodeRequestFlag ) router.encodeRequest(serviceId,msgId,bodyIncase) else (bodyIncase,0)
-//println("bodyReal="+bodyReal.mkString(","))
+        //println("bodyReal="+bodyReal.mkString(","))
 
         if( ec != 0 ) {
             val params = if( isRpc ) uri + "?" + bodyToParams(bodyParams) else uri
@@ -1149,44 +1149,44 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
                 } else {
                     params = mappingUri + "?" + bodyToParams(body)
                 }
-        }*/
+            }*/
 
-        var userAgent =  httpReq.getHeader("User-Agent")
-        if( userAgent == null || userAgent == "") userAgent = "-"
-        if( !logUserAgent ) userAgent = "-"
+       var userAgent =  httpReq.getHeader("User-Agent")
+       if( userAgent == null || userAgent == "") userAgent = "-"
+       if( !logUserAgent ) userAgent = "-"
 
-        val jsonpCallback = body.s(jsonpName,"")
+       val jsonpCallback = body.s(jsonpName,"")
 
-        val httpxhead = HashMapStringAny(
-            "clientIpPort"->clientIpPort,
-            "remoteIpPort"->remoteIpPort,
-            "serverIpPort"->serverIpPort,
-            "userAgent"->userAgent,
-            "host"->host,
-            "method"->httpReq.getMethod().toString,
-            "keepAlive"->HttpHeaders.isKeepAlive(httpReq).toString,
-            "sessionId"->body.s(sessionFieldName),
-            "sessionIdChanged"->sessionIdChanged.toString,
-            "sigstat"->(if(verify) "1" else "0"),
-            "httpCode"->"200",
-            jsonpName->jsonpCallback
-            )
+       val httpxhead = HashMapStringAny(
+           "clientIpPort"->clientIpPort,
+           "remoteIpPort"->remoteIpPort,
+           "serverIpPort"->serverIpPort,
+           "userAgent"->userAgent,
+           "host"->host,
+           "method"->httpReq.getMethod().toString,
+           "keepAlive"->HttpHeaders.isKeepAlive(httpReq).toString,
+           "sessionId"->body.s(sessionFieldName),
+           "sessionIdChanged"->sessionIdChanged.toString,
+           "sigstat"->(if(verify) "1" else "0"),
+           "httpCode"->"200",
+           jsonpName->jsonpCallback
+       )
 
-        val httpSosReq = new HttpSosRequest(requestId,connId,
-            serviceId,msgId,
-            httpxhead,params
-            )
+       val httpSosReq = new HttpSosRequest(requestId,connId,
+           serviceId,msgId,
+           httpxhead,params
+           )
 
-        val data = new HttpServerCacheData(httpSosReq, t)
-        dataMap.put(requestId,data)
+       val data = new HttpServerCacheData(httpSosReq, t)
+       dataMap.put(requestId,data)
 
-        val ret = router.send(req)
-        if( ret == null) return null
+       val ret = router.send(req)
+       if( ret == null) return null
 
-        dataMap.remove(requestId)
-        t.cancel()
-        val tpl = reply(httpSosReq,ret.code,ret.res)
-        tpl
+       dataMap.remove(requestId)
+       t.cancel()
+       val tpl = reply(httpSosReq,ret.code,ret.res)
+       tpl
     }
 
     def replyError(httpReq:HttpRequest,connId:String,requestId:String,errorCode:Int,uri:String = "",serviceId:Int = 0, msgId:Int = 0 ):Tuple3[HttpSosRequestResponseInfo,HashMap[String,Cookie],HashMap[String,String]] = {
@@ -1228,7 +1228,7 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
             "charset"->"UTF-8",
             "contentType"->contentType,
             "httpCode"->"200"
-            )
+        )
 
         val req = new HttpSosRequest(requestId,connId,
             serviceId,msgId,
@@ -1282,33 +1282,33 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
         if( sessionMode == 1 ) {
             val sessionIdSupport = msgAttrs.getOrElse(serviceId+"-"+msgId+"-sessionId-req","0")
             if( sessionIdSupport == "1" && req.xhead.s("sessionIdChanged","true") == "true" ) {
-              val c = new DefaultCookie(sessionCookieName,req.xhead.s("sessionId",""))
-              c.setHttpOnly(sessionHttpOnly)
-              cookies.put(sessionCookieName,c)
+                val c = new DefaultCookie(sessionCookieName,req.xhead.s("sessionId",""))
+                c.setHttpOnly(sessionHttpOnly)
+                cookies.put(sessionCookieName,c)
             }
         }
         if( sessionMode == 2 ) {
             val sessionIdSupport = msgAttrs.getOrElse(serviceId+"-"+msgId+"-sessionId-res","0")
             if( sessionIdSupport == "1" ) {
-              val sessionId = body.s(sessionFieldName,"")
-              if( sessionId != "") {
-                  val c = new DefaultCookie(sessionCookieName,sessionId)
-                  c.setHttpOnly(sessionHttpOnly)
-                  cookies.put(sessionCookieName,c)
-              }
-              body.remove(sessionFieldName)
+                val sessionId = body.s(sessionFieldName,"")
+                if( sessionId != "") {
+                    val c = new DefaultCookie(sessionCookieName,sessionId)
+                    c.setHttpOnly(sessionHttpOnly)
+                    cookies.put(sessionCookieName,c)
+                }
+                body.remove(sessionFieldName)
             }
         }
 
         val cookieBuff = cookieMap.getOrElse(serviceId+"-"+msgId+"-res",null)
         if( cookieBuff != null && cookieBuff.size > 0 ) {
-          for( (fieldName,cookieName,opt) <- cookieBuff ) {
-            val c = new DefaultCookie(cookieName,body.s(fieldName,""))
-            if( opt != null && opt != "")
-                updateCookieOption(c,opt)
-            cookies.put(c.getName,c)
+            for( (fieldName,cookieName,opt) <- cookieBuff ) {
+                val c = new DefaultCookie(cookieName,body.s(fieldName,""))
+                if( opt != null && opt != "")
+                    updateCookieOption(c,opt)
+                cookies.put(c.getName,c)
             body.remove(fieldName)
-          }
+            }
         }
 
         val headers = new HashMap[String,String]()
@@ -1351,18 +1351,18 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
 
         } else {
 
-        		if( isTrue(bodyOnly) ) {
+            if( isTrue(bodyOnly) ) {
 
-	                content = JsonCodec.mkString( jsonTypeProcess(req.serviceId,req.msgId,body) )
+                content = JsonCodec.mkString( jsonTypeProcess(req.serviceId,req.msgId,body) )
 
-        		} else {
+            } else {
 
-    	            val map = HashMapStringAny()
-    	            map.put("return_code",errorCode)
-    	            map.put("return_message",errorMessage)
-    	            map.put("data",jsonTypeProcess(req.serviceId,req.msgId,body))
-    	            content = JsonCodec.mkString(map)
-	          }
+                val map = HashMapStringAny()
+                map.put("return_code",errorCode)
+                map.put("return_message",errorMessage)
+                map.put("data",jsonTypeProcess(req.serviceId,req.msgId,body))
+                content = JsonCodec.mkString(map)
+            }
         }
 
         if( jsonpCallback != "" && contentType == MIMETYPE_JSON ) {
@@ -1385,36 +1385,36 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
 
     def replyRpcCall(rpcRequestId:String,rpcCall:RpcCall) {
 
-      rpcMap.remove(rpcRequestId)
+        rpcMap.remove(rpcRequestId)
 
-      val firstReq = rpcCall.buff(0)
-      var connId = firstReq.reqRes.req.connId
+        val firstReq = rpcCall.buff(0)
+        var connId = firstReq.reqRes.req.connId
 
-      var cookies = HashMap[String,Cookie]()
-      var headers = HashMap[String,String]()
+        var cookies = HashMap[String,Cookie]()
+        var headers = HashMap[String,String]()
 
-      val s = new StringBuilder()
-      s.append("[")
-      var first = true
-      for( rpcInfo <- rpcCall.buff ) {
+        val s = new StringBuilder()
+        s.append("[")
+        var first = true
+        for( rpcInfo <- rpcCall.buff ) {
 
-        if( !first ) s.append(",") else first = false
-        val json = rpcFormat.format(rpcInfo.id,rpcInfo.reqRes.res.content)
-        s.append(json)
+            if( !first ) s.append(",") else first = false
+            val json = rpcFormat.format(rpcInfo.id,rpcInfo.reqRes.res.content)
+            s.append(json)
 
-        if( rpcInfo.cookies != null && rpcInfo.cookies.size > 0 ) cookies ++= rpcInfo.cookies
-        if( rpcInfo.headers != null && rpcInfo.headers.size > 0 ) headers ++= rpcInfo.headers
-      }
-      s.append("]")
+            if( rpcInfo.cookies != null && rpcInfo.cookies.size > 0 ) cookies ++= rpcInfo.cookies
+            if( rpcInfo.headers != null && rpcInfo.headers.size > 0 ) headers ++= rpcInfo.headers
+        }
+        s.append("]")
 
-      val xhead = firstReq.reqRes.req.xhead
-      xhead.put("contentType",MIMETYPE_JSON)
-      xhead.put("charset","UTF-8")
-      write(connId, s.toString, xhead , cookies, headers)
+        val xhead = firstReq.reqRes.req.xhead
+        xhead.put("contentType",MIMETYPE_JSON)
+        xhead.put("charset","UTF-8")
+        write(connId, s.toString, xhead , cookies, headers)
 
-      for( rpcInfo <- rpcCall.buff ) {
-          asynclog(rpcInfo.reqRes)
-      }
+        for( rpcInfo <- rpcCall.buff ) {
+            asynclog(rpcInfo.reqRes)
+        }
     }
 
     def write302(connId:String,xhead:HashMapStringAny,url:String) {
@@ -1446,7 +1446,7 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
         if( cookies != null && cookies.size > 0 ) {
             val encoder = new CookieEncoder(true)
             for( (dummy,c) <- cookies ) {
-                 encoder.addCookie(c)
+                encoder.addCookie(c)
             }
             response.setHeader(HttpHeaders.Names.SET_COOKIE, encoder.encode())
         }
@@ -1531,29 +1531,29 @@ class HttpServerActor(val router: Router,val cfgNode: Node) extends Actor
 
         val fileLength = f.length()
         response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(fileLength));
-/*
+    /*
 
-If-Modified-Since   如果请求的部分在指定时间之后被修改则请求成功，未被修改则返回304代码 If-Modified-Since: Sat, 29 Oct 2010 19:43:31 GMT
-If-Match    只有请求内容与实体相匹配才有效  If-Match: “737060cd8c284d8af7ad3082f209582d”
-If-None-Match   如果内容未改变返回304代码，参数为服务器先前发送的Etag，与服务器回应的Etag比较判断是否改变   If-None-Match: “737060cd8c284d8af7ad3082f209582d”
-If-Range    如果实体未改变，服务器发送客户端丢失的部分，否则发送整个实体。参数也为Etag  If-Range: “737060cd8c284d8af7ad3082f209582d”
-If-Unmodified-Since 只在实体在指定时间之后未被修改才请求成功    If-Unmodified-Since: Sat, 29 Oct 2010 19:43:31 GMT
+    If-Modified-Since   如果请求的部分在指定时间之后被修改则请求成功，未被修改则返回304代码 If-Modified-Since: Sat, 29 Oct 2010 19:43:31 GMT
+    If-Match    只有请求内容与实体相匹配才有效  If-Match: “737060cd8c284d8af7ad3082f209582d”
+    If-None-Match   如果内容未改变返回304代码，参数为服务器先前发送的Etag，与服务器回应的Etag比较判断是否改变   If-None-Match: “737060cd8c284d8af7ad3082f209582d”
+    If-Range    如果实体未改变，服务器发送客户端丢失的部分，否则发送整个实体。参数也为Etag  If-Range: “737060cd8c284d8af7ad3082f209582d”
+    If-Unmodified-Since 只在实体在指定时间之后未被修改才请求成功    If-Unmodified-Since: Sat, 29 Oct 2010 19:43:31 GMT
 
-Date: Wed, 09 Dec 2015 01:47:15 GMT
-Last-Modified: Fri, 27 Apr 2012 09:05:32 GMT
-Expires: Wed, 09 Dec 2015 01:49:15 GMT
-Cache-Control: max-age=120
+    Date: Wed, 09 Dec 2015 01:47:15 GMT
+    Last-Modified: Fri, 27 Apr 2012 09:05:32 GMT
+    Expires: Wed, 09 Dec 2015 01:49:15 GMT
+    Cache-Control: max-age=120
 
-Date	原始服务器消息发出的时间
-Last-Modified ：指出原始服务器认为该变量最后修改的日期和时间，确实意思取决于原是服务器的实现和资源的属性。对文件，可能只是文件系统内最后修改时间
-Expires ：指出响应被认为过期的日期/时间
-Cache-Control   告诉所有的缓存机制是否可以缓存及哪种类型    Cache-Control: no-cache
+    Date	原始服务器消息发出的时间
+    Last-Modified ：指出原始服务器认为该变量最后修改的日期和时间，确实意思取决于原是服务器的实现和资源的属性。对文件，可能只是文件系统内最后修改时间
+    Expires ：指出响应被认为过期的日期/时间
+    Cache-Control   告诉所有的缓存机制是否可以缓存及哪种类型    Cache-Control: no-cache
 
-Accept-Ranges: bytes
-AGE: 38
-ETAGS: "xxx"
+    Accept-Ranges: bytes
+    AGE: 38
+    ETAGS: "xxx"
 
-*/
+     */
 
         val reqResInfo = logStaticFile(requestId,httpReq,connId,HttpResponseStatus.OK,contentType,fileLength)
 
@@ -1604,21 +1604,21 @@ ETAGS: "xxx"
                 if( cookies != null ) {
                     val it = cookies.iterator()
                     while( it.hasNext() ) {
-                       val c = it.next()
-                       if( c.getName == sessionCookieName ) {
-                           sessionId = c.getValue
-                       }
+                        val c = it.next()
+                        if( c.getName == sessionCookieName ) {
+                            sessionId = c.getValue
+                        }
                     }
                 }
             }
             if( sessionId != "" && sessionMode == 1 ) {
-              if( !validateSessionId(sessionId,host,clientIp) ) {
-                sessionId = ""
-              }
+                if( !validateSessionId(sessionId,host,clientIp) ) {
+                    sessionId = ""
+                }
             }
             if( sessionId == "" && sessionMode == 1) {
-              sessionId = genSessionId(requestId,host,clientIp)
-              sessionIdChanged = true
+                sessionId = genSessionId(requestId,host,clientIp)
+                sessionIdChanged = true
             }
 
             if( sessionId != "")
@@ -1634,8 +1634,8 @@ ETAGS: "xxx"
                 if( cookies != null ) {
                     val it = cookies.iterator()
                     while( it.hasNext() ) {
-                       val c = it.next()
-                       m.put( c.getName , c.getValue)
+                        val c = it.next()
+                        m.put( c.getName , c.getValue)
                     }
                 }
             }
@@ -1646,36 +1646,36 @@ ETAGS: "xxx"
 
         val requestUriSupport = msgAttrs.getOrElse(serviceId+"-"+msgId+"-"+requestUriFieldName,"0")
         if( requestUriSupport == "1" ) {		
-			map.put(requestUriFieldName,httpReq.getUri())
-		}
-		
+            map.put(requestUriFieldName,httpReq.getUri())
+        }
+
         val queryStringSupport = msgAttrs.getOrElse(serviceId+"-"+msgId+"-"+queryStringFieldName,"0")
         if( queryStringSupport == "1" ) {		
             val uri = httpReq.getUri()
             if( uri.indexOf("?") >= 0) {
                 val s = uri.substring(uri.indexOf("?")+1)
-				map.put(queryStringFieldName,s)
+                map.put(queryStringFieldName,s)
             } else {
-				map.put(queryStringFieldName,"")
-			}
-		}
-		
-		val method = httpReq.getMethod()
+                map.put(queryStringFieldName,"")
+            }
+        }
+
+        val method = httpReq.getMethod()
         val contentTypeSupport = msgAttrs.getOrElse(serviceId+"-"+msgId+"-"+contentTypeFieldName,"0")
         if( contentTypeSupport == "1" && method == HttpMethod.POST ) {		
-			map.put(contentTypeFieldName,contentType)
-		}
+            map.put(contentTypeFieldName,contentType)
+        }
 
         val contentDataSupport = msgAttrs.getOrElse(serviceId+"-"+msgId+"-"+contentDataFieldName,"0")
         if( contentDataSupport == "1" && method == HttpMethod.POST ) {		
-			val content = httpReq.getContent()
-			val contentStr = content.toString(Charset.forName(charset))
-			map.put(contentDataFieldName,contentStr)
-		}
+            val content = httpReq.getContent()
+            val contentStr = content.toString(Charset.forName(charset))
+            map.put(contentDataFieldName,contentStr)
+        }
 
         if( isRpc) {
 
-          map ++= bodyParams
+            map ++= bodyParams
 
         } else {
 
@@ -1687,16 +1687,16 @@ ETAGS: "xxx"
 
             val pluginObj = msgPlugins.getOrElse(serviceId+"-"+msgId,null)
             if( method == HttpMethod.POST && contentType == MIMETYPE_MULTIPART ) {
-			
-				if( log.isDebugEnabled) {
-					log.debug("http file upload, headers: "+toHeaders(httpReq))
-				}
-				// upload file 
-				// upload file to temp dir and put filename to body
-				val content = httpReq.getContent()
-//println("content="+content.toString(Charset.forName(charset)))
-				parseFileUploadContent(charset,content,map)
-				
+
+                if( log.isDebugEnabled) {
+                    log.debug("http file upload, headers: "+toHeaders(httpReq))
+                }
+                // upload file 
+                // upload file to temp dir and put filename to body
+                val content = httpReq.getContent()
+                //println("content="+content.toString(Charset.forName(charset)))
+                parseFileUploadContent(charset,content,map)
+
             } else if( method == HttpMethod.POST ) {
                 val content = httpReq.getContent()
                 val contentStr = content.toString(Charset.forName(charset))
@@ -1718,55 +1718,55 @@ ETAGS: "xxx"
 
     def asynclog(reqResInfo:HttpSosRequestResponseInfo) {
 
-      val buff = logFilterMap.getOrElse(reqResInfo.req.serviceId+"-"+reqResInfo.req.msgId,null)
-      if( buff != null && buff.size > 0 ) {
-        for( r <- buff ) {
-            reqResInfo.req.params = r.replaceAllIn(reqResInfo.req.params,"")
-            reqResInfo.res.content = r.replaceAllIn(reqResInfo.res.content,"")
+        val buff = logFilterMap.getOrElse(reqResInfo.req.serviceId+"-"+reqResInfo.req.msgId,null)
+        if( buff != null && buff.size > 0 ) {
+            for( r <- buff ) {
+                reqResInfo.req.params = r.replaceAllIn(reqResInfo.req.params,"")
+                reqResInfo.res.content = r.replaceAllIn(reqResInfo.res.content,"")
+            }
         }
-      }
 
-      router.asyncLogActor.receive(reqResInfo)
+        router.asyncLogActor.receive(reqResInfo)
     }
 
     def genSessionId(requestId:String,host:String,clientIp:String):String = {
-          val t =
-              if( requestId.startsWith("rpc") ) {
+        val t =
+            if( requestId.startsWith("rpc") ) {
                 val p = requestId.indexOf("-")
                 requestId.substring(3,p)
-              }
-              else {
-                requestId
-              }
-          if( !sessionIpBind ) return t
-          val data = t + "#" + clientIp
-          val s = CryptHelper.encryptHex(CryptHelper.ALGORITHM__DES,sessionEncKey,data)
-          s
+            }
+        else {
+            requestId
+        }
+        if( !sessionIpBind ) return t
+        val data = t + "#" + clientIp
+        val s = CryptHelper.encryptHex(CryptHelper.ALGORITHM__DES,sessionEncKey,data)
+        s
     }
     def validateSessionId(sessionId:String,host:String,clientIp:String):Boolean = {
-          if( !sessionIpBind ) return true
-          try {
-              val s = CryptHelper.decryptHex(CryptHelper.ALGORITHM__DES,sessionEncKey,sessionId)
-              if( s == null ) return false
-              val ss = s.split("#")
-              if( ss.length != 2 ) return false
-              if( ss(1) != clientIp ) return false
-              true
-          } catch {
-              case _ :Throwable => false
-          }
+        if( !sessionIpBind ) return true
+        try {
+            val s = CryptHelper.decryptHex(CryptHelper.ALGORITHM__DES,sessionEncKey,sessionId)
+            if( s == null ) return false
+            val ss = s.split("#")
+            if( ss.length != 2 ) return false
+            if( ss(1) != clientIp ) return false
+            true
+        } catch {
+            case _ :Throwable => false
+        }
     }
 
     def updateRpcCall(tpl:Tuple3[HttpSosRequestResponseInfo,HashMap[String,Cookie],HashMap[String,String]]) {
-      if( tpl == null ) return
-      val requestId = tpl._1.req.requestId
-      val p = requestId.indexOf("-")
-      if( p < 0 ) return
-      val rpcRequestId = requestId.substring(0,p)
-      val rpcCall = rpcMap.get(rpcRequestId)
-      if( rpcCall == null ) return
-      rpcCall.updateResult(tpl)
-      if( rpcCall.finished) replyRpcCall(rpcRequestId,rpcCall)
+        if( tpl == null ) return
+        val requestId = tpl._1.req.requestId
+        val p = requestId.indexOf("-")
+        if( p < 0 ) return
+        val rpcRequestId = requestId.substring(0,p)
+        val rpcCall = rpcMap.get(rpcRequestId)
+        if( rpcCall == null ) return
+        rpcCall.updateResult(tpl)
+        if( rpcCall.finished) replyRpcCall(rpcRequestId,rpcCall)
     }
 
     def getMerchantInfo(body:HashMapStringAny):Tuple2[Boolean,String] = {
@@ -1786,53 +1786,53 @@ ETAGS: "xxx"
 
     def standardVerify(serviceId:Int,msgId:Int,xhead:HashMapStringAny,body:HashMapStringAny,cfg:OsapMerchantCfg,uri:String):Boolean = {
 
-      val signMap = new java.util.TreeMap[String,String]()
+        val signMap = new java.util.TreeMap[String,String]()
 
-      for( (key,value) <- body if key != "signature" ) { // donot ignore sessionId,cookie,header field, in that case standardVerify will not be called
-        signMap.put(key,value.toString)
-      }
+        for( (key,value) <- body if key != "signature" ) { // donot ignore sessionId,cookie,header field, in that case standardVerify will not be called
+            signMap.put(key,value.toString)
+        }
 
-      val signString = new StringBuilder()
+        val signString = new StringBuilder()
 
-      val entries = signMap.entrySet().iterator()
-      while( entries.hasNext() ) {
-        val entry = entries.next()
-        signString.append( entry.getKey ).append("=").append( entry.getValue )
-      }
+        val entries = signMap.entrySet().iterator()
+        while( entries.hasNext() ) {
+            val entry = entries.next()
+            signString.append( entry.getKey ).append("=").append( entry.getValue )
+        }
 
-      val reqSignature = body.s("signature")
-      var ok = false
-      val now = System.currentTimeMillis
-      for(key <- cfg.md5Key if key.st <= now && key.et >= now ) {
-          val s = signString.append(key.key)
-          val signature = CryptHelper.md5( signString.toString )
-          if( signature == reqSignature ) ok = true
-      }
+        val reqSignature = body.s("signature")
+        var ok = false
+        val now = System.currentTimeMillis
+        for(key <- cfg.md5Key if key.st <= now && key.et >= now ) {
+            val s = signString.append(key.key)
+            val signature = CryptHelper.md5( signString.toString )
+            if( signature == reqSignature ) ok = true
+        }
 
-      if(!ok) {
-        log.error("verify failed, md5 verify error, uri="+uri)
-        return false
-      }
+        if(!ok) {
+            log.error("verify failed, md5 verify error, uri="+uri)
+            return false
+        }
 
-      val clientIpPort = xhead.getOrElse(AvenueCodec.KEY_GS_INFO_FIRST,"").toString
-      val clientIp = clientIpPort.substring(0,clientIpPort.indexOf(":"))
+        val clientIpPort = xhead.getOrElse(AvenueCodec.KEY_GS_INFO_FIRST,"").toString
+        val clientIp = clientIpPort.substring(0,clientIpPort.indexOf(":"))
 
-      if( !cfg.ipSet.contains(clientIp) ) {
-        log.error("verify failed, ip verify error, uri="+uri)
-        return false
-      }
+        if( !cfg.ipSet.contains(clientIp) ) {
+            log.error("verify failed, ip verify error, uri="+uri)
+            return false
+        }
 
-      if( !cfg.privilegeSet.contains(serviceId+"-"+msgId) ) {
-        log.error("verify failed, privilege verify error, uri="+uri)
-        return false
-      }
+        if( !cfg.privilegeSet.contains(serviceId+"-"+msgId) ) {
+            log.error("verify failed, privilege verify error, uri="+uri)
+            return false
+        }
 
-      xhead.put(AvenueCodec.KEY_SOC_ID,cfg.merchantName)
-      xhead.put(AvenueCodec.KEY_APP_ID,cfg.appId)
-      xhead.put(AvenueCodec.KEY_AREA_ID,cfg.areaId)
+        xhead.put(AvenueCodec.KEY_SOC_ID,cfg.merchantName)
+        xhead.put(AvenueCodec.KEY_APP_ID,cfg.appId)
+        xhead.put(AvenueCodec.KEY_AREA_ID,cfg.areaId)
 
-      true
-  }
+        true
+    }
 
     def bodyToParams(body:HashMapStringAny):String = {
         if( body == null ) return ""
@@ -1853,10 +1853,10 @@ ETAGS: "xxx"
             part = part.substring(0,p)
             val p1 = params.indexOf("method=")
             if( p1 >= 0) {
-               var method = parseFormField("UTF-8",params,"method")
-               if( method != "" ) {
-                  part += "/" + method
-               }
+                var method = parseFormField("UTF-8",params,"method")
+                if( method != "" ) {
+                    part += "/" + method
+                }
             }
         }
 
@@ -1975,7 +1975,7 @@ ETAGS: "xxx"
             "contentLength"->contentLength,
             "staticFile"->"1",
             "httpCode"->httpCode.getCode.toString
-            )
+        )
 
         val req = new HttpSosRequest(requestId,connId,
             0,0,
@@ -2087,44 +2087,44 @@ ETAGS: "xxx"
     }
 
     def updateCookieOption(c:Cookie,opt:String) {
-      val ss = opt.split(";")
-      for( s <- ss ) {
-        val ss2 = s.split("=")
-        ss2(0) match {
-          case "Path" => c.setPath(ss2(1))
-          case "MaxAge" => c.setMaxAge(ss2(1).toInt)
-          case "Domain" => c.setDomain(ss2(1))
-          case "Ports" => c.setPorts(ss2(1).toInt) // support only one port
-          case "HttpOnly" => c.setHttpOnly(isTrue(ss2(1)))
-          case "Discard" => c.setDiscard(isTrue(ss2(1)))
-          case "Secure" => c.setSecure(isTrue(ss2(1)))
-          case "Version" => c.setVersion(ss2(1).toInt)
-          case _ =>
+        val ss = opt.split(";")
+        for( s <- ss ) {
+            val ss2 = s.split("=")
+            ss2(0) match {
+                case "Path" => c.setPath(ss2(1))
+                case "MaxAge" => c.setMaxAge(ss2(1).toInt)
+                case "Domain" => c.setDomain(ss2(1))
+                case "Ports" => c.setPorts(ss2(1).toInt) // support only one port
+                case "HttpOnly" => c.setHttpOnly(isTrue(ss2(1)))
+                case "Discard" => c.setDiscard(isTrue(ss2(1)))
+                case "Secure" => c.setSecure(isTrue(ss2(1)))
+                case "Version" => c.setVersion(ss2(1).toInt)
+                case _ =>
+            }
         }
-      }
     }
 
     def convertBodyCaseInsensitive(serviceId:Int,msgId:Int,body:HashMapStringAny):HashMapStringAny =  {
-      val tlvCodec = router.findTlvCodec(serviceId)
-      if( tlvCodec == null )  return null
+        val tlvCodec = router.findTlvCodec(serviceId)
+        if( tlvCodec == null )  return null
 
-      for( (key,value) <- body if value != null) {
+        for( (key,value) <- body if value != null) {
             body.put(key.toLowerCase,value)
-      }
+        }
 
-      val map = new HashMapStringAny()
-      val keyMap = tlvCodec.msgKeyToTypeMapForReq.getOrElse(msgId,TlvCodec.EMPTY_STRINGMAP)
-      for( (key,value) <- keyMap ) {
-        val v = body.s(key.toLowerCase,null)
-        if( v != null )
-            map.put(key,v)
-      }
+        val map = new HashMapStringAny()
+        val keyMap = tlvCodec.msgKeyToTypeMapForReq.getOrElse(msgId,TlvCodec.EMPTY_STRINGMAP)
+        for( (key,value) <- keyMap ) {
+            val v = body.s(key.toLowerCase,null)
+            if( v != null )
+                map.put(key,v)
+        }
 
-      map
+        map
     }
 
     def uuid(): String = {
-       return java.util.UUID.randomUUID().toString().replaceAll("-", "")
+        return java.util.UUID.randomUUID().toString().replaceAll("-", "")
     }
 
     def parseFormContent(charSet:String, contentStr:String, body: HashMapStringAny ) {
@@ -2186,97 +2186,97 @@ ETAGS: "xxx"
 
     def jsonTypeProcess(serviceId:Int,msgId:Int,body:HashMapStringAny):HashMapStringAny = {
 
-      val fields = classexMap.getOrElse(serviceId+"-"+msgId,null)
-      if( fields == null || fields.size == 0 ) return body
+        val fields = classexMap.getOrElse(serviceId+"-"+msgId,null)
+        if( fields == null || fields.size == 0 ) return body
 
-      val newBody = HashMapStringAny()
-      for( (key,value) <- body ) {
+        val newBody = HashMapStringAny()
+        for( (key,value) <- body ) {
 
-       if( !fields.contains(key) ) {
+            if( !fields.contains(key) ) {
 
-         newBody.put(key,value)
+                newBody.put(key,value)
 
-       } else {
+            } else {
 
-        value match {
+                value match {
 
-          case s:String =>
-                val v = convertValue(value,key,fields)
-                newBody.put(key,v)
+                    case s:String =>
+                        val v = convertValue(value,key,fields)
+                        newBody.put(key,v)
 
-          case i:Int =>
-                val v = convertValue(value,key,fields)
-                newBody.put(key,v)
+                    case i:Int =>
+                        val v = convertValue(value,key,fields)
+                        newBody.put(key,v)
 
-          case m:HashMapStringAny =>
+                    case m:HashMapStringAny =>
 
-              val newMap = convertMap(m,key,fields)
-              newBody.put(key,newMap)
+                        val newMap = convertMap(m,key,fields)
+                        newBody.put(key,newMap)
 
-          case ls:ArrayBufferString =>
+                    case ls:ArrayBufferString =>
 
-              val buff = ArrayBufferAny()
-              for( value2 <- ls ) {
-                    val v = convertValue(value2,key,fields)
-                    buff += v
-              }
-              newBody.put(key,buff)
+                        val buff = ArrayBufferAny()
+                        for( value2 <- ls ) {
+                            val v = convertValue(value2,key,fields)
+                            buff += v
+                        }
+                        newBody.put(key,buff)
 
-          case li:ArrayBufferInt =>
-              val buff = ArrayBufferAny()
-              for( value2 <- li ) {
-                    val v = convertValue(value2,key,fields)
-                    buff += v
-              }
-              newBody.put(key,buff)
+                    case li:ArrayBufferInt =>
+                        val buff = ArrayBufferAny()
+                        for( value2 <- li ) {
+                            val v = convertValue(value2,key,fields)
+                            buff += v
+                        }
+                        newBody.put(key,buff)
 
-          case lm:ArrayBufferMap =>
-              val buff = ArrayBufferAny()
-              for( value2 <- lm ) {
-                    val v = convertMap(value2,key,fields)
-                    buff += v
-              }
-              newBody.put(key,buff)
+                    case lm:ArrayBufferMap =>
+                        val buff = ArrayBufferAny()
+                        for( value2 <- lm ) {
+                            val v = convertMap(value2,key,fields)
+                            buff += v
+                        }
+                        newBody.put(key,buff)
 
-          case _ =>
-            newBody.put(key,value)
+                    case _ =>
+                        newBody.put(key,value)
+                }
+
+            }
+
         }
 
-       }
-
-      }
-
-      newBody
+        newBody
     }
 
     def convertMap(m:HashMapStringAny,key:String,fields:HashMap[String,String]):Any = {
-          val newMap = HashMapStringAny()
-          for( (key2,value2) <- m ) {
-                val v = convertValue(value2,key+"-"+key2,fields)
-                newMap.put(key2,v)
-          }
-          newMap
+        val newMap = HashMapStringAny()
+        for( (key2,value2) <- m ) {
+            val v = convertValue(value2,key+"-"+key2,fields)
+            newMap.put(key2,v)
+        }
+        newMap
     }
 
     def convertValue(value:Any,key:String,fields:HashMap[String,String]):Any = {
 
-       if( value == null || value == "" || !fields.contains(key) ) {
-           return value
-       }
+        if( value == null || value == "" || !fields.contains(key) ) {
+            return value
+        }
 
-       val classex = fields.getOrElse(key,null)
-       classex match {
-         case "json" =>
-           JsonCodec.parseObject(value.toString)
-         case "double" =>
-           value.toString.toDouble
-         case "long" =>
-           value.toString.toLong
-         case "string" =>
-           value.toString
-         case _ =>
-           value
-         }
+        val classex = fields.getOrElse(key,null)
+        classex match {
+            case "json" =>
+                JsonCodec.parseObject(value.toString)
+            case "double" =>
+                value.toString.toDouble
+            case "long" =>
+                value.toString.toLong
+            case "string" =>
+                value.toString
+            case _ =>
+                value
+        }
 
     }
 
@@ -2305,7 +2305,7 @@ ETAGS: "xxx"
         }
 
         if( HttpTimeHelper.convertTimestamp(new Date(t)) != s ) {
-                return defaultValue
+            return defaultValue
         }
 
         t
@@ -2324,212 +2324,212 @@ ETAGS: "xxx"
     }
 
     def isTrue(s:String):Boolean = {
-       s == "1"  || s == "t"  || s == "T" || s == "true"  || s == "TRUE" || s == "y"  || s == "Y" || s == "yes" || s == "YES"
+        s == "1"  || s == "t"  || s == "T" || s == "true"  || s == "TRUE" || s == "y"  || s == "Y" || s == "yes" || s == "YES"
     }
 
-	def parseFileUploadContent(charset:String,buffer:ChannelBuffer,map:HashMapStringAny) {
-		var delimeter = parseDelimeter(charset,buffer)
-		if( delimeter == "" ) return
-		val db = delimeter.getBytes()
+    def parseFileUploadContent(charset:String,buffer:ChannelBuffer,map:HashMapStringAny) {
+        var delimeter = parseDelimeter(charset,buffer)
+        if( delimeter == "" ) return
+        val db = delimeter.getBytes()
 
-		var over = false	
-		val params = ArrayBufferMap()
-		while(buffer.readable() && !over ) { 
-			val m = parsePartAttrs(charset,buffer)
-			if( m.contains("filename") ) {
-				val (filename,finished) = readMultiPartFile(charset,buffer,db)
-				if( filename != "")
-					m.put("file",filename)
-				over = finished	
-			} else {
-				val (v,finished) = readMultiPartValue(charset,buffer,db)
-				m.put("value",v)
-				over = finished	
-			}
-			params += m
-		}
-		val files = ArrayBufferMap()
-		for( m <- params ) {
-			if( m.contains("filename") ) {
-				if( m.contains("file") ) {
-					val filename = m.s("filename","")
-					val p = filename.lastIndexOf(".")
-					if( p > 0 ) m.put("ext",filename.substring(p).toLowerCase)
-					else m.put("ext","")
-					
-					val file = m.s("file","")
-					m.put("size",new File(file).length)
-					
-					files += m
-				}
-			} else {
-				val name = m.s("name","")
-				val value = m.s("value","")
-				if( name != "") {
-					map.put(name,value)
-				}
-			}
-		}
-		map.put("files",files)
-	}
-	
-	def readMultiPartFile(charset:String,buffer:ChannelBuffer,db:Array[Byte]):Tuple2[String,Boolean] = {
+        var over = false	
+        val params = ArrayBufferMap()
+        while(buffer.readable() && !over ) { 
+            val m = parsePartAttrs(charset,buffer)
+            if( m.contains("filename") ) {
+                val (filename,finished) = readMultiPartFile(charset,buffer,db)
+                if( filename != "")
+                    m.put("file",filename)
+                over = finished	
+            } else {
+                val (v,finished) = readMultiPartValue(charset,buffer,db)
+                m.put("value",v)
+                over = finished	
+            }
+            params += m
+        }
+        val files = ArrayBufferMap()
+        for( m <- params ) {
+            if( m.contains("filename") ) {
+                if( m.contains("file") ) {
+                    val filename = m.s("filename","")
+                    val p = filename.lastIndexOf(".")
+                    if( p > 0 ) m.put("ext",filename.substring(p).toLowerCase)
+                    else m.put("ext","")
 
-		val webappUploadDirExisted = new File(webappUploadDir).exists()
-		if( !webappUploadDirExisted ) {
-			new File(webappUploadDir).mkdirs()
-		}
-		val filename = webappUploadDir + File.separator+uuid()+".tmp"
-		
-		var writed = 0
-		val buf = new FileOutputStream(filename); 
-		while(buffer.readable()) { 
-			val b = buffer.readByte()
-			if ( b == '\r' && buffer.readable() )	 {
-				val b2 = buffer.readByte()
-				if( b2 == '\n' && buffer.readableBytes >= db.size + 2 ) {
-					buffer.markReaderIndex()
-					val (matched,finished) = cmp(buffer,db)
-					if( matched ) {
-						buf.close()
-						if( writed > 0 ) {
-							return new Tuple2(filename,finished)
-						} else {
-							new File(filename).delete()	
-							return new Tuple2("",finished)
-						}
-					} else {
-						buf.write(b)
-						buf.write(b2)
-						writed += 2
-						buffer.resetReaderIndex()
-					} 
-				} else {
-					buf.write(b)
-					buf.write(b2)
-					writed += 2
-				}
-			} else {
-				buf.write(b)
-				writed += 1
-			}
-		} 
-		
-		buf.close()
-		("",true)
-	}
-	
-	def readMultiPartValue(charset:String,buffer:ChannelBuffer,db:Array[Byte]):Tuple2[String,Boolean] = {
-		val buf = new ByteArrayOutputStream(); 
-		while(buffer.readable()) { 
-			val b = buffer.readByte()
-			if ( b == '\r' && buffer.readable() )	 {
-				val b2 = buffer.readByte()
-				if( b2 == '\n' && buffer.readableBytes >= db.size + 2 ) {
-					buffer.markReaderIndex()
-					val (matched,finished) = cmp(buffer,db)
-					if( matched ) {
-						val v = buf.toString(charset)
-						return new Tuple2(v,finished)
-					} else {
-						buf.write(b)
-						buf.write(b2)
-						buffer.resetReaderIndex()
-					} 
-				} else {
-					buf.write(b)
-					buf.write(b2)
-				}
-			} else {
-				buf.write(b)
-			}
-		} 
-		
-		("",true)
-	}
+                    val file = m.s("file","")
+                    m.put("size",new File(file).length)
 
-	def cmp(buffer:ChannelBuffer, db:Array[Byte]):Tuple2[Boolean,Boolean] = {
-		var i = 0
-		while( i < db.size) {
-			val b = buffer.readByte()
-			if( b != db(i) ) return new Tuple2(false,false)
-			i += 1
-		}
-		val b1 = buffer.readByte()
-		val b2 = buffer.readByte()
-		
-		val finished = ( b1 == '-' && b2 == '-' )
-		(true,finished)
-	}
-	
-	def parseDelimeter(charset:String,buffer:ChannelBuffer):String = {
-		val buf = new ByteArrayOutputStream(); 
-		while(buffer.readable()) { 
-			val b = buffer.readByte()
-			buf.write(b)
-			if ( b == '\n')	 {
-				val line = buf.toString(charset);  
-				return line.trim
-			}
-		} 
-		
-		""
-	}
-	
-	def parsePartAttrs(charset:String,buffer:ChannelBuffer):HashMapStringAny = {
-		val map = HashMapStringAny()
-		val str = parsePart(charset,buffer)
-		if( str == "" ) return map
-		val lines = str.split("\r\n")
-		for(line <- lines) {
-			val p = line.indexOf(":")
-			if( p > 0 ) {
-				val key = line.substring(0,p)
-				key match {
-					case "Content-Disposition" =>
-						val s = line.substring(p+1).trim
-						val ss = s.split(";")
-						for( ts <- ss ) {
-							val tss = ts.trim.split("=")
-							tss(0) match {
-								case "name" =>
-									val v = tss(1).replace("\"","")
-									map.put("name",v)
-								case "filename" =>
-									var v = tss(1).replace("\"","")
-									val p1 = v.lastIndexOf("/")
-									if( p1 >= 0 ) v = v.substring(p1+1)
-									val p2 = v.lastIndexOf("\\")
-									if( p2 >= 0 ) v = v.substring(p2+1)
-									map.put("filename",v)
-								case _ =>
-							}
-						}
-					case "Content-Type" => 
-						val contentType = line.substring(p+1).trim()
-						map.put("contentType",contentType)
-					case _ =>
-				}
-			}
-		}
-		map
-	}	
-	
-	def parsePart(charset:String,buffer:ChannelBuffer):String = {
-		val buf = new ByteArrayOutputStream(); 
-		while(buffer.readable()) { 
-			val b = buffer.readByte()
-			buf.write(b)
-			if ( b == '\n' ) {
-				val line = buf.toString(charset)
-				if( line.endsWith("\r\n\r\n") )	 {
-					return line
-				}
-			} 
-		} 
-		
-		""
-	}
+                    files += m
+                }
+                } else {
+                    val name = m.s("name","")
+                    val value = m.s("value","")
+                    if( name != "") {
+                        map.put(name,value)
+                    }
+                }
+        }
+        map.put("files",files)
+    }
+
+    def readMultiPartFile(charset:String,buffer:ChannelBuffer,db:Array[Byte]):Tuple2[String,Boolean] = {
+
+        val webappUploadDirExisted = new File(webappUploadDir).exists()
+        if( !webappUploadDirExisted ) {
+            new File(webappUploadDir).mkdirs()
+        }
+        val filename = webappUploadDir + File.separator+uuid()+".tmp"
+
+        var writed = 0
+        val buf = new FileOutputStream(filename); 
+        while(buffer.readable()) { 
+            val b = buffer.readByte()
+            if ( b == '\r' && buffer.readable() )	 {
+                val b2 = buffer.readByte()
+                if( b2 == '\n' && buffer.readableBytes >= db.size + 2 ) {
+                    buffer.markReaderIndex()
+                    val (matched,finished) = cmp(buffer,db)
+                    if( matched ) {
+                        buf.close()
+                        if( writed > 0 ) {
+                            return new Tuple2(filename,finished)
+                        } else {
+                            new File(filename).delete()	
+                            return new Tuple2("",finished)
+                        }
+                        } else {
+                            buf.write(b)
+                            buf.write(b2)
+                            writed += 2
+                            buffer.resetReaderIndex()
+                        } 
+                        } else {
+                            buf.write(b)
+                            buf.write(b2)
+                            writed += 2
+                        }
+                        } else {
+                            buf.write(b)
+                            writed += 1
+                        }
+        } 
+
+        buf.close()
+        ("",true)
+    }
+
+    def readMultiPartValue(charset:String,buffer:ChannelBuffer,db:Array[Byte]):Tuple2[String,Boolean] = {
+        val buf = new ByteArrayOutputStream(); 
+        while(buffer.readable()) { 
+            val b = buffer.readByte()
+            if ( b == '\r' && buffer.readable() )	 {
+                val b2 = buffer.readByte()
+                if( b2 == '\n' && buffer.readableBytes >= db.size + 2 ) {
+                    buffer.markReaderIndex()
+                    val (matched,finished) = cmp(buffer,db)
+                    if( matched ) {
+                        val v = buf.toString(charset)
+                        return new Tuple2(v,finished)
+                    } else {
+                        buf.write(b)
+                        buf.write(b2)
+                        buffer.resetReaderIndex()
+                    } 
+                    } else {
+                        buf.write(b)
+                        buf.write(b2)
+                    }
+                    } else {
+                        buf.write(b)
+                    }
+        } 
+
+        ("",true)
+    }
+
+    def cmp(buffer:ChannelBuffer, db:Array[Byte]):Tuple2[Boolean,Boolean] = {
+        var i = 0
+        while( i < db.size) {
+            val b = buffer.readByte()
+            if( b != db(i) ) return new Tuple2(false,false)
+            i += 1
+        }
+        val b1 = buffer.readByte()
+        val b2 = buffer.readByte()
+
+        val finished = ( b1 == '-' && b2 == '-' )
+        (true,finished)
+    }
+
+    def parseDelimeter(charset:String,buffer:ChannelBuffer):String = {
+        val buf = new ByteArrayOutputStream(); 
+        while(buffer.readable()) { 
+            val b = buffer.readByte()
+            buf.write(b)
+            if ( b == '\n')	 {
+                val line = buf.toString(charset);  
+                return line.trim
+            }
+        } 
+
+        ""
+    }
+
+    def parsePartAttrs(charset:String,buffer:ChannelBuffer):HashMapStringAny = {
+        val map = HashMapStringAny()
+        val str = parsePart(charset,buffer)
+        if( str == "" ) return map
+        val lines = str.split("\r\n")
+        for(line <- lines) {
+            val p = line.indexOf(":")
+            if( p > 0 ) {
+                val key = line.substring(0,p)
+                key match {
+                    case "Content-Disposition" =>
+                        val s = line.substring(p+1).trim
+                        val ss = s.split(";")
+                        for( ts <- ss ) {
+                            val tss = ts.trim.split("=")
+                            tss(0) match {
+                                case "name" =>
+                                    val v = tss(1).replace("\"","")
+                                    map.put("name",v)
+                                case "filename" =>
+                                    var v = tss(1).replace("\"","")
+                                    val p1 = v.lastIndexOf("/")
+                                    if( p1 >= 0 ) v = v.substring(p1+1)
+                                    val p2 = v.lastIndexOf("\\")
+                                if( p2 >= 0 ) v = v.substring(p2+1)
+                                map.put("filename",v)
+                                case _ =>
+                            }
+                        }
+                                case "Content-Type" => 
+                                    val contentType = line.substring(p+1).trim()
+                                    map.put("contentType",contentType)
+                                case _ =>
+                }
+            }
+        }
+        map
+    }	
+
+    def parsePart(charset:String,buffer:ChannelBuffer):String = {
+        val buf = new ByteArrayOutputStream(); 
+        while(buffer.readable()) { 
+            val b = buffer.readByte()
+            buf.write(b)
+            if ( b == '\n' ) {
+                val line = buf.toString(charset)
+                if( line.endsWith("\r\n\r\n") )	 {
+                    return line
+                }
+            } 
+        } 
+
+        ""
+    }
 
 }
 

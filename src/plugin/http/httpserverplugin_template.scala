@@ -13,7 +13,7 @@ import org.apache.velocity._;
 import org.apache.velocity.app._;
 
 object TemplateUtils {
-  
+
     val templateDir = Flow.router.rootDir+File.separator+"webapp"+File.separator+"template"
     val templateCache = Flow.router.getConfig("httpserver.template.cache","1") == "1"
     val templateTypeMap = new ConcurrentHashMap[String,String]()
@@ -49,11 +49,11 @@ object TemplateUtils {
 
         templateType
     }
-  
+
 }
 
 class TemplatePlugin extends HttpServerPlugin with HttpServerOutputPlugin with Logging {
-  
+
     def generateContent(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String):String = {
 
         var templateName = body.s("templateName","")
@@ -78,14 +78,14 @@ class TemplatePlugin extends HttpServerPlugin with HttpServerOutputPlugin with L
         }
 
     }
-  
+
 }
 
 object SimpleTemplate extends Logging {
 
     class TemplateItem(val tp:Int,val tpData:String)
     class TemplateData(val items:ArrayBuffer[TemplateItem],val lastModified:Long,var lastChecked:Long)
-    
+
     val templateDir = Flow.router.rootDir+File.separator+"webapp"+File.separator+"template"
     val templateCache = Flow.router.getConfig("httpserver.template.cache","1") == "1"
     val checkInterval = Flow.router.getConfig("httpserver.template.checkInterval","60").toInt*1000 
@@ -164,12 +164,12 @@ object SimpleTemplate extends Logging {
                                         ""
                                     else
                                         m.s(ss(1),"")
-                                } else {    
-                                    body.s(item.tpData,"")
-                                }
-                            } else {
-                                body.s(item.tpData,"")
-                            }
+                                    } else {    
+                                        body.s(item.tpData,"")
+                                    }
+                                    } else {
+                                        body.s(item.tpData,"")
+                                    }
                     }
                     buff.append(value)
             }
@@ -201,7 +201,7 @@ object VelocityTemplate extends Logging {
     }
 
     def generateContent(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,templateName:String):String = {
-        
+
         val t = ve.getTemplate(templateName+".vm");
 
         val context = new VelocityContext();
@@ -210,8 +210,8 @@ object VelocityTemplate extends Logging {
         for( (k,v) <- body ) {
             if( v == null ) {
                 context.put(k,"")
-           } else {
-               v match {
+            } else {
+                v match {
                     case s:String => context.put(k,s)
                     case i:Int => context.put(k,i.toString)
                     case ls:ArrayBufferString => 
@@ -244,8 +244,8 @@ object VelocityTemplate extends Logging {
                         context.put(k,l)
 
                     case _ => context.put(k,v.toString)
-               }
-           }
+                }
+            }
         }
 
         val writer = new StringWriter();

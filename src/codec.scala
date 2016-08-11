@@ -72,9 +72,9 @@ object AvenueCodec {
 
 class AvenueCodec {
 
-  import AvenueCodec._
+    import AvenueCodec._
 
-  def decode(req : ByteBuffer,key:String="") : AvenueData = {
+    def decode(req : ByteBuffer,key:String="") : AvenueData = {
 
         req.position(0)
 
@@ -158,7 +158,7 @@ class AvenueCodec {
 
         if( key != null && key != "" && AvenueCodec.decrypt_f != null) {
             body = AvenueCodec.decrypt_f(body,key)
-         }
+        }
 
         val r = new AvenueData(
             flag,serviceId,msgId,sequence,
@@ -167,12 +167,12 @@ class AvenueCodec {
             xhead,body )
 
         r
-  }
+    }
 
-  val ONE = 1.toByte
-  val ZERO = 0.toByte
+    val ONE = 1.toByte
+    val ZERO = 0.toByte
 
-  def encode(res: AvenueData,key:String="") : ByteBuffer = {
+    def encode(res: AvenueData,key:String="") : ByteBuffer = {
 
         var body = res.body
         if( key != null && key != "" && AvenueCodec.encrypt_f != null ) {

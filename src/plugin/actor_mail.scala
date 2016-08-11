@@ -42,66 +42,66 @@ class MailActor(val router: Router,val cfgNode: Node) extends Actor with Logging
 
     def init() {
 
-      serviceIds = (cfgNode \ "ServiceId").text
+        serviceIds = (cfgNode \ "ServiceId").text
 
-      var s = (cfgNode \ "@timeout").text
-      if( s != "" ) timeout = s.toInt*1000
+        var s = (cfgNode \ "@timeout").text
+        if( s != "" ) timeout = s.toInt*1000
 
-      s = (cfgNode \ "@connectTimeout").text
-      if( s != "" ) connectTimeout = s.toInt*1000
+        s = (cfgNode \ "@connectTimeout").text
+        if( s != "" ) connectTimeout = s.toInt*1000
 
-      s = (cfgNode \ "@threadNum").text
-      if( s != "" ) maxThreadNum = s.toInt
+        s = (cfgNode \ "@threadNum").text
+        if( s != "" ) maxThreadNum = s.toInt
 
-      val firstServiceId = serviceIds.split(",")(0)
-      threadFactory = new NamedThreadFactory("mail"+firstServiceId)
-      pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
-      pool.prestartAllCoreThreads()
+        val firstServiceId = serviceIds.split(",")(0)
+        threadFactory = new NamedThreadFactory("mail"+firstServiceId)
+        pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
+        pool.prestartAllCoreThreads()
 
-      val p = new com.sun.net.ssl.internal.ssl.Provider()
-      if (Security.getProvider(p.getName) == null) {
-        Security.addProvider(p)
-      }
+        val p = new com.sun.net.ssl.internal.ssl.Provider()
+        if (Security.getProvider(p.getName) == null) {
+            Security.addProvider(p)
+        }
 
-      log.info("MailActor started {}",serviceIds)
+        log.info("MailActor started {}",serviceIds)
     }
 
     def close() {
 
-      val t1 = System.currentTimeMillis
+        val t1 = System.currentTimeMillis
 
-      pool.shutdown()
+        pool.shutdown()
 
-      pool.awaitTermination(5,TimeUnit.SECONDS)
+        pool.awaitTermination(5,TimeUnit.SECONDS)
 
-      val t2 = System.currentTimeMillis
-      if( t2 - t1 > 100 )
-        log.warn("MailActor long time to shutdown pool, ts={}",t2-t1)
+        val t2 = System.currentTimeMillis
+        if( t2 - t1 > 100 )
+            log.warn("MailActor long time to shutdown pool, ts={}",t2-t1)
 
 
-      log.info("MailActor stopped {}",serviceIds)
+        log.info("MailActor stopped {}",serviceIds)
     }
 
     override def receive(v:Any) :Unit = {
 
-      try {
-        pool.execute( new Runnable() {
-                        def run() {
-                            try {
-                              onReceive(v)
-                            } catch {
-                              case e:Exception =>
-                                log.error("MailActor exception v={}",v,e)
-                            }
-                        }
-                      })
+        try {
+            pool.execute( new Runnable() {
+                def run() {
+                    try {
+                        onReceive(v)
+                    } catch {
+                        case e:Exception =>
+                            log.error("MailActor exception v={}",v,e)
+                    }
+                }
+            })
         } catch {
-          case e: RejectedExecutionException =>
+            case e: RejectedExecutionException =>
 
-            if( v.isInstanceOf[Request] )
-              reply(v.asInstanceOf[Request],ResultCodes.SERVICE_FULL)
+                if( v.isInstanceOf[Request] )
+                    reply(v.asInstanceOf[Request],ResultCodes.SERVICE_FULL)
 
-            log.error("MailActor queue is full, serviceIds={}",serviceIds)
+                log.error("MailActor queue is full, serviceIds={}",serviceIds)
         }
     }
 
@@ -111,101 +111,102 @@ class MailActor(val router: Router,val cfgNode: Node) extends Actor with Logging
 
             case req: Request =>
 
-                 sendMail(req)
+                sendMail(req)
 
             case _ =>
 
-              log.error("unknown msg")
+                log.error("unknown msg")
 
-      }
-  }
-
-  def sendMail(req: Request) {
-
-    val charSet = req.s("charSet","utf-8")
-    val contentType = req.s("contentType","text/html")
-
-    val smtpHost = req.s("smtpHost","")
-    val smtpPort = req.s("smtpPort","465")
-    val smtpAuth = req.s("smtpAuth","true")
-    val smtpUser = req.s("smtpUser","")
-    val smtpPwd = req.s("smtpPwd","")
-    val smtpSsl = req.s("smtpSsl","true")
-
-    if( smtpHost == "" || smtpAuth == "" ) {
-      reply(req,ResultCodes.SERVICE_INTERNALERROR)
-      return
-    }
-   if( smtpAuth == "true" && (smtpUser == "" || smtpPwd == ""  )) {
-      reply(req,ResultCodes.SERVICE_INTERNALERROR)
-      return
+        }
     }
 
-    val from = req.s("from",smtpUser)
-    val to = req.s("to","")
-    val cc = req.s("cc","")
-    val subject = req.s("subject","")
-    val content = req.s("content","")
+    def sendMail(req: Request) {
 
-    if( to == "" || subject == "" ) {
-      reply(req,ResultCodes.SERVICE_INTERNALERROR)
-      return
+        val charSet = req.s("charSet","utf-8")
+        val contentType = req.s("contentType","text/html")
+
+        val smtpHost = req.s("smtpHost","")
+        val smtpPort = req.s("smtpPort","465")
+        val smtpAuth = req.s("smtpAuth","true")
+        val smtpUser = req.s("smtpUser","")
+        val smtpPwd = req.s("smtpPwd","")
+        val smtpSsl = req.s("smtpSsl","true")
+
+        if( smtpHost == "" || smtpAuth == "" ) {
+            reply(req,ResultCodes.SERVICE_INTERNALERROR)
+            return
+        }
+        if( smtpAuth == "true" && (smtpUser == "" || smtpPwd == ""  )) {
+            reply(req,ResultCodes.SERVICE_INTERNALERROR)
+            return
+        }
+
+        val from = req.s("from",smtpUser)
+        val to = req.s("to","")
+        val cc = req.s("cc","")
+        val subject = req.s("subject","")
+        val content = req.s("content","")
+
+        if( to == "" || subject == "" ) {
+            reply(req,ResultCodes.SERVICE_INTERNALERROR)
+            return
+        }
+
+        try {
+            val props = new Properties();
+            props.setProperty("mail.smtp.host", smtpHost);
+            props.setProperty("mail.smtp.port", smtpPort);  
+            props.setProperty("mail.smtp.auth", smtpAuth);
+
+            props.setProperty("mail.smtp.connectiontimeout", connectTimeout.toString);
+            props.setProperty("mail.smtp.timeout", timeout.toString);
+
+            if( smtpSsl == "true" ) {
+                props.setProperty("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");  
+                props.setProperty("mail.smtp.socketFactory.fallback", "false");  
+                props.setProperty("mail.smtp.socketFactory.port", smtpPort);  
+            }
+
+            val session = Session.getDefaultInstance(props,  new Authenticator() {  
+                override def  getPasswordAuthentication() : PasswordAuthentication = {  
+                    return new PasswordAuthentication(smtpUser, smtpPwd);  
+
+            }  } );  
+
+            val msg = new MimeMessage(session);
+
+            msg.setFrom(new InternetAddress(from));
+
+            msg.addRecipients(Message.RecipientType.TO, to) // todo address cannot include Chinese
+
+            if( cc != ""){
+                msg.addRecipients(Message.RecipientType.CC, cc)
+            }
+
+            val enc = new sun.misc.BASE64Encoder();
+            msg.setSubject("=?"+charSet+"?B?"+enc.encode(subject.getBytes(charSet))+"?=")
+
+            msg.setContent(content.toString(), contentType+";charset="+charSet)
+            msg.setHeader("X-Mailer", "scalabpe mail plugin");
+            msg.setSentDate(new java.util.Date());
+
+            Transport.send(msg)
+            reply(req,0)
+
+        } catch {
+            case e:Throwable => 
+                reply(req,ResultCodes.SERVICE_INTERNALERROR)
+                log.error("failed to send mail, to="+req.s("to")+", subject="+req.s("subject"))
+        }
     }
 
-    try {
-      val props = new Properties();
-      props.setProperty("mail.smtp.host", smtpHost);
-      props.setProperty("mail.smtp.port", smtpPort);  
-      props.setProperty("mail.smtp.auth", smtpAuth);
-
-      props.setProperty("mail.smtp.connectiontimeout", connectTimeout.toString);
-      props.setProperty("mail.smtp.timeout", timeout.toString);
-
-      if( smtpSsl == "true" ) {
-        props.setProperty("mail.smtp.socketFactory.class", "javax.net.ssl.SSLSocketFactory");  
-        props.setProperty("mail.smtp.socketFactory.fallback", "false");  
-        props.setProperty("mail.smtp.socketFactory.port", smtpPort);  
-      }
-
-      val session = Session.getDefaultInstance(props,  new Authenticator() {  
-          override def  getPasswordAuthentication() : PasswordAuthentication = {  
-              return new PasswordAuthentication(smtpUser, smtpPwd);  
-    
-          }  } );  
-
-      val msg = new MimeMessage(session);
-
-      msg.setFrom(new InternetAddress(from));
-
-      msg.addRecipients(Message.RecipientType.TO, to) // todo address cannot include Chinese
-
-      if( cc != ""){
-        msg.addRecipients(Message.RecipientType.CC, cc)
-      }
-
-      val enc = new sun.misc.BASE64Encoder();
-      msg.setSubject("=?"+charSet+"?B?"+enc.encode(subject.getBytes(charSet))+"?=")
-
-      msg.setContent(content.toString(), contentType+";charset="+charSet)
-      msg.setHeader("X-Mailer", "scalabpe mail plugin");
-      msg.setSentDate(new java.util.Date());
-
-      Transport.send(msg)
-      reply(req,0)
-
-    } catch {
-      case e:Throwable => 
-        reply(req,ResultCodes.SERVICE_INTERNALERROR)
-        log.error("failed to send mail, to="+req.s("to")+", subject="+req.s("subject"))
+    def reply(req:Request, code:Int) :Unit ={
+        reply(req,code,new HashMapStringAny())
     }
-  }
 
-  def reply(req:Request, code:Int) :Unit ={
-    reply(req,code,new HashMapStringAny())
-  }
-
-  def reply(req:Request, code:Int, params:HashMapStringAny):Unit = {
-      val res = new Response (code,params,req)
-      router.reply(new RequestResponseInfo(req,res))
-  }
+    def reply(req:Request, code:Int, params:HashMapStringAny):Unit = {
+        val res = new Response (code,params,req)
+        router.reply(new RequestResponseInfo(req,res))
+    }
 }
+

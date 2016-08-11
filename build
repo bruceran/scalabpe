@@ -1,6 +1,6 @@
 
-version="1.1.1"
-pluginversion="1.1.1"
+version="1.1.2"
+pluginversion="1.1.2"
 
 show_help()
 {
@@ -27,7 +27,7 @@ case "$1" in
 		;;
 	*)
 		if [ ! -d classes ] ; then mkdir classes; fi;
-        env JAVA_OPTS="-Dfile.encoding=UTF-8" scalac -deprecation -encoding UTF8 -cp "./lib/*:." -d "./classes" src/*.scala src/plugin/*.scala src/plugin/http/*.scala
+        env JAVA_OPTS="-Dfile.encoding=UTF-8" scalac -deprecation -encoding UTF8 -cp "./lib/*:." -d "./classes" src/*.scala src/plugin/*.scala src/plugin/http/*.scala src/plugin/cache/*.scala
 		cp -f src/plugin/jvmdbbroker.plugins.conf ./classes/
 		cp -f src/release_notes.txt ./classes/
 		jar cf ./lib/scalabpe-core-$version.jar -C ./classes/  ./jvmdbbroker/core -C ./classes/ ./release_notes.txt

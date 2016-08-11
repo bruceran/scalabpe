@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package jvmdbbroker.plugin.http
 
 import java.io._
 import java.util.concurrent._
@@ -20,13 +20,15 @@ import org.jboss.netty.handler.codec.http._;
 import org.jboss.netty.util._;
 import org.jboss.netty.handler.stream._;
 
+import jvmdbbroker.core._
+
 // used by netty
 trait HttpServer4Netty {
     def receive(req:HttpRequest,connId:String):Unit;
 }
 
 class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer,val sos: HttpServer4Netty)
-  extends IdleStateAwareChannelHandler with Logging  {
+extends IdleStateAwareChannelHandler with Logging  {
 
     val conns = new ConcurrentHashMap[String,Channel]()
     val new_conns = new AtomicInteger(0)
@@ -37,17 +39,17 @@ class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer,val sos: HttpS
     def close() = {stopFlag.set(true)}
 
     def stats() : Array[Int] = {
-      val a = new_conns.getAndSet(0)
-      val b = new_disconns.getAndSet(0)
-      Array(a,b,conns.size)
+        val a = new_conns.getAndSet(0)
+        val b = new_disconns.getAndSet(0)
+        Array(a,b,conns.size)
     }
 
     def write(connId:String, response:HttpResponse, keepAlive:Boolean = false,reqResInfo:HttpSosRequestResponseInfo = null) : Boolean = {
 
         val ch = conns.get(connId)
         if( ch == null ) {
-          log.error("connection not found, id={}",connId)
-          return false;
+            log.error("connection not found, id={}",connId)
+            return false;
         }
 
         if( ch.isOpen ) {
@@ -56,11 +58,11 @@ class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer,val sos: HttpS
                 future.addListener(ChannelFutureListener.CLOSE)
             if( reqResInfo != null ) {
                 future.addListener(new ChannelFutureListener() {
-                     def operationComplete(future: ChannelFuture) {
-                         reqResInfo.res.receivedTime = System.currentTimeMillis
-                         Flow.router.asyncLogActor.receive(reqResInfo)
-                     }
-                 });
+                    def operationComplete(future: ChannelFuture) {
+                        reqResInfo.res.receivedTime = System.currentTimeMillis
+                        Flow.router.asyncLogActor.receive(reqResInfo)
+                    }
+                });
             }
             return true
         }
@@ -72,8 +74,8 @@ class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer,val sos: HttpS
 
         val ch = conns.get(connId)
         if( ch == null ) {
-          log.error("connection not found, id={}",connId)
-          return false;
+            log.error("connection not found, id={}",connId)
+            return false;
         }
 
         if( ch.isOpen ) {
@@ -83,11 +85,11 @@ class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer,val sos: HttpS
                 future.addListener(ChannelFutureListener.CLOSE)
             if( reqResInfo != null ) {
                 future.addListener(new ChannelFutureListener() {
-                     def operationComplete(future: ChannelFuture) {
-                         reqResInfo.res.receivedTime = System.currentTimeMillis
-                         Flow.router.asyncLogActor.receive(reqResInfo)
-                     }
-                 });
+                    def operationComplete(future: ChannelFuture) {
+                        reqResInfo.res.receivedTime = System.currentTimeMillis
+                        Flow.router.asyncLogActor.receive(reqResInfo)
+                    }
+                });
             }
             return true
         }
@@ -106,10 +108,10 @@ class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer,val sos: HttpS
         val connId = ctx.getAttachment().asInstanceOf[String];
 
         try {
-          sos.receive(request, connId);
+            sos.receive(request, connId);
         } catch {
-          case e:Exception =>
-            log.error("httpserver decode error, connId="+connId,e);
+            case e:Exception =>
+                log.error("httpserver decode error, connId="+connId,e);
         }
     }
 
@@ -166,15 +168,15 @@ class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer,val sos: HttpS
 }
 
 object NettyHttpServer {
-  val count = new AtomicInteger(1)
+    val count = new AtomicInteger(1)
 }
 
 class NettyHttpServer(val sos: HttpServer4Netty,
-                  val port:Int,
-                  val host:String = "*",
-                  val idleTimeoutMillis: Int = 45000,
-				  val maxContentLength: Int = 5000000
-                  ) extends Logging with Dumpable {
+    val port:Int,
+    val host:String = "*",
+    val idleTimeoutMillis: Int = 45000,
+    val maxContentLength: Int = 5000000
+    ) extends Logging with Dumpable {
 
     var nettyHttpServerHandler : NettyHttpServerHandler = _
     var allChannels:ChannelGroup= _
@@ -189,21 +191,21 @@ class NettyHttpServer(val sos: HttpServer4Netty,
     var workerExecutor:ThreadPoolExecutor = _
 
     def stats() : Array[Int] = {
-      nettyHttpServerHandler.stats
+        nettyHttpServerHandler.stats
     }
 
     def dump() {
-      if( nettyHttpServerHandler == null ) return
+        if( nettyHttpServerHandler == null ) return
 
-      val buff = new StringBuilder
+        val buff = new StringBuilder
 
-      buff.append("nettyHttpServerHandler.conns.size=").append(nettyHttpServerHandler.conns.size).append(",")
-      buff.append("bossExecutor.getPoolSize=").append(bossExecutor.getPoolSize).append(",")
-      buff.append("bossExecutor.getQueue.size=").append(bossExecutor.getQueue.size).append(",")
-      buff.append("workerExecutor.getPoolSize=").append(workerExecutor.getPoolSize).append(",")
-      buff.append("workerExecutor.getQueue.size=").append(workerExecutor.getQueue.size).append(",")
+        buff.append("nettyHttpServerHandler.conns.size=").append(nettyHttpServerHandler.conns.size).append(",")
+        buff.append("bossExecutor.getPoolSize=").append(bossExecutor.getPoolSize).append(",")
+        buff.append("bossExecutor.getQueue.size=").append(bossExecutor.getQueue.size).append(",")
+        buff.append("workerExecutor.getPoolSize=").append(workerExecutor.getPoolSize).append(",")
+        buff.append("workerExecutor.getQueue.size=").append(workerExecutor.getQueue.size).append(",")
 
-      log.info(buff.toString)
+        log.info(buff.toString)
     }
 
     def start() : Unit = {
@@ -229,11 +231,11 @@ class NettyHttpServer(val sos: HttpServer4Netty,
         bootstrap.setOption("child.receiveBufferSize", 65536)
 
         val addr =
-          if (host == null || "*" == host) {
-              new InetSocketAddress(port)
-          } else {
-              new InetSocketAddress(host, port)
-          }
+            if (host == null || "*" == host) {
+                new InetSocketAddress(port)
+            } else {
+                new InetSocketAddress(host, port)
+            }
 
         val channel = bootstrap.bind(addr)
         allChannels.add(channel)
@@ -251,10 +253,10 @@ class NettyHttpServer(val sos: HttpServer4Netty,
     }
 
     def closeReadChannel() {
-      if( nettyHttpServerHandler != null ) {
-          nettyHttpServerHandler.close()
-      }
-      log.info("nettyHttpServerHandler read channel stopped")
+        if( nettyHttpServerHandler != null ) {
+            nettyHttpServerHandler.close()
+        }
+        log.info("nettyHttpServerHandler read channel stopped")
     }
 
     def close() : Unit = {
@@ -268,7 +270,7 @@ class NettyHttpServer(val sos: HttpServer4Netty,
 
             val chs = nettyHttpServerHandler.conns.values.iterator
             while(chs.hasNext()) {
-              allChannels.add(chs.next())
+                allChannels.add(chs.next())
             }
             val future = allChannels.close()
             future.awaitUninterruptibly()
@@ -297,3 +299,5 @@ class NettyHttpServer(val sos: HttpServer4Netty,
     }
 
 }
+
+

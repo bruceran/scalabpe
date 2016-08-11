@@ -40,71 +40,71 @@ class HttpClientActor(val router: Router,val cfgNode: Node) extends Actor with L
 
     def init() {
 
-      serviceIds = (cfgNode \ "ServiceId").text
+        serviceIds = (cfgNode \ "ServiceId").text
 
-      var s = (cfgNode \ "Timeout").text
-      if( s != "" ) timeout = s.toInt*1000
-      s = (cfgNode \ "@timeout").text
-      if( s != "" ) timeout = s.toInt*1000
+        var s = (cfgNode \ "Timeout").text
+        if( s != "" ) timeout = s.toInt*1000
+        s = (cfgNode \ "@timeout").text
+        if( s != "" ) timeout = s.toInt*1000
 
-      s = (cfgNode \ "ConnectTimeout").text
-      if( s != "" ) connectTimeout = s.toInt*1000
-      s = (cfgNode \ "@connectTimeout").text
-      if( s != "" ) connectTimeout = s.toInt*1000
+        s = (cfgNode \ "ConnectTimeout").text
+        if( s != "" ) connectTimeout = s.toInt*1000
+        s = (cfgNode \ "@connectTimeout").text
+        if( s != "" ) connectTimeout = s.toInt*1000
 
-      s = (cfgNode \ "ThreadNum").text
-      if( s != "" ) maxThreadNum = s.toInt
-      s = (cfgNode \ "@threadNum").text
-      if( s != "" ) maxThreadNum = s.toInt
+        s = (cfgNode \ "ThreadNum").text
+        if( s != "" ) maxThreadNum = s.toInt
+        s = (cfgNode \ "@threadNum").text
+        if( s != "" ) maxThreadNum = s.toInt
 
-      s = (cfgNode \ "TimerInterval").text
-      if( s != "" ) timerInterval = s.toInt
-      s = (cfgNode \ "@timerInterval").text
-      if( s != "" ) timerInterval = s.toInt
+        s = (cfgNode \ "TimerInterval").text
+        if( s != "" ) timerInterval = s.toInt
+        s = (cfgNode \ "@timerInterval").text
+        if( s != "" ) timerInterval = s.toInt
 
-      val firstServiceId = serviceIds.split(",")(0)
-      threadFactory = new NamedThreadFactory("httpclient"+firstServiceId)
-      pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
-      pool.prestartAllCoreThreads()
+        val firstServiceId = serviceIds.split(",")(0)
+        threadFactory = new NamedThreadFactory("httpclient"+firstServiceId)
+        pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
+        pool.prestartAllCoreThreads()
 
-      httpClient = new HttpClientImpl(cfgNode,router.codecs,this.receive,connectTimeout,timerInterval)
-      log.info("HttpClientActor started {}",serviceIds)
+        httpClient = new HttpClientImpl(cfgNode,router.codecs,this.receive,connectTimeout,timerInterval)
+        log.info("HttpClientActor started {}",serviceIds)
     }
 
     def close() {
 
-      val t1 = System.currentTimeMillis
+        val t1 = System.currentTimeMillis
 
-      pool.shutdown()
+        pool.shutdown()
 
-      pool.awaitTermination(5,TimeUnit.SECONDS)
+        pool.awaitTermination(5,TimeUnit.SECONDS)
 
-      val t2 = System.currentTimeMillis
-      if( t2 - t1 > 100 )
-        log.warn("HttpClientActor long time to shutdown pool, ts={}",t2-t1)
+        val t2 = System.currentTimeMillis
+        if( t2 - t1 > 100 )
+            log.warn("HttpClientActor long time to shutdown pool, ts={}",t2-t1)
 
 
-      httpClient.close()
-      log.info("HttpClientActor stopped {}",serviceIds)
+        httpClient.close()
+        log.info("HttpClientActor stopped {}",serviceIds)
     }
 
     override def receive(v:Any) :Unit = {
 
-      try {
-        pool.execute( new Runnable() {
-                        def run() {
-                            try {
-                              onReceive(v)
-                            } catch {
-                              case e:Exception =>
-                                log.error("httpclient exception v={}",v,e)
-                            }
-                        }
-                      })
+        try {
+            pool.execute( new Runnable() {
+                def run() {
+                    try {
+                        onReceive(v)
+                    } catch {
+                        case e:Exception =>
+                            log.error("httpclient exception v={}",v,e)
+                    }
+                }
+            })
         } catch {
-          case e: RejectedExecutionException =>
-            // ignore the message
-            log.error("httpclient queue is full, serviceIds={}",serviceIds)
+            case e: RejectedExecutionException =>
+                // ignore the message
+                log.error("httpclient queue is full, serviceIds={}",serviceIds)
         }
     }
 
@@ -114,17 +114,18 @@ class HttpClientActor(val router: Router,val cfgNode: Node) extends Actor with L
 
             case req: Request =>
 
-                 httpClient.send(req,timeout)
+                httpClient.send(req,timeout)
 
             case reqResInfo: RequestResponseInfo =>
 
-                 router.reply(reqResInfo)
+                router.reply(reqResInfo)
 
             case _ =>
 
-              log.error("unknown msg")
+                log.error("unknown msg")
 
-      }
-  }
+        }
+    }
 
 }
+

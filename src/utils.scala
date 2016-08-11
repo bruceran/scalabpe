@@ -21,25 +21,25 @@ object IpUtils {
     def loadIps() {
 
         try {
-          val netInterfaces = NetworkInterface.getNetworkInterfaces();
-          while (netInterfaces.hasMoreElements()) {
-            val address = netInterfaces.nextElement().getInetAddresses();
-            while (address.hasMoreElements()) {
-              val ip = address.nextElement()
+            val netInterfaces = NetworkInterface.getNetworkInterfaces();
+            while (netInterfaces.hasMoreElements()) {
+                val address = netInterfaces.nextElement().getInetAddresses();
+                while (address.hasMoreElements()) {
+                    val ip = address.nextElement()
 
-              if (!ip.isSiteLocalAddress() && !ip.isLoopbackAddress() && ip.getHostAddress().indexOf(":") == -1) {
-                netips  += ip.getHostAddress()
-              } else if (ip.isSiteLocalAddress() && !ip.isLoopbackAddress() && ip.getHostAddress().indexOf(":") == -1) {
-                localips += ip.getHostAddress()
-              }
+                    if (!ip.isSiteLocalAddress() && !ip.isLoopbackAddress() && ip.getHostAddress().indexOf(":") == -1) {
+                        netips  += ip.getHostAddress()
+                    } else if (ip.isSiteLocalAddress() && !ip.isLoopbackAddress() && ip.getHostAddress().indexOf(":") == -1) {
+                        localips += ip.getHostAddress()
+                    }
+                }
             }
-          }
         } catch {
-          case e: Exception =>
+            case e: Exception =>
         }
 
-//println("localips="+localips.mkString(","))
-//println("netips="+netips.mkString(","))
+        //println("localips="+localips.mkString(","))
+        //println("netips="+netips.mkString(","))
 
     }
 
@@ -95,28 +95,28 @@ object RequestIdGenerator {
             }
 
             index = savedIndex;
-        } finally {
-            lock.unlock();
-        }
+            } finally {
+                lock.unlock();
+            }
 
-        serverId + now + index.toString
-  }
+            serverId + now + index.toString
+    }
 }
 
 class NamedThreadFactory(val namePrefix:String) extends ThreadFactory {
 
-        val threadNumber = new AtomicInteger(1)
-        val s = System.getSecurityManager()
-        val group = if (s != null) s.getThreadGroup() else Thread.currentThread().getThreadGroup()
+    val threadNumber = new AtomicInteger(1)
+    val s = System.getSecurityManager()
+    val group = if (s != null) s.getThreadGroup() else Thread.currentThread().getThreadGroup()
 
-        def newThread(r: Runnable) : Thread = {
-            val t = new Thread(group, r,  namePrefix + "-thread-" + threadNumber.getAndIncrement(), 0)
-            if (t.isDaemon())
-                t.setDaemon(false)
-            if (t.getPriority() != Thread.NORM_PRIORITY)
-                t.setPriority(Thread.NORM_PRIORITY)
-            t
-        }
+    def newThread(r: Runnable) : Thread = {
+        val t = new Thread(group, r,  namePrefix + "-thread-" + threadNumber.getAndIncrement(), 0)
+        if (t.isDaemon())
+            t.setDaemon(false)
+        if (t.getPriority() != Thread.NORM_PRIORITY)
+            t.setPriority(Thread.NORM_PRIORITY)
+        t
+    }
 
 }
 
@@ -176,7 +176,7 @@ object CryptHelper {
     }
 
     def md5(source:String,charset:String = "UTF-8"):String = {
-       toHexString ( sign( source.getBytes(charset), ALGORITHM__MD5 ) )
+        toHexString ( sign( source.getBytes(charset), ALGORITHM__MD5 ) )
     }
 
     def encryptHex(algorithm:String,hexKey:String,data:String,charset:String = "UTF-8"):String = {
@@ -224,7 +224,7 @@ object CryptHelper {
                     return decrypt(algorithm, desKey, data);
                 case _ =>
                     return null
-                }
+            }
         } catch {
             case e:Throwable => 
                 return null;

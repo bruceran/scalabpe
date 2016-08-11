@@ -37,35 +37,35 @@ object Validator extends Logging {
         if( cls == null || cls == "" ) return null
         val rc = if( returnCode == null || returnCode == "") -10242400 else returnCode.toInt
 
-        val key = cls.toLowerCase + ":param=" + param + ":rc=" + rc
-        var v = cache.getOrElse(key,null)
-        if( v != null ) return v
+    val key = cls.toLowerCase + ":param=" + param + ":rc=" + rc
+    var v = cache.getOrElse(key,null)
+    if( v != null ) return v
 
-        v = cls.toLowerCase match {
-            case "required" =>
-                new RequireValidator(cls.toLowerCase,param,rc)
-            case "regex" =>
-                new RegexValidator(cls.toLowerCase,param,rc)
-            case "email" =>
-                new RegexValidator(cls.toLowerCase,emailRegex,rc)
-            case "url" =>
-                new RegexValidator(cls.toLowerCase,urlRegex,rc)
-            case "numberrange" =>
-                new NumberRangeValidator(cls.toLowerCase,param,rc)
-            case "lengthrange" =>
-                new LengthRangeValidator(cls.toLowerCase,param,rc)
-            case "timerange" =>
-                new TimeRangeValidator(cls.toLowerCase,param,rc)
-            case "numberset" =>
-                new ValueSetValidator(cls.toLowerCase,param,rc)
-            case "valueset" =>
-                new ValueSetValidator(cls.toLowerCase,param,rc)
-            case _ =>
-                log.error("unknown validator, cls="+cls)
-                throw new CodecException("unknown validator, cls="+cls)
-        }
-        cache.put(key,v)
-        return v
+    v = cls.toLowerCase match {
+        case "required" =>
+            new RequireValidator(cls.toLowerCase,param,rc)
+        case "regex" =>
+            new RegexValidator(cls.toLowerCase,param,rc)
+        case "email" =>
+            new RegexValidator(cls.toLowerCase,emailRegex,rc)
+        case "url" =>
+            new RegexValidator(cls.toLowerCase,urlRegex,rc)
+        case "numberrange" =>
+            new NumberRangeValidator(cls.toLowerCase,param,rc)
+        case "lengthrange" =>
+            new LengthRangeValidator(cls.toLowerCase,param,rc)
+        case "timerange" =>
+            new TimeRangeValidator(cls.toLowerCase,param,rc)
+        case "numberset" =>
+            new ValueSetValidator(cls.toLowerCase,param,rc)
+        case "valueset" =>
+            new ValueSetValidator(cls.toLowerCase,param,rc)
+        case _ =>
+            log.error("unknown validator, cls="+cls)
+            throw new CodecException("unknown validator, cls="+cls)
+    }
+    cache.put(key,v)
+    return v
     }
 }
 
@@ -136,18 +136,18 @@ class NumberRangeValidator(val cls:String, val param:String, val returnCode:Int)
                     val i = s.toInt
                     if( i < min || i > max ) 
                         return returnCode
-                } catch {
-                    case e:Throwable => 
-                        return returnCode
-                }
-            case _  => 
-                return returnCode
+                    } catch {
+                        case e:Throwable => 
+                            return returnCode
+                    }
+                        case _  => 
+                            return returnCode
         }
         0
     }
 
-
 }
+
 class LengthRangeValidator(val cls:String, val param:String, val returnCode:Int) extends Validator with Logging {
 
     var min = Int.MinValue 
@@ -181,8 +181,8 @@ class LengthRangeValidator(val cls:String, val param:String, val returnCode:Int)
                 if( s == null || s == "")
                     return returnCode
                 val len = s.length
-                if( len < min || len > max ) 
-                    return returnCode
+            if( len < min || len > max ) 
+                return returnCode
             case _  => 
                 return returnCode
         }
@@ -304,7 +304,7 @@ HtmlEncoder	        无	                    无	        基于NormalEncoder实�
 HtmlFilter	        无	                    无	        基于NormalEncoder实现，等价于： &,|<,|>,|",|',|/,|\\,
 NocaseEncoder       无	                    无	        不区分大小写的NormalEncoder编码转换
 AttackFilter        无	                    无	        基于NocaseEncoder,等价于： script,|exec,|select,|update,|delete,|insert,|create,|alter,|drop,|truncate,|&,|<,|>,|",|',|/,|\\,
-*/
+ */
 
 object Encoder extends Logging {
 
@@ -421,7 +421,7 @@ class NoCaseEncoder(override val cls:String, override val param:String) extends 
         super.init()
         p1 = p1.map( _.toLowerCase )
     }
-    
+
     override def encodeString(s:String):String = {
         if( s == null ) return s
         val b = new StringBuilder(s) 
@@ -479,16 +479,16 @@ class MaskEncoder(override val cls:String, override val param:String) extends En
     init
 
     def init() {
-       tp match {
-           case "phone" | "email" | "account" =>
-           case commonRegex(s,e) =>
+        tp match {
+            case "phone" | "email" | "account" =>
+            case commonRegex(s,e) =>
                 tp = "common"
                 start = s.toInt
                 end = e.toInt
-           case _ =>
+            case _ =>
                 log.error("unknown encoder param, param="+param)
                 throw new CodecException("unknown encoder param, param="+param)
-       }
+        }
     }
 
     def encode(a:Any):Any = {
@@ -549,9 +549,9 @@ class MaskEncoder(override val cls:String, override val param:String) extends En
 class TlvFieldInfo(val defaultValue:String, 
     val validatorCls:String, val validatorParam:String, val validatorReturnCode:String, 
     val encoderCls:String, val encoderParam:String) {
-    val validator = Validator.getValidator(validatorCls,validatorParam,validatorReturnCode)
-    val encoder = Encoder.getEncoder(encoderCls,encoderParam) 
-}
+        val validator = Validator.getValidator(validatorCls,validatorParam,validatorReturnCode)
+        val encoder = Encoder.getEncoder(encoderCls,encoderParam) 
+    }
 
 object TlvFieldInfo extends Logging {
 
@@ -561,15 +561,15 @@ object TlvFieldInfo extends Logging {
         validatorCls:String, validatorParam:String, validatorReturnCode:String,
         encoderCls:String, encoderParam:String  ):TlvFieldInfo =  {
 
-        if( defaultValue == "" && validatorCls == null && encoderCls == null ) return null
+            if( defaultValue == "" && validatorCls == null && encoderCls == null ) return null
 
-        val key = "defaultValue="+defaultValue+",validatorCls="+validatorCls+",validatorParam="+validatorParam+",validatorReturnCode="+validatorReturnCode+",encoderCls="+encoderCls+",encoderParam="+encoderParam 
-        var v = cache.getOrElse(key,null)
-        if( v != null ) return v
+            val key = "defaultValue="+defaultValue+",validatorCls="+validatorCls+",validatorParam="+validatorParam+",validatorReturnCode="+validatorReturnCode+",encoderCls="+encoderCls+",encoderParam="+encoderParam 
+            var v = cache.getOrElse(key,null)
+            if( v != null ) return v
 
-        v = new TlvFieldInfo(defaultValue,validatorCls,validatorParam,validatorReturnCode,encoderCls,encoderParam)
-        cache.put(key,v)
-        return v
+            v = new TlvFieldInfo(defaultValue,validatorCls,validatorParam,validatorReturnCode,encoderCls,encoderParam)
+            cache.put(key,v)
+            return v
     }
 }
 

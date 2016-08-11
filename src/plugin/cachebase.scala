@@ -9,24 +9,24 @@ import jvmdbbroker.core._
 
 object RemoteCacheLike {
 
-  val TYPE_UNKNOWN = -1
-  val TYPE_ARRAYHASH = 1
-  val TYPE_MASTERSLAVE = 2
-  val TYPE_CONHASH = 3
+    val TYPE_UNKNOWN = -1
+    val TYPE_ARRAYHASH = 1
+    val TYPE_MASTERSLAVE = 2
+    val TYPE_CONHASH = 3
 
 }
 
 trait RemoteCacheLike extends CacheLike {
-  def get(req:Request) :Unit
-  def set(req:Request) :Unit
-  def delete(req:Request) :Unit
-  def getAndDelete(req:Request):Unit
-  def getAndCas(req:Request) :Unit
-  def incrBy(req:Request) :Unit
-  def decrBy(req:Request) :Unit
-  def sget(req:Request) :Unit
-  def sadd(req:Request) :Unit
-  def sremove(req:Request) :Unit
+    def get(req:Request) :Unit
+    def set(req:Request) :Unit
+    def delete(req:Request) :Unit
+    def getAndDelete(req:Request):Unit
+    def getAndCas(req:Request) :Unit
+    def incrBy(req:Request) :Unit
+    def decrBy(req:Request) :Unit
+    def sget(req:Request) :Unit
+    def sadd(req:Request) :Unit
+    def sremove(req:Request) :Unit
 }
 
 abstract class BaseCacheActor(val router:Router,val cfgNode: Node) extends Actor with Logging  with Closable with Dumpable {
@@ -65,63 +65,63 @@ abstract class BaseCacheActor(val router:Router,val cfgNode: Node) extends Actor
 
     def init() {
 
-      serviceIds = (cfgNode \ "ServiceId").text
+        serviceIds = (cfgNode \ "ServiceId").text
 
-      addrs = (cfgNode \ "ServerAddr").map(_.text).toList
+        addrs = (cfgNode \ "ServerAddr").map(_.text).toList
 
-      if( addrs.size == 0 ) {
-        val mcfg = (cfgNode \ "MasterServerAddr").text.toString
-        val scfg = (cfgNode \ "SlaveServerAddr").text.toString
-        if( mcfg != "" && scfg != "")
-          addrs = List(mcfg,scfg)
-      }
+        if( addrs.size == 0 ) {
+            val mcfg = (cfgNode \ "MasterServerAddr").text.toString
+            val scfg = (cfgNode \ "SlaveServerAddr").text.toString
+            if( mcfg != "" && scfg != "")
+                addrs = List(mcfg,scfg)
+        }
 
-      if( addrs.size == 0 ) {
-        log.error(getClass.getName+" cache addr not configured, serviceIds={}",serviceIds)
-      }
+        if( addrs.size == 0 ) {
+            log.error(getClass.getName+" cache addr not configured, serviceIds={}",serviceIds)
+        }
 
-      val conHash = (cfgNode \ "ConHash").text
-      val arrayHash = (cfgNode \ "ArrayHash").text
-      cacheType = if ( conHash == "1" ) RemoteCacheLike.TYPE_CONHASH else if( arrayHash == "1" ) RemoteCacheLike.TYPE_ARRAYHASH else RemoteCacheLike.TYPE_UNKNOWN
+        val conHash = (cfgNode \ "ConHash").text
+        val arrayHash = (cfgNode \ "ArrayHash").text
+        cacheType = if ( conHash == "1" ) RemoteCacheLike.TYPE_CONHASH else if( arrayHash == "1" ) RemoteCacheLike.TYPE_ARRAYHASH else RemoteCacheLike.TYPE_UNKNOWN
 
-      var s = (cfgNode \ "@readThreadNum").text
-      if( s != "" ) {
-        readThreadNum = s.toInt
-      } else {
-        s = (router.cfgXml \ readThreadNumNode ).text
-        if( s != "" )
-          readThreadNum = s.toInt
-      }
+        var s = (cfgNode \ "@readThreadNum").text
+        if( s != "" ) {
+            readThreadNum = s.toInt
+        } else {
+            s = (router.cfgXml \ readThreadNumNode ).text
+            if( s != "" )
+                readThreadNum = s.toInt
+        }
 
-      s = (cfgNode \ "@writeThreadNum").text
-      if( s != "" ) {
-        writeThreadNum = s.toInt
-      } else {
-        s = (router.cfgXml \ writeThreadNumNode ).text
-        if( s != "" )
-          writeThreadNum = s.toInt
-      }
+        s = (cfgNode \ "@writeThreadNum").text
+        if( s != "" ) {
+            writeThreadNum = s.toInt
+        } else {
+            s = (router.cfgXml \ writeThreadNumNode ).text
+            if( s != "" )
+                writeThreadNum = s.toInt
+        }
 
-      val firstServiceId = serviceIds.split(",")(0)
-      readThreadFactory = new NamedThreadFactory("cacheread"+firstServiceId)
-      readPool = new ThreadPoolExecutor(readThreadNum, readThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),readThreadFactory)
-      writeThreadFactory = new NamedThreadFactory("cachewrite"+firstServiceId)
-      writePool = new ThreadPoolExecutor(writeThreadNum, writeThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),writeThreadFactory)
-      readPool.prestartAllCoreThreads()
-      writePool.prestartAllCoreThreads()
+        val firstServiceId = serviceIds.split(",")(0)
+        readThreadFactory = new NamedThreadFactory("cacheread"+firstServiceId)
+        readPool = new ThreadPoolExecutor(readThreadNum, readThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),readThreadFactory)
+        writeThreadFactory = new NamedThreadFactory("cachewrite"+firstServiceId)
+        writePool = new ThreadPoolExecutor(writeThreadNum, writeThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),writeThreadFactory)
+        readPool.prestartAllCoreThreads()
+        writePool.prestartAllCoreThreads()
     }
 
     def close() {
-      val t1 = System.currentTimeMillis
+        val t1 = System.currentTimeMillis
 
-      readPool.shutdown()
-      writePool.shutdown()
-      readPool.awaitTermination(5,TimeUnit.SECONDS)
-      writePool.awaitTermination(5,TimeUnit.SECONDS)
+        readPool.shutdown()
+        writePool.shutdown()
+        readPool.awaitTermination(5,TimeUnit.SECONDS)
+        writePool.awaitTermination(5,TimeUnit.SECONDS)
 
-      val t2 = System.currentTimeMillis
-      if( t2 - t1 > 100 )
-        log.warn(getClass.getName+" long time to shutdown pool, ts={}",t2-t1)
+        val t2 = System.currentTimeMillis
+        if( t2 - t1 > 100 )
+            log.warn(getClass.getName+" long time to shutdown pool, ts={}",t2-t1)
     }
 
     override def receive(v:Any) :Unit = {
@@ -134,550 +134,551 @@ abstract class BaseCacheActor(val router:Router,val cfgNode: Node) extends Actor
                 if( req.msgId == CacheLike.MSGID_GET || req.msgId == CacheLike.MSGID_GETANDDELETE || req.msgId == CacheLike.MSGID_SGET ) {
 
                     try {
-                      readPool.execute( new Runnable() {
-                        def run() {
+                        readPool.execute( new Runnable() {
+                            def run() {
 
-                          try {
-                            onReceive(req)
-                          } catch {
-                            case e:Exception =>
-                              log.error("cache exception req={}",req,e)
-                          }
+                                try {
+                                    onReceive(req)
+                                } catch {
+                                    case e:Exception =>
+                                        log.error("cache exception req={}",req,e)
+                                }
 
-                        }
-                      })
+                            }
+                        })
 
                     } catch {
-                      case e: RejectedExecutionException =>
-                        reply(req,ResultCodes.SERVICE_FULL)
-                        log.error("cache read queue is full, serviceIds={}",serviceIds)
+                        case e: RejectedExecutionException =>
+                            reply(req,ResultCodes.SERVICE_FULL)
+                            log.error("cache read queue is full, serviceIds={}",serviceIds)
                     }
 
                 }
 
                 else if( req.msgId == CacheLike.MSGID_SET || req.msgId == CacheLike.MSGID_DELETE || req.msgId == CacheLike.MSGID_INCRBY 
-                      || req.msgId == CacheLike.MSGID_DECRBY || req.msgId == CacheLike.MSGID_GETANDCAS
-                      || req.msgId == CacheLike.MSGID_SADD  || req.msgId == CacheLike.MSGID_SREMOVE) {
+                    || req.msgId == CacheLike.MSGID_DECRBY || req.msgId == CacheLike.MSGID_GETANDCAS
+                    || req.msgId == CacheLike.MSGID_SADD  || req.msgId == CacheLike.MSGID_SREMOVE) {
 
-                  try {
-                        writePool.execute( new Runnable() {
-                          def run() {
+                        try {
+                            writePool.execute( new Runnable() {
+                                def run() {
 
-                            try {
-                              onReceive(req)
-                            } catch {
-                              case e:Exception =>
-                                log.error("cache exception req={}",req,e)
-                            }
+                                    try {
+                                        onReceive(req)
+                                    } catch {
+                                        case e:Exception =>
+                                            log.error("cache exception req={}",req,e)
+                                    }
 
-                          }
-                        })
-                  } catch {
-                    case e: RejectedExecutionException =>
-                      reply(req,ResultCodes.SERVICE_FULL)
-                      log.error("cache write queue is full, serviceIds={}",serviceIds)
-                  }
-                } else {
+                                }
+                            })
+                        } catch {
+                            case e: RejectedExecutionException =>
+                                reply(req,ResultCodes.SERVICE_FULL)
+                                log.error("cache write queue is full, serviceIds={}",serviceIds)
+                        }
+                        } else {
 
-                  log.error("unknown msgid")
-                }
+                            log.error("unknown msgid")
+                        }
 
 
-            case _ =>
+                            case _ =>
 
-              log.error("unknown msg")
-          }
+                                log.error("unknown msg")
+        }
 
     }
 
     def onReceive(req:Request) :Unit = {
 
-      val now = System.currentTimeMillis
-      if( req.receivedTime + req.expireTimeout < now ) {
-          reply(req,ResultCodes.SERVICE_BUSY)
-          log.error("cache is busy, req expired, req={}",req)
-          return
-      }
+        val now = System.currentTimeMillis
+        if( req.receivedTime + req.expireTimeout < now ) {
+            reply(req,ResultCodes.SERVICE_BUSY)
+            log.error("cache is busy, req expired, req={}",req)
+            return
+        }
 
-      req.msgId match {
-        case CacheLike.MSGID_GET =>
-          cache.get(req)
-        case CacheLike.MSGID_SET =>
-          cache.set(req)
-        case CacheLike.MSGID_DELETE =>
-          cache.delete(req)
-        case CacheLike.MSGID_GETANDDELETE =>
-          cache.getAndDelete(req)
-        case CacheLike.MSGID_GETANDCAS =>
-          cache.getAndCas(req)
-        case CacheLike.MSGID_INCRBY =>
-          cache.incrBy(req)
-        case CacheLike.MSGID_DECRBY =>
-          cache.decrBy(req)
-        case CacheLike.MSGID_SGET =>
-          cache.sget(req)
-        case CacheLike.MSGID_SADD =>
-          cache.sadd(req)
-        case CacheLike.MSGID_SREMOVE =>
-          cache.sremove(req)
-        case _ =>
-          log.error("unknown msg")
-      }
-   }
+        req.msgId match {
+            case CacheLike.MSGID_GET =>
+                cache.get(req)
+            case CacheLike.MSGID_SET =>
+                cache.set(req)
+            case CacheLike.MSGID_DELETE =>
+                cache.delete(req)
+            case CacheLike.MSGID_GETANDDELETE =>
+                cache.getAndDelete(req)
+            case CacheLike.MSGID_GETANDCAS =>
+                cache.getAndCas(req)
+            case CacheLike.MSGID_INCRBY =>
+                cache.incrBy(req)
+            case CacheLike.MSGID_DECRBY =>
+                cache.decrBy(req)
+            case CacheLike.MSGID_SGET =>
+                cache.sget(req)
+            case CacheLike.MSGID_SADD =>
+                cache.sadd(req)
+            case CacheLike.MSGID_SREMOVE =>
+                cache.sremove(req)
+            case _ =>
+                log.error("unknown msg")
+        }
+    }
 
-  def reply(req:Request, code:Int) :Unit ={
-    reply(req,code,new HashMapStringAny())
-  }
+    def reply(req:Request, code:Int) :Unit ={
+        reply(req,code,new HashMapStringAny())
+    }
 
-  def reply(req:Request, code:Int,params:HashMapStringAny):Unit = {
+    def reply(req:Request, code:Int,params:HashMapStringAny):Unit = {
 
-     val res = new Response (code,params,req)
-     router.reply(new RequestResponseInfo(req,res))
-  }
+        val res = new Response (code,params,req)
+        router.reply(new RequestResponseInfo(req,res))
+    }
 }
 
 abstract class BaseCacheClient(
-  val cacheTypeCfg: Int,
-  val serverAddrs: List[String],
-  val serviceIds: String,
-  val readThreadNum: Int,
-  val writeThreadNum: Int,
-  val router: Router,
-  val cfgNode: Node) 
-        extends RemoteCacheLike with Logging {
+    val cacheTypeCfg: Int,
+    val serverAddrs: List[String],
+    val serviceIds: String,
+    val readThreadNum: Int,
+    val writeThreadNum: Int,
+    val router: Router,
+    val cfgNode: Node) 
+extends RemoteCacheLike with Logging {
 
-  var timeout = 3000
-  var cacheType : Int = _
-  val expMap = HashMap[Int,Int]() // serviceId->exp seconds
+    var timeout = 3000
+    var cacheType : Int = _
+    val expMap = HashMap[Int,Int]() // serviceId->exp seconds
 
-  def init() {
+    def init() {
 
-     initCacheTlv(serviceIds,router.codecs)
+        initCacheTlv(serviceIds,router.codecs)
 
-     val serviceIdArray = serviceIds.split(",").map(_.toInt)
-     for( serviceId <- serviceIdArray ) {
-        val codec = router.codecs.findTlvCodec(serviceId)
-        if( codec!= null) {
-          val tlvType = codec.findTlvType(10000)
-          if( tlvType == null ) {
-            expMap.put(serviceId,172800)
-          } else {
-            val expTime = if( tlvType.defaultValue == null || tlvType.defaultValue == "" ) 172800 else tlvType.defaultValue.toInt
-            expMap.put(serviceId,expTime)
-          }
+        val serviceIdArray = serviceIds.split(",").map(_.toInt)
+        for( serviceId <- serviceIdArray ) {
+            val codec = router.codecs.findTlvCodec(serviceId)
+            if( codec!= null) {
+                val tlvType = codec.findTlvType(10000)
+                if( tlvType == null ) {
+                    expMap.put(serviceId,172800)
+                } else {
+                    val expTime = if( tlvType.defaultValue == null || tlvType.defaultValue == "" ) 172800 else tlvType.defaultValue.toInt
+                    expMap.put(serviceId,expTime)
+                }
+            }
+
         }
 
-     }
+        cacheTypeCfg match {
 
-    cacheTypeCfg match {
-
-      case RemoteCacheLike.TYPE_UNKNOWN =>
-        cacheType = if( serverAddrs.size == 2) RemoteCacheLike.TYPE_MASTERSLAVE else RemoteCacheLike.TYPE_ARRAYHASH
-      case RemoteCacheLike.TYPE_MASTERSLAVE =>
-        cacheType = if( serverAddrs.size >= 2) RemoteCacheLike.TYPE_MASTERSLAVE else RemoteCacheLike.TYPE_ARRAYHASH
-      case RemoteCacheLike.TYPE_CONHASH =>
-        cacheType = RemoteCacheLike.TYPE_CONHASH
-      case RemoteCacheLike.TYPE_ARRAYHASH =>
-        cacheType = RemoteCacheLike.TYPE_ARRAYHASH
-    }
-  }
-
-  def logKeyValue(action:String, key:String,value:String) {
-
-    if( log.isDebugEnabled() ) {
-        log.debug(action+", key={},value={}",key,value)
+            case RemoteCacheLike.TYPE_UNKNOWN =>
+                cacheType = if( serverAddrs.size == 2) RemoteCacheLike.TYPE_MASTERSLAVE else RemoteCacheLike.TYPE_ARRAYHASH
+            case RemoteCacheLike.TYPE_MASTERSLAVE =>
+                cacheType = if( serverAddrs.size >= 2) RemoteCacheLike.TYPE_MASTERSLAVE else RemoteCacheLike.TYPE_ARRAYHASH
+            case RemoteCacheLike.TYPE_CONHASH =>
+                cacheType = RemoteCacheLike.TYPE_CONHASH
+            case RemoteCacheLike.TYPE_ARRAYHASH =>
+                cacheType = RemoteCacheLike.TYPE_ARRAYHASH
+        }
     }
 
-  }
+    def logKeyValue(action:String, key:String,value:String) {
 
-  def get(req:Request) :Unit =  {
+        if( log.isDebugEnabled() ) {
+            log.debug(action+", key={},value={}",key,value)
+        }
 
-    val (keyFieldNames,dumm1) = findReqFields(req.serviceId,req.msgId)
-    val (dummy2,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
-
-    val key = parseKey(req,keyFieldNames)
-    if( key == null ) {
-      reply(req,ResultCodes.CACHE_KEY_EMPTY)
-      return
     }
 
-    try {
+    def get(req:Request) :Unit =  {
 
-      val value = get(key)
-      if( value == null ) {
-        logKeyValue("get",key,value)
-        reply(req,ResultCodes.CACHE_NOT_FOUND)
-        return
-      }
-      logKeyValue("get",key,value)
+        val (keyFieldNames,dumm1) = findReqFields(req.serviceId,req.msgId)
+        val (dummy2,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
 
-      val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,value)
+        val key = parseKey(req,keyFieldNames)
+        if( key == null ) {
+            reply(req,ResultCodes.CACHE_KEY_EMPTY)
+            return
+        }
 
-      reply(req,0,body)
+        try {
 
-    }catch {
-      case e:TimeoutException =>
-        reply(req,ResultCodes.CACHE_TIMEOUT)
-        log.error("get exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_TIMEOUT,key))
-      case e:Exception =>
-        reply(req,ResultCodes.CACHE_FAILED)
-        log.error("get exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+            val value = get(key)
+            if( value == null ) {
+                logKeyValue("get",key,value)
+                reply(req,ResultCodes.CACHE_NOT_FOUND)
+                return
+            }
+            logKeyValue("get",key,value)
+
+            val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,value)
+
+            reply(req,0,body)
+
+        }catch {
+            case e:TimeoutException =>
+                reply(req,ResultCodes.CACHE_TIMEOUT)
+                log.error("get exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_TIMEOUT,key))
+            case e:Exception =>
+                reply(req,ResultCodes.CACHE_FAILED)
+                log.error("get exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        }
+
     }
 
-  }
-
-  def getExpire(req:Request):Int= {
-      var exp = expMap.getOrElse(req.serviceId,0) // 0 never expire
-      var v = req.i("exptime",-1)
-      if( v == -1 ) {
-          v = req.i("expTime",-1)
-      }
-      if( v != -1) {
-          exp = v
-      }
-      exp
-  }
-
-  def set(req:Request) :Unit ={
-
-    val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
-
-    val key = parseKey(req,keyFieldNames)
-    if( key == null ) {
-      reply(req,ResultCodes.CACHE_KEY_EMPTY)
-      return
-    }
-    val value = parseValue(req,valueFieldNames)
-    if( value == null ) {
-      logKeyValue("set",key,value)
-      reply(req,ResultCodes.CACHE_VALUE_EMPTY)
-      return
+    def getExpire(req:Request):Int= {
+        var exp = expMap.getOrElse(req.serviceId,0) // 0 never expire
+        var v = req.i("exptime",-1)
+        if( v == -1 ) {
+            v = req.i("expTime",-1)
+        }
+        if( v != -1) {
+            exp = v
+        }
+        exp
     }
 
-    logKeyValue("set",key,value)
+    def set(req:Request) :Unit ={
 
-    val exp = getExpire(req)
+        val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
 
-    try {
+        val key = parseKey(req,keyFieldNames)
+        if( key == null ) {
+            reply(req,ResultCodes.CACHE_KEY_EMPTY)
+            return
+        }
+        val value = parseValue(req,valueFieldNames)
+        if( value == null ) {
+            logKeyValue("set",key,value)
+            reply(req,ResultCodes.CACHE_VALUE_EMPTY)
+            return
+        }
 
-      val ok = set(key,exp,value)
-      if( ok )
-        reply(req,0)
-      else
-        reply(req,ResultCodes.CACHE_UPDATEFAILED)
-    }catch {
-      case e:Exception =>
-        reply(req,ResultCodes.CACHE_FAILED)
-        log.error("set exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        logKeyValue("set",key,value)
+
+        val exp = getExpire(req)
+
+        try {
+
+            val ok = set(key,exp,value)
+            if( ok )
+                reply(req,0)
+            else
+                reply(req,ResultCodes.CACHE_UPDATEFAILED)
+        }catch {
+            case e:Exception =>
+                reply(req,ResultCodes.CACHE_FAILED)
+                log.error("set exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        }
+
     }
 
-  }
+    def delete(req:Request) :Unit ={
 
-  def delete(req:Request) :Unit ={
+        val (keyFieldNames,dummy) = findReqFields(req.serviceId,req.msgId)
 
-    val (keyFieldNames,dummy) = findReqFields(req.serviceId,req.msgId)
+        val key = parseKey(req,keyFieldNames)
+        if( key == null ) {
+            reply(req,ResultCodes.CACHE_KEY_EMPTY)
+            return
+        }
 
-    val key = parseKey(req,keyFieldNames)
-    if( key == null ) {
-      reply(req,ResultCodes.CACHE_KEY_EMPTY)
-      return
+        logKeyValue("delete",key,null)
+
+        try {
+
+            val ok = delete(key)
+            if( ok )
+                reply(req,0)
+            else
+                reply(req,ResultCodes.CACHE_UPDATEFAILED)
+
+        }catch {
+            case e:Exception =>
+                reply(req,ResultCodes.CACHE_FAILED)
+                log.error("delete exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        }
+
     }
 
-    logKeyValue("delete",key,null)
+    def getAndDelete(req:Request):Unit = {
 
-    try {
+        val (keyFieldNames,dummy1) = findReqFields(req.serviceId,req.msgId)
+        val (dummy2,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
 
-      val ok = delete(key)
-      if( ok )
-        reply(req,0)
-      else
-        reply(req,ResultCodes.CACHE_UPDATEFAILED)
+        val key = parseKey(req,keyFieldNames)
+        if( key == null ) {
+            reply(req,ResultCodes.CACHE_KEY_EMPTY)
+            return
+        }
 
-    }catch {
-      case e:Exception =>
-        reply(req,ResultCodes.CACHE_FAILED)
-        log.error("delete exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        try {
+
+            val value = getAndDelete(key)
+            if( value == null ) {
+                logKeyValue("getAndDelete",key,value)
+
+                reply(req,ResultCodes.CACHE_NOT_FOUND)
+                return
+            }
+
+            logKeyValue("getAndDelete",key,value)
+
+            val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,value)
+
+            reply(req,0,body)
+
+        }catch {
+            case e:Exception =>
+                reply(req,ResultCodes.CACHE_FAILED)
+                log.error("getAndDelete exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        }
+
     }
 
-  }
+    def getAndCas(req:Request) :Unit ={
 
-  def getAndDelete(req:Request):Unit = {
+        val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
+        val (dummy,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
 
-    val (keyFieldNames,dummy1) = findReqFields(req.serviceId,req.msgId)
-    val (dummy2,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
+        val key = parseKey(req,keyFieldNames)
+        if( key == null ) {
+            reply(req,ResultCodes.CACHE_KEY_EMPTY)
+            return
+        }
+        val values = parseValues(req,valueFieldNames)
+        if( values == null || values.length != valueFieldNames.length) {
+            reply(req,ResultCodes.CACHE_VALUE_EMPTY)
+            return
+        }
+        val addValueString = genValue(values)
 
-    val key = parseKey(req,keyFieldNames)
-    if( key == null ) {
-      reply(req,ResultCodes.CACHE_KEY_EMPTY)
-      return
+        logKeyValue("getAndCas",key,addValueString)
+        val exp = getExpire(req)
+        try {
+
+            val newvalue = getAndCas(key,exp,addValueString)
+            if( newvalue == null ) {
+                reply(req,ResultCodes.CACHE_UPDATEFAILED)
+                return
+            }
+
+            val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,newvalue)
+
+            reply(req,0,body)
+
+        }catch {
+            case e:Exception =>
+                reply(req,ResultCodes.CACHE_FAILED)
+                log.error("getAndCas exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        }
     }
 
-    try {
+    def incrBy(req:Request) :Unit ={
 
-      val value = getAndDelete(key)
-      if( value == null ) {
-        logKeyValue("getAndDelete",key,value)
+        val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
+        val (dummy,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
 
-        reply(req,ResultCodes.CACHE_NOT_FOUND)
-        return
-      }
+        val key = parseKey(req,keyFieldNames)
+        if( key == null ) {
+            reply(req,ResultCodes.CACHE_KEY_EMPTY)
+            return
+        }
+        val value = parseValue(req,valueFieldNames)
+        if( value == null ) {
+            logKeyValue("incrBy",key,value)
+            reply(req,ResultCodes.CACHE_VALUE_EMPTY)
+            return
+        }
 
-      logKeyValue("getAndDelete",key,value)
+        logKeyValue("incrBy",key,value)
 
-      val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,value)
+        val exp = getExpire(req)
 
-      reply(req,0,body)
+        try {
 
-    }catch {
-      case e:Exception =>
-        reply(req,ResultCodes.CACHE_FAILED)
-        log.error("getAndDelete exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+            val newvalue = incrBy(key,exp,value)
+            if( newvalue == null ) {
+                reply(req,ResultCodes.CACHE_UPDATEFAILED)
+                return
+            }
+
+            val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,newvalue)
+            reply(req,0,body)
+
+        }catch {
+            case e:Exception =>
+                reply(req,ResultCodes.CACHE_FAILED)
+                log.error("incrBy exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        }
+
     }
 
-  }
+    def decrBy(req:Request) :Unit ={
 
-  def getAndCas(req:Request) :Unit ={
+        val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
+        val (dummy,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
 
-    val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
-    val (dummy,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
+        val key = parseKey(req,keyFieldNames)
+        if( key == null ) {
+            reply(req,ResultCodes.CACHE_KEY_EMPTY)
+            return
+        }
+        val value = parseValue(req,valueFieldNames)
+        if( value == null ) {
+            logKeyValue("decrBy",key,value)
+            reply(req,ResultCodes.CACHE_VALUE_EMPTY)
+            return
+        }
 
-    val key = parseKey(req,keyFieldNames)
-    if( key == null ) {
-      reply(req,ResultCodes.CACHE_KEY_EMPTY)
-      return
-    }
-    val values = parseValues(req,valueFieldNames)
-    if( values == null || values.length != valueFieldNames.length) {
-      reply(req,ResultCodes.CACHE_VALUE_EMPTY)
-      return
-    }
-    val addValueString = genValue(values)
+        logKeyValue("decrBy",key,value)
 
-    logKeyValue("getAndCas",key,addValueString)
-    val exp = getExpire(req)
-    try {
+        val exp = getExpire(req)
 
-      val newvalue = getAndCas(key,exp,addValueString)
-      if( newvalue == null ) {
-        reply(req,ResultCodes.CACHE_UPDATEFAILED)
-        return
-      }
+        try {
 
-      val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,newvalue)
+            val newvalue = decrBy(key,exp,value)
+            if( newvalue == null ) {
+                reply(req,ResultCodes.CACHE_UPDATEFAILED)
+                return
+            }
 
-      reply(req,0,body)
+            val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,newvalue)
+            reply(req,0,body)
 
-    }catch {
-      case e:Exception =>
-        reply(req,ResultCodes.CACHE_FAILED)
-        log.error("getAndCas exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
-    }
-  }
+        }catch {
+            case e:Exception =>
+                reply(req,ResultCodes.CACHE_FAILED)
+                log.error("decrBy exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        }
 
-  def incrBy(req:Request) :Unit ={
-
-    val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
-    val (dummy,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
-
-    val key = parseKey(req,keyFieldNames)
-    if( key == null ) {
-      reply(req,ResultCodes.CACHE_KEY_EMPTY)
-      return
-    }
-    val value = parseValue(req,valueFieldNames)
-    if( value == null ) {
-      logKeyValue("incrBy",key,value)
-      reply(req,ResultCodes.CACHE_VALUE_EMPTY)
-      return
     }
 
-    logKeyValue("incrBy",key,value)
+    def sget(req:Request) :Unit =  {
 
-    val exp = getExpire(req)
+        val (keyFieldNames,dumm1) = findReqFields(req.serviceId,req.msgId)
+        val (dummy2,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
 
-    try {
+        val key = parseKey(req,keyFieldNames)
+        if( key == null ) {
+            reply(req,ResultCodes.CACHE_KEY_EMPTY)
+            return
+        }
 
-      val newvalue = incrBy(key,exp,value)
-      if( newvalue == null ) {
-        reply(req,ResultCodes.CACHE_UPDATEFAILED)
-        return
-      }
+        try {
 
-      val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,newvalue)
-      reply(req,0,body)
+            val value = sget(key)
+            if( value == null ) {
+                logKeyValue("sget",key,value)
+                reply(req,ResultCodes.CACHE_NOT_FOUND)
+                return
+            }
+            logKeyValue("sget",key,value)
 
-    }catch {
-      case e:Exception =>
-        reply(req,ResultCodes.CACHE_FAILED)
-        log.error("incrBy exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+            val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,value)
+
+            reply(req,0,body)
+
+        }catch {
+            case e:TimeoutException =>
+                reply(req,ResultCodes.CACHE_TIMEOUT)
+                log.error("sget exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_TIMEOUT,key))
+            case e:Exception =>
+                reply(req,ResultCodes.CACHE_FAILED)
+                log.error("sget exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        }
+
     }
 
-  }
+    def sadd(req:Request) :Unit ={
 
-  def decrBy(req:Request) :Unit ={
+        val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
 
-    val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
-    val (dummy,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
+        val key = parseKey(req,keyFieldNames)
+        if( key == null ) {
+            reply(req,ResultCodes.CACHE_KEY_EMPTY)
+            return
+        }
+        val value = parseValue(req,valueFieldNames)
+        if( value == null ) {
+            logKeyValue("sadd",key,value)
+            reply(req,ResultCodes.CACHE_VALUE_EMPTY)
+            return
+        }
 
-    val key = parseKey(req,keyFieldNames)
-    if( key == null ) {
-      reply(req,ResultCodes.CACHE_KEY_EMPTY)
-      return
-    }
-    val value = parseValue(req,valueFieldNames)
-    if( value == null ) {
-      logKeyValue("decrBy",key,value)
-      reply(req,ResultCodes.CACHE_VALUE_EMPTY)
-      return
-    }
+        logKeyValue("sadd",key,value)
 
-    logKeyValue("decrBy",key,value)
+        val exp = getExpire(req)
 
-    val exp = getExpire(req)
+        try {
 
-    try {
+            val ok = sadd(key,exp,value)
+            if( ok )
+                reply(req,0)
+            else
+                reply(req,ResultCodes.CACHE_UPDATEFAILED)
+        }catch {
+            case e:Exception =>
+                reply(req,ResultCodes.CACHE_FAILED)
+                log.error("sadd exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        }
 
-      val newvalue = decrBy(key,exp,value)
-      if( newvalue == null ) {
-        reply(req,ResultCodes.CACHE_UPDATEFAILED)
-        return
-      }
-
-      val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,newvalue)
-      reply(req,0,body)
-
-    }catch {
-      case e:Exception =>
-        reply(req,ResultCodes.CACHE_FAILED)
-        log.error("decrBy exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
     }
 
-  }
+    def sremove(req:Request) :Unit ={
 
-  def sget(req:Request) :Unit =  {
+        val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
 
-    val (keyFieldNames,dumm1) = findReqFields(req.serviceId,req.msgId)
-    val (dummy2,valueFieldNamesRes,valueFieldTypesRes) = findResFields(req.serviceId,req.msgId)
+        val key = parseKey(req,keyFieldNames)
+        if( key == null ) {
+            reply(req,ResultCodes.CACHE_KEY_EMPTY)
+            return
+        }
+        val value = parseValue(req,valueFieldNames)
+        if( value == null ) {
+            logKeyValue("sremove",key,value)
+            reply(req,ResultCodes.CACHE_VALUE_EMPTY)
+            return
+        }
 
-    val key = parseKey(req,keyFieldNames)
-    if( key == null ) {
-      reply(req,ResultCodes.CACHE_KEY_EMPTY)
-      return
+        logKeyValue("sremove",key,value)
+
+        val exp = getExpire(req)
+
+        try {
+
+            val ok = sremove(key,exp,value)
+            if( ok )
+                reply(req,0)
+            else
+                reply(req,ResultCodes.CACHE_UPDATEFAILED)
+        }catch {
+            case e:Exception =>
+                reply(req,ResultCodes.CACHE_FAILED)
+                log.error("sremove exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+        }
+
     }
 
-    try {
-
-      val value = sget(key)
-      if( value == null ) {
-        logKeyValue("sget",key,value)
-        reply(req,ResultCodes.CACHE_NOT_FOUND)
-        return
-      }
-      logKeyValue("sget",key,value)
-
-      val body = genResponseBody(valueFieldNamesRes,valueFieldTypesRes,value)
-
-      reply(req,0,body)
-
-    }catch {
-      case e:TimeoutException =>
-        reply(req,ResultCodes.CACHE_TIMEOUT)
-        log.error("sget exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_TIMEOUT,key))
-      case e:Exception =>
-        reply(req,ResultCodes.CACHE_FAILED)
-        log.error("sget exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
+    def reply(req:Request, code:Int) :Unit ={
+        reply(req,code,new HashMapStringAny())
     }
 
-  }
+    def reply(req:Request, code:Int,params:HashMapStringAny):Unit = {
 
-  def sadd(req:Request) :Unit ={
-
-    val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
-
-    val key = parseKey(req,keyFieldNames)
-    if( key == null ) {
-      reply(req,ResultCodes.CACHE_KEY_EMPTY)
-      return
-    }
-    val value = parseValue(req,valueFieldNames)
-    if( value == null ) {
-      logKeyValue("sadd",key,value)
-      reply(req,ResultCodes.CACHE_VALUE_EMPTY)
-      return
+        val res = new Response(code,params,req)
+        router.reply(new RequestResponseInfo(req,res))
     }
 
-    logKeyValue("sadd",key,value)
-
-    val exp = getExpire(req)
-
-    try {
-
-      val ok = sadd(key,exp,value)
-      if( ok )
-        reply(req,0)
-      else
-        reply(req,ResultCodes.CACHE_UPDATEFAILED)
-    }catch {
-      case e:Exception =>
-        reply(req,ResultCodes.CACHE_FAILED)
-        log.error("sadd exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
-    }
-
-  }
-
-  def sremove(req:Request) :Unit ={
-
-    val (keyFieldNames,valueFieldNames) = findReqFields(req.serviceId,req.msgId)
-
-    val key = parseKey(req,keyFieldNames)
-    if( key == null ) {
-      reply(req,ResultCodes.CACHE_KEY_EMPTY)
-      return
-    }
-    val value = parseValue(req,valueFieldNames)
-    if( value == null ) {
-      logKeyValue("sremove",key,value)
-      reply(req,ResultCodes.CACHE_VALUE_EMPTY)
-      return
-    }
-
-    logKeyValue("sremove",key,value)
-
-    val exp = getExpire(req)
-
-    try {
-
-      val ok = sremove(key,exp,value)
-      if( ok )
-        reply(req,0)
-      else
-        reply(req,ResultCodes.CACHE_UPDATEFAILED)
-    }catch {
-      case e:Exception =>
-        reply(req,ResultCodes.CACHE_FAILED)
-        log.error("sremove exception, e=%s,requestId=%s,code=%d,key=%s".format(e.getMessage,req.requestId,ResultCodes.CACHE_FAILED,key))
-    }
-
-  }
-
-  def reply(req:Request, code:Int) :Unit ={
-    reply(req,code,new HashMapStringAny())
-  }
-
-  def reply(req:Request, code:Int,params:HashMapStringAny):Unit = {
-
-     val res = new Response(code,params,req)
-     router.reply(new RequestResponseInfo(req,res))
-  }
-
-  def get(key:String) :String
-  def set(key:String,exp:Int,value:String) :Boolean
-  def delete(key:String) :Boolean
-  def getAndDelete(key:String) :String
-  def getAndCas(key:String,exp:Int,addValue:String) :String
-  def incrBy(key:String,exp:Int,value:String) :String
-  def decrBy(key:String,exp:Int,value:String) :String
-  def sget(key:String) :String
-  def sadd(key:String,exp:Int,value:String) :Boolean
-  def sremove(key:String,exp:Int,value:String) :Boolean
+    def get(key:String) :String
+    def set(key:String,exp:Int,value:String) :Boolean
+    def delete(key:String) :Boolean
+    def getAndDelete(key:String) :String
+    def getAndCas(key:String,exp:Int,addValue:String) :String
+    def incrBy(key:String,exp:Int,value:String) :String
+    def decrBy(key:String,exp:Int,value:String) :String
+    def sget(key:String) :String
+    def sadd(key:String,exp:Int,value:String) :Boolean
+    def sremove(key:String,exp:Int,value:String) :Boolean
 }
+

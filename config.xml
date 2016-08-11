@@ -151,5 +151,22 @@
     </ConnLocalQueueCfg>
 -->
 
+<!-- redisv2配置 -->
+    <RedisCfgV2 timeout="30000">
+        <ServiceId>680</ServiceId>
+        <ServerAddr>192.168.52.128:6379</ServerAddr>
+    </RedisCfgV2>
+<!-- 
+-->
+
+<!-- memcachev2配置 -->
+<!-- 
+    <MemCacheCfgV2 errorCountToSwitch="3">
+        <ServiceId>681</ServiceId>
+        <ServerAddr>192.168.52.128:11211</ServerAddr>
+        <ServerAddr>192.168.52.128:11212</ServerAddr>
+    </MemCacheCfgV2>
+-->
+
 </parameters>
 

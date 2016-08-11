@@ -19,9 +19,6 @@ import org.jboss.netty.handler.codec.http._;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
-case class Stats(now:String)
-
 class AsyncLogActor(val router:Router) extends Actor with Logging with Closable with Dumpable {
 
     val rootDir = router.rootDir
@@ -34,10 +31,10 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
 
     val localIp = IpUtils.localIp()
     val f_tl = new ThreadLocal[SimpleDateFormat]() {
-                 override def initialValue() : SimpleDateFormat = {
-                     return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
-             }
-          }
+        override def initialValue() : SimpleDateFormat = {
+            return new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS")
+        }
+    }
 
     val splitter = ",  "
     val httpSplitter = ",   "
@@ -87,10 +84,10 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
     val sosStatLog = LoggerFactory.getLogger("jvmdbbroker.SosStatLog")
 
     val statf_tl = new ThreadLocal[SimpleDateFormat]() {
-                 override def initialValue() : SimpleDateFormat = {
-                     return new SimpleDateFormat("yyyy-MM-dd HH:mm:00")
-             }
-          }
+        override def initialValue() : SimpleDateFormat = {
+            return new SimpleDateFormat("yyyy-MM-dd HH:mm:00")
+        }
+    }
 
     var monitorClient : MonitorHttpClient = _
     val shutdown = new AtomicBoolean()
@@ -99,854 +96,854 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
 
     def dump() {
 
-      val buff = new StringBuilder
+        val buff = new StringBuilder
 
-      buff.append("pool.size=").append(pool.getPoolSize).append(",")
-      buff.append("pool.getQueue.size=").append(pool.getQueue.size).append(",")
+        buff.append("pool.size=").append(pool.getPoolSize).append(",")
+        buff.append("pool.getQueue.size=").append(pool.getQueue.size).append(",")
 
-      log.info(buff.toString)
+        log.info(buff.toString)
 
-      if( monitorClient != null )
-        monitorClient.dump()
+        if( monitorClient != null )
+            monitorClient.dump()
 
     }
 
     def timeToReqIdx(ts:Int) : Int = {
-      var i = 0
-      while(i<reqdts.size) {
-        if( ts <= reqdts(i) ) return i
-        i += 1
-      }
-      reqdts.size
+        var i = 0
+        while(i<reqdts.size) {
+            if( ts <= reqdts(i) ) return i
+            i += 1
+        }
+        reqdts.size
     }
 
     def timeToSosIdx(ts:Int) : Int = {
-      var i = 0
-      while(i<sosdts.size) {
-        if( ts <= sosdts(i) ) return i
-        i += 1
-      }
-      sosdts.size
+        var i = 0
+        while(i<sosdts.size) {
+            if( ts <= sosdts(i) ) return i
+            i += 1
+        }
+        sosdts.size
     }
 
     def incSosStat(key:String, ts:Int,code:Int) {
 
-      sosStatsLock.lock();
-      try {
+        sosStatsLock.lock();
+        try {
 
-        var v = sosStat.getOrElse(key,null)
-        if( v == null ) {
-          v = new Array[Int](sosdts.size+4)
-          sosStat.put(key,v)
+            var v = sosStat.getOrElse(key,null)
+            if( v == null ) {
+                v = new Array[Int](sosdts.size+4)
+                sosStat.put(key,v)
+            }
+            val idx = timeToSosIdx(ts)+2  // start from 2
+            v(idx) += 1
+
+            if( code == 0 ) v(0) += 1  // succ
+            else v(1) += 1 // failed
+
+            if( code == -10242504 ) v(v.size-1) += 1 // timeout
+
+        } finally {
+            sosStatsLock.unlock();
         }
-        val idx = timeToSosIdx(ts)+2  // start from 2
-        v(idx) += 1
-
-        if( code == 0 ) v(0) += 1  // succ
-        else v(1) += 1 // failed
-
-        if( code == -10242504 ) v(v.size-1) += 1 // timeout
-
-      } finally {
-        sosStatsLock.unlock();
-      }
 
     }
 
     def incReqStat(key:String,ts:Int,code:Int) {
 
-      reqStatsLock.lock();
-      try {
+        reqStatsLock.lock();
+        try {
 
-        var v = reqStat.getOrElse(key,null)
-        if( v == null ) {
-          v = new Array[Int](reqdts.size+3)
-          reqStat.put(key,v)
+            var v = reqStat.getOrElse(key,null)
+            if( v == null ) {
+                v = new Array[Int](reqdts.size+3)
+                reqStat.put(key,v)
+            }
+            val idx = timeToReqIdx(ts) + 2
+            v(idx) += 1
+
+            if( code == 0 ) v(0) += 1
+            else v(1) += 1
+
+        } finally {
+            reqStatsLock.unlock();
         }
-        val idx = timeToReqIdx(ts) + 2
-        v(idx) += 1
-
-        if( code == 0 ) v(0) += 1
-        else v(1) += 1
-
-      } finally {
-        reqStatsLock.unlock();
-      }
     }
 
     def writeStats(now:String) {
 
-      // log.info("stats received")
+        // log.info("stats received")
 
-      writeSosStats(now)
-      writeReqStats(now)
+        writeSosStats(now)
+        writeReqStats(now)
     }
 
     def writeSosStats(now:String) {
 
-      var sosMatched = new HashMap[String,Array[Int]]()
+        var sosMatched = new HashMap[String,Array[Int]]()
 
-      sosStatsLock.lock();
-      try {
+        sosStatsLock.lock();
+        try {
 
-        for( (key,value) <- sosStat if key.startsWith(now)) {
-          sosMatched.put(key,value)
+            for( (key,value) <- sosStat if key.startsWith(now)) {
+                sosMatched.put(key,value)
+            }
+
+            for( (key,value) <- sosMatched) {
+                sosStat.remove(key)
+            }
+
+        } finally {
+            sosStatsLock.unlock();
         }
 
-        for( (key,value) <- sosMatched) {
-          sosStat.remove(key)
+        for( (key,value) <- sosMatched ) {
+            sosStatLog.info(key+",  "+value.mkString(",  "))
         }
 
-      } finally {
-        sosStatsLock.unlock();
-      }
-
-      for( (key,value) <- sosMatched ) {
-        sosStatLog.info(key+",  "+value.mkString(",  "))
-      }
-
-      sendSosToMonitor(sosMatched)
+        sendSosToMonitor(sosMatched)
     }
 
     def writeReqStats(now:String) {
 
-      var reqMatched = new HashMap[String,Array[Int]]()
+        var reqMatched = new HashMap[String,Array[Int]]()
 
-      reqStatsLock.lock();
-      try {
+        reqStatsLock.lock();
+        try {
 
-        for( (key,value) <- reqStat if key.startsWith(now)) {
-          reqMatched.put(key,value)
+            for( (key,value) <- reqStat if key.startsWith(now)) {
+                reqMatched.put(key,value)
+            }
+
+            for( (key,value) <- reqMatched) {
+                reqStat.remove(key)
+            }
+
+        } finally {
+            reqStatsLock.unlock();
         }
 
-        for( (key,value) <- reqMatched) {
-          reqStat.remove(key)
+        var totalNum = 0
+        val totals = new Array[Int](3)
+
+        for( (key,value) <- reqMatched ) {
+
+            reqStatLog.info(key+",  "+value.mkString(",  "))
+
+            totals(0) += value(0)
+            totals(0) += value(1)
+            totals(1) += value(0)
+            totals(2) += value(1)
         }
 
-      } finally {
-        reqStatsLock.unlock();
-      }
+        sendReqToMonitor(reqMatched)
 
-      var totalNum = 0
-      val totals = new Array[Int](3)
+        if( totals(0) > 0 ) {
+            val clients = router.sos.stats()
+            reqSummaryLog.info(now+",  request["+totals.mkString("/")+"]"+",  client["+clients.mkString("/")+"]")
 
-      for( (key,value) <- reqMatched ) {
-
-        reqStatLog.info(key+",  "+value.mkString(",  "))
-
-        totals(0) += value(0)
-        totals(0) += value(1)
-        totals(1) += value(0)
-        totals(2) += value(1)
-      }
-
-      sendReqToMonitor(reqMatched)
-
-      if( totals(0) > 0 ) {
-        val clients = router.sos.stats()
-        reqSummaryLog.info(now+",  request["+totals.mkString("/")+"]"+",  client["+clients.mkString("/")+"]")
-
-        sendReqSummaryToMonitor(totals,clients)
-      }
+            sendReqSummaryToMonitor(totals,clients)
+        }
 
     }
 
     def sendSosToMonitor(values: HashMap[String,Array[Int]]) {
 
-      val totals = new HashMap[Int,Array[Int]]
+        val totals = new HashMap[Int,Array[Int]]
 
-      // merge count of serviceId:msgId into serviceId
-      for( (key,value) <- values ) {
-        val ss = key.split(",  ")
-        val serviceId = ss(1).toInt
+        // merge count of serviceId:msgId into serviceId
+        for( (key,value) <- values ) {
+            val ss = key.split(",  ")
+            val serviceId = ss(1).toInt
 
-        var v  = totals.getOrElse(serviceId,null)
-        if( v == null ) {
-          v = new Array[Int](value.size)
-          totals.put(serviceId,v)
+            var v  = totals.getOrElse(serviceId,null)
+            if( v == null ) {
+                v = new Array[Int](value.size)
+                totals.put(serviceId,v)
+            }
+
+            var i = 0
+            while(i<value.size) {
+                v(i) += value(i)
+                i += 1
+            }
         }
 
-        var i = 0
-        while(i<value.size) {
-          v(i) += value(i)
-          i += 1
-        }
-      }
+        val buff = new StringBuilder()
 
-      val buff = new StringBuilder()
+        for( (serviceId,value) <- totals ) {
 
-      for( (serviceId,value) <- totals ) {
+            val page = serviceId
 
-        val page = serviceId
+            val total = value(0)+value(1)
 
-        val total = value(0)+value(1)
+            if( detailReportUrl != "" && ( detailReportServiceIdSet == null || detailReportServiceIdSet.contains(serviceId) ) ) {
 
-        if( detailReportUrl != "" && ( detailReportServiceIdSet == null || detailReportServiceIdSet.contains(serviceId) ) ) {
+                buff.append("&action[]=1734|1749|1801,").append(page).append(",").append(total) // 子服务请求数
+                buff.append("&action[]=1734|1750|1804,").append(page).append(",").append(value(0)) // 子服务响应成功数
+                buff.append("&action[]=1734|1751|1807,").append(page).append(",").append(value(1)) // 子服务响应失败数
+                buff.append("&action[]=1734|1752|1810,").append(page).append(",").append(value(2)) // 子服务10ms内响应数
+                buff.append("&action[]=1734|1753|1813,").append(page).append(",").append(value(3)) // 子服务50ms内响应数
+                buff.append("&action[]=1734|1754|1816,").append(page).append(",").append(value(4)) // 子服务150ms内响应数
+                buff.append("&action[]=1734|1755|1819,").append(page).append(",").append(value(5)) // 250ms内响应数
+                buff.append("&action[]=1734|1756|1759,").append(page).append(",").append(value(6)) // 1s内响应数
+                buff.append("&action[]=1734|1757|1762,").append(page).append(",").append(value(7)) // 子服务other时间段响应数
+                buff.append("&action[]=1734|2893|2895,").append(page).append(",").append(value(8)) // 子服务响应超时数
+            }
 
-          buff.append("&action[]=1734|1749|1801,").append(page).append(",").append(total) // 子服务请求数
-          buff.append("&action[]=1734|1750|1804,").append(page).append(",").append(value(0)) // 子服务响应成功数
-          buff.append("&action[]=1734|1751|1807,").append(page).append(",").append(value(1)) // 子服务响应失败数
-          buff.append("&action[]=1734|1752|1810,").append(page).append(",").append(value(2)) // 子服务10ms内响应数
-          buff.append("&action[]=1734|1753|1813,").append(page).append(",").append(value(3)) // 子服务50ms内响应数
-          buff.append("&action[]=1734|1754|1816,").append(page).append(",").append(value(4)) // 子服务150ms内响应数
-          buff.append("&action[]=1734|1755|1819,").append(page).append(",").append(value(5)) // 250ms内响应数
-          buff.append("&action[]=1734|1756|1759,").append(page).append(",").append(value(6)) // 1s内响应数
-          buff.append("&action[]=1734|1757|1762,").append(page).append(",").append(value(7)) // 子服务other时间段响应数
-          buff.append("&action[]=1734|2893|2895,").append(page).append(",").append(value(8)) // 子服务响应超时数
         }
 
-      }
+        val s = buff.toString
+        if( s.length == 0 ) return
 
-      val s = buff.toString
-      if( s.length == 0 ) return
-
-      callStatPages(s)
+        callStatPages(s)
     }
 
     def sendReqToMonitor(values: HashMap[String,Array[Int]]) {
 
-      val buff = new StringBuilder()
+        val buff = new StringBuilder()
 
-      for( (key,value) <- values ) {
+        for( (key,value) <- values ) {
 
-        val ss = key.split(",  ")
-        val serviceId = ss(1)
-        val msgId = ss(2)
-        val page = serviceId+"_"+msgId
+            val ss = key.split(",  ")
+            val serviceId = ss(1)
+            val msgId = ss(2)
+            val page = serviceId+"_"+msgId
 
-        val total = value(0)+value(1)
+            val total = value(0)+value(1)
 
-        if( detailReportUrl != "" && ( detailReportServiceIdSet == null || detailReportServiceIdSet.contains(serviceId.toInt) ) ) {
-          buff.append("&action[]=1734|1764|1780,").append(page).append(",").append(total) // 对外业务请求数
-          buff.append("&action[]=1734|1765|1783,").append(page).append(",").append(value(0)) // 对外业务响应成功数
-          buff.append("&action[]=1734|1766|1786,").append(page).append(",").append(value(1)) // 对外业务响应失败数
-          buff.append("&action[]=1734|1767|1789,").append(page).append(",").append(value(2)) // 对外业务10ms内响应数
-          buff.append("&action[]=1734|1768|1792,").append(page).append(",").append(value(3)) // 对外业务50ms内响应数
-          buff.append("&action[]=1734|1769|1795,").append(page).append(",").append(value(4)) // 对外业务250ms内响应数
-          buff.append("&action[]=1734|1770|1798,").append(page).append(",").append(value(5)) // 对外业务1s内响应数
-          buff.append("&action[]=1734|1771|1774,").append(page).append(",").append(value(6)) // 对外业务3s内响应数
-          buff.append("&action[]=1734|1772|1777,").append(page).append(",").append(value(7)) // 对外业务other时间段响应数
+            if( detailReportUrl != "" && ( detailReportServiceIdSet == null || detailReportServiceIdSet.contains(serviceId.toInt) ) ) {
+                buff.append("&action[]=1734|1764|1780,").append(page).append(",").append(total) // 对外业务请求数
+                buff.append("&action[]=1734|1765|1783,").append(page).append(",").append(value(0)) // 对外业务响应成功数
+                buff.append("&action[]=1734|1766|1786,").append(page).append(",").append(value(1)) // 对外业务响应失败数
+                buff.append("&action[]=1734|1767|1789,").append(page).append(",").append(value(2)) // 对外业务10ms内响应数
+                buff.append("&action[]=1734|1768|1792,").append(page).append(",").append(value(3)) // 对外业务50ms内响应数
+                buff.append("&action[]=1734|1769|1795,").append(page).append(",").append(value(4)) // 对外业务250ms内响应数
+                buff.append("&action[]=1734|1770|1798,").append(page).append(",").append(value(5)) // 对外业务1s内响应数
+                buff.append("&action[]=1734|1771|1774,").append(page).append(",").append(value(6)) // 对外业务3s内响应数
+                buff.append("&action[]=1734|1772|1777,").append(page).append(",").append(value(7)) // 对外业务other时间段响应数
+            }
         }
-      }
 
-      val s = buff.toString
-      if( s.length == 0 ) return
+        val s = buff.toString
+        if( s.length == 0 ) return
 
-      callStatPages(s)
+        callStatPages(s)
     }
 
     def sendReqSummaryToMonitor(reqs:Array[Int],clients:Array[Int]) {
 
-      val buff = new StringBuilder()
+        val buff = new StringBuilder()
 
-      if( reportUrl != "" ) {
-        buff.append("&action[]=1734|1739|1740|1743").append(",").append(clients(0)) // 间隔内连接数
-        buff.append("&action[]=1734|1739|1740|1744").append(",").append(clients(1)) // 间隔内断开连接数
-        buff.append("&action[]=1734|1739|1740|1745").append(",").append(clients(2)) // 当前连接数
-        buff.append("&action[]=1734|1739|1740|1746").append(",").append(reqs(0)) // 间隔内请求数
-        buff.append("&action[]=1734|1739|1740|1747").append(",").append(reqs(1)) // 间隔内成功应答数
-        buff.append("&action[]=1734|1739|1740|1748").append(",").append(reqs(2)) // 间隔内失败应答数
-      }
+        if( reportUrl != "" ) {
+            buff.append("&action[]=1734|1739|1740|1743").append(",").append(clients(0)) // 间隔内连接数
+            buff.append("&action[]=1734|1739|1740|1744").append(",").append(clients(1)) // 间隔内断开连接数
+            buff.append("&action[]=1734|1739|1740|1745").append(",").append(clients(2)) // 当前连接数
+            buff.append("&action[]=1734|1739|1740|1746").append(",").append(reqs(0)) // 间隔内请求数
+            buff.append("&action[]=1734|1739|1740|1747").append(",").append(reqs(1)) // 间隔内成功应答数
+            buff.append("&action[]=1734|1739|1740|1748").append(",").append(reqs(2)) // 间隔内失败应答数
+        }
 
-      val s = buff.toString
-      callStatMoreActions(s)
+        val s = buff.toString
+        callStatMoreActions(s)
     }
 
     def callStatPages(s:String) {
-      if( monitorClient != null )
-        monitorClient.callStatPages(s)
+        if( monitorClient != null )
+            monitorClient.callStatPages(s)
     }
 
     def callStatMoreActions(s:String) {
-      if( monitorClient != null )
-        monitorClient.callStatMoreActions(s)
+        if( monitorClient != null )
+            monitorClient.callStatMoreActions(s)
     }
 
     def init() {
 
-      if( reportUrl != "" || detailReportUrl != "" )
-        monitorClient = new MonitorHttpClient(this,reportUrl,detailReportUrl)
+        if( reportUrl != "" || detailReportUrl != "" )
+            monitorClient = new MonitorHttpClient(this,reportUrl,detailReportUrl)
 
-      if( detailReportServiceId != "" ) {
+        if( detailReportServiceId != "" ) {
 
-        val ss  = detailReportServiceId.split(",")
-        detailReportServiceIdSet = new HashSet[Int]()
+            val ss  = detailReportServiceId.split(",")
+            detailReportServiceIdSet = new HashSet[Int]()
 
-        for( s <- ss ) {
-          detailReportServiceIdSet.add(s.toInt)
+            for( s <- ss ) {
+                detailReportServiceIdSet.add(s.toInt)
+            }
         }
-      }
-      if( passwordFields != "" ) {
+        if( passwordFields != "" ) {
 
-        val ss  = passwordFields.split(",")
-        passwordFieldsSet = new HashSet[String]()
+            val ss  = passwordFields.split(",")
+            passwordFieldsSet = new HashSet[String]()
 
-        for( s <- ss ) {
-          passwordFieldsSet.add(s)
+            for( s <- ss ) {
+                passwordFieldsSet.add(s)
+            }
         }
-      }
 
-      var s = ( router.cfgXml \ "AsyncLogThreadNum").text
-      if( s != "" ) maxThreadNum = s.toInt
+        var s = ( router.cfgXml \ "AsyncLogThreadNum").text
+        if( s != "" ) maxThreadNum = s.toInt
 
-      s = ( router.cfgXml \ "AsyncLogWithFieldName" ).text
-      if( s != "" ) {
-        if( s == "true" ||  s == "yes" || s == "t" || s == "y"  || s == "1" ) asyncLogWithFieldName = true
-        else asyncLogWithFieldName = false
-      }
-      s = ( router.cfgXml \ "AsyncLogArray" ).text
-      if( s != "" ) {
-        asyncLogArray = s.toInt
-        if( asyncLogArray < 1 ) asyncLogArray = 1
-      }
+        s = ( router.cfgXml \ "AsyncLogWithFieldName" ).text
+        if( s != "" ) {
+            if( s == "true" ||  s == "yes" || s == "t" || s == "y"  || s == "1" ) asyncLogWithFieldName = true
+            else asyncLogWithFieldName = false
+        }
+        s = ( router.cfgXml \ "AsyncLogArray" ).text
+        if( s != "" ) {
+            asyncLogArray = s.toInt
+            if( asyncLogArray < 1 ) asyncLogArray = 1
+        }
 
-      s = ( router.cfgXml \ "AsyncLogMaxParamsLen" ).text
-      if( s != "" ) {
-        asyncLogMaxParamsLen = s.toInt
-        if( asyncLogMaxParamsLen < 100 ) asyncLogMaxParamsLen = 100
-      }
+        s = ( router.cfgXml \ "AsyncLogMaxParamsLen" ).text
+        if( s != "" ) {
+            asyncLogMaxParamsLen = s.toInt
+            if( asyncLogMaxParamsLen < 100 ) asyncLogMaxParamsLen = 100
+        }
 
-      s = ( router.cfgXml \ "AsyncLogMaxContentLen" ).text
-      if( s != "" ) {
-        asyncLogMaxContentLen = s.toInt
-        if( asyncLogMaxContentLen < 100 ) asyncLogMaxContentLen = 100
-      }
+        s = ( router.cfgXml \ "AsyncLogMaxContentLen" ).text
+        if( s != "" ) {
+            asyncLogMaxContentLen = s.toInt
+            if( asyncLogMaxContentLen < 100 ) asyncLogMaxContentLen = 100
+        }
 
-      var defaultTarget=  ""
-      s = ( router.cfgXml \ "AsyncLogDispatch" \ "@defaultTarget" ).text
-      if( s != "" ) {
+        var defaultTarget=  ""
+        s = ( router.cfgXml \ "AsyncLogDispatch" \ "@defaultTarget" ).text
+        if( s != "" ) {
             defaultTarget= s
-      }
-
-      val dispatchItems = router.cfgXml \ "AsyncLogDispatch" \ "Item"
-      for( item <- dispatchItems ) {
-          val serviceIdStr = (item \ "@serviceId").toString
-          val msgIdStr = (item \ "@msgId").toString
-          val key = serviceIdStr + ":" + msgIdStr
-          var target= (item \ "@target").toString
-          if( target== "" ) target= defaultTarget
-          if( target != "" && target != "0" ) { 
-              target = target.replace(".",":")
-              val ss = target.split(":")
-              dispatchMap.put(key,new Tuple2[Int,Int](ss(0).toInt,ss(1).toInt))
-          }
-      }
-
-      hasConfigFile = new File(configFile).exists
-      if( hasConfigFile ) {
-
-        val in = new InputStreamReader(new FileInputStream(configFile),"UTF-8")
-        val cfgXml = XML.load(in) //  scala.xml.Elem
-        in.close()
-
-        val serviceCfg = ( cfgXml \ "service" ).filter( a => ( a \ "@name" ).toString == "RecordLog" )
-        val items = serviceCfg \ "item"
-        for( item <- items ) {
-          val serviceIdStr = (item \ "@serviceid").toString
-          val msgIdStr = (item \ "@msgid").toString
-          val key = serviceIdStr + ":" + msgIdStr
-          val bs1 = new ArrayBufferString()
-          (item \ "request" \ "field" ).map( a => ( a \ "@name").toString).foreach( a => bs1 += a)
-          requestLogCfgReq.put(key,bs1)
-          val bs2 = new ArrayBufferString()
-          (item \ "response" \ "field" ).map( a => ( a \ "@name").toString).foreach( a => bs2 += a)
-          requestLogCfgRes.put(key,bs2)
-          val bbf = new ArrayBuffer[Boolean]()
-          (item \ "response" \ "field" ).map( a => if( ( a \ "@isproc").toString == "true" ) true else false ).foreach( a => bbf += a)
-          requestLogCfgResVarFlag.put(key,bbf)
-          val indexStr = (item \ "@index").toString
-          val indexFields = new ArrayBufferString()
-          if( indexStr != "" ) {
-               val ss = indexStr.split(",")
-               for(s <- ss ) indexFields += s
-               requestLogIndexFields.put(key,indexFields)
-          }
-
         }
 
-      }
+        val dispatchItems = router.cfgXml \ "AsyncLogDispatch" \ "Item"
+        for( item <- dispatchItems ) {
+            val serviceIdStr = (item \ "@serviceId").toString
+            val msgIdStr = (item \ "@msgId").toString
+            val key = serviceIdStr + ":" + msgIdStr
+            var target= (item \ "@target").toString
+            if( target== "" ) target= defaultTarget
+            if( target != "" && target != "0" ) { 
+                target = target.replace(".",":")
+                val ss = target.split(":")
+                dispatchMap.put(key,new Tuple2[Int,Int](ss(0).toInt,ss(1).toInt))
+            }
+        }
 
-      threadFactory = new NamedThreadFactory("asynclog")
-      pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
-      pool.prestartAllCoreThreads()
+        hasConfigFile = new File(configFile).exists
+        if( hasConfigFile ) {
 
-      timer.schedule( new TimerTask() {
-        def run() {
-           while(!shutdown.get()) {
+            val in = new InputStreamReader(new FileInputStream(configFile),"UTF-8")
+            val cfgXml = XML.load(in) //  scala.xml.Elem
+            in.close()
 
-            val cal = Calendar.getInstance()
-            val seconds = cal.get(Calendar.SECOND)
-            if( seconds >= 5 && seconds <= 8 ) {
-
-                try {
-                  timer.scheduleAtFixedRate( new TimerTask() {
-                    def run() {
-                      val now = statf_tl.get().format(new Date(System.currentTimeMillis - 60000))
-                      AsyncLogActor.this.receive(Stats(now))
-                    }
-                  }, 0, 60000 )
-                } catch {
-                  case e:Throwable =>
-
+            val serviceCfg = ( cfgXml \ "service" ).filter( a => ( a \ "@name" ).toString == "RecordLog" )
+            val items = serviceCfg \ "item"
+            for( item <- items ) {
+                val serviceIdStr = (item \ "@serviceid").toString
+                val msgIdStr = (item \ "@msgid").toString
+                val key = serviceIdStr + ":" + msgIdStr
+                val bs1 = new ArrayBufferString()
+                (item \ "request" \ "field" ).map( a => ( a \ "@name").toString).foreach( a => bs1 += a)
+                requestLogCfgReq.put(key,bs1)
+                val bs2 = new ArrayBufferString()
+                (item \ "response" \ "field" ).map( a => ( a \ "@name").toString).foreach( a => bs2 += a)
+                requestLogCfgRes.put(key,bs2)
+                val bbf = new ArrayBuffer[Boolean]()
+                (item \ "response" \ "field" ).map( a => if( ( a \ "@isproc").toString == "true" ) true else false ).foreach( a => bbf += a)
+                requestLogCfgResVarFlag.put(key,bbf)
+                val indexStr = (item \ "@index").toString
+                val indexFields = new ArrayBufferString()
+                if( indexStr != "" ) {
+                    val ss = indexStr.split(",")
+                    for(s <- ss ) indexFields += s
+                    requestLogIndexFields.put(key,indexFields)
                 }
-                return
+
             }
 
-            Thread.sleep(1000)
-           }
         }
-      }, 0 )
 
-      log.info("AsyncLogActor started")
+        threadFactory = new NamedThreadFactory("asynclog")
+        pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
+        pool.prestartAllCoreThreads()
+
+        timer.schedule( new TimerTask() {
+            def run() {
+                while(!shutdown.get()) {
+
+                    val cal = Calendar.getInstance()
+                    val seconds = cal.get(Calendar.SECOND)
+                    if( seconds >= 5 && seconds <= 8 ) {
+
+                        try {
+                            timer.scheduleAtFixedRate( new TimerTask() {
+                                def run() {
+                                    val now = statf_tl.get().format(new Date(System.currentTimeMillis - 60000))
+                                    AsyncLogActor.this.receive(Stats(now))
+                                }
+                            }, 0, 60000 )
+                        } catch {
+                            case e:Throwable =>
+
+                        }
+                        return
+                    }
+
+                    Thread.sleep(1000)
+                }
+            }
+        }, 0 )
+
+        log.info("AsyncLogActor started")
     }
 
     def close() {
 
-      shutdown.set(true)
-      timer.cancel()
+        shutdown.set(true)
+        timer.cancel()
 
-      val t1 = System.currentTimeMillis
+        val t1 = System.currentTimeMillis
 
-      pool.shutdown()
+        pool.shutdown()
 
-      pool.awaitTermination(5,TimeUnit.SECONDS)
+        pool.awaitTermination(5,TimeUnit.SECONDS)
 
-      writeStats(statf_tl.get().format(new Date(System.currentTimeMillis - 60000)))
-      writeStats(statf_tl.get().format(new Date(System.currentTimeMillis)))
+        writeStats(statf_tl.get().format(new Date(System.currentTimeMillis - 60000)))
+        writeStats(statf_tl.get().format(new Date(System.currentTimeMillis)))
 
-      val t2 = System.currentTimeMillis
-      if( t2 - t1 > 100 )
-        log.warn("AsyncLogActor long time to shutdown pool, ts={}",t2-t1)
+        val t2 = System.currentTimeMillis
+        if( t2 - t1 > 100 )
+            log.warn("AsyncLogActor long time to shutdown pool, ts={}",t2-t1)
 
-      if( monitorClient != null ) {
-        monitorClient.close()
-        monitorClient = null
-      }
+        if( monitorClient != null ) {
+            monitorClient.close()
+            monitorClient = null
+        }
 
-      log.info("AsyncLogActor stopped")
+        log.info("AsyncLogActor stopped")
     }
 
     def findIndexFields(serviceId:Int,msgId:Int): ArrayBufferString = {
-      val s = requestLogIndexFields.getOrElse(serviceId+":"+msgId,null)
-      if( s != null ) return s
-      val s2 = requestLogIndexFields.getOrElse(serviceId+":-1",null)
-      if( s2 != null ) return s2
-      EMPTY_ARRAYBUFFERSTRING
+        val s = requestLogIndexFields.getOrElse(serviceId+":"+msgId,null)
+        if( s != null ) return s
+        val s2 = requestLogIndexFields.getOrElse(serviceId+":-1",null)
+        if( s2 != null ) return s2
+        EMPTY_ARRAYBUFFERSTRING
     }
     def findReqLogCfg(serviceId:Int,msgId:Int): ArrayBufferString = {
-      val s = requestLogCfgReq.getOrElse(serviceId+":"+msgId,null)
-      if( s != null ) return s
-      EMPTY_ARRAYBUFFERSTRING
+        val s = requestLogCfgReq.getOrElse(serviceId+":"+msgId,null)
+        if( s != null ) return s
+        EMPTY_ARRAYBUFFERSTRING
     }
     def findResLogCfg(serviceId:Int,msgId:Int): ArrayBufferString = {
-      val s = requestLogCfgRes.getOrElse(serviceId+":"+msgId,null)
-      if( s != null ) return s
-      EMPTY_ARRAYBUFFERSTRING
+        val s = requestLogCfgRes.getOrElse(serviceId+":"+msgId,null)
+        if( s != null ) return s
+        EMPTY_ARRAYBUFFERSTRING
     }
     def findResLogCfgVarFlag(serviceId:Int,msgId:Int): ArrayBuffer[Boolean] = {
-      val s = requestLogCfgResVarFlag.getOrElse(serviceId+":"+msgId,null)
-      if( s != null ) return s
-      EMPTY_ARRAYBUFFERBOOLEAN
+        val s = requestLogCfgResVarFlag.getOrElse(serviceId+":"+msgId,null)
+        if( s != null ) return s
+        EMPTY_ARRAYBUFFERBOOLEAN
     }
 
     override def receive(v:Any)  {
         try{
             pool.execute( new Runnable() {
-              def run() {
-                try {
-                  onDispatch(v)
-                } catch {
-                  case e:Exception =>
-                    log.error("asynclog dispatch exception v={}",v,e)
+                def run() {
+                    try {
+                        onDispatch(v)
+                    } catch {
+                        case e:Exception =>
+                            log.error("asynclog dispatch exception v={}",v,e)
+                    }
+                    try {
+                        onReceive(v)
+                    } catch {
+                        case e:Exception =>
+                            log.error("asynclog log exception v={}",v,e)
+                    }
                 }
-                try {
-                  onReceive(v)
-                } catch {
-                  case e:Exception =>
-                    log.error("asynclog log exception v={}",v,e)
-                }
-              }
             })
         } catch {
             case e: RejectedExecutionException =>
-              log.error("asynclog queue is full")
+                log.error("asynclog queue is full")
         }
 
     }
 
     def getRequestLog(serviceId:Int,msgId:Int): Logger = {
-      val key = serviceId+"."+msgId
-      var log = requestLogMap.get(key,null)
-      if( log != null ) return log
-      val key2 = "jvmdbbroker.RequestLog."+key
-      log = LoggerFactory.getLogger(key2)
-      requestLogMap.put(key,log)
-      log
+        val key = serviceId+"."+msgId
+        var log = requestLogMap.get(key,null)
+        if( log != null ) return log
+        val key2 = "jvmdbbroker.RequestLog."+key
+        log = LoggerFactory.getLogger(key2)
+        requestLogMap.put(key,log)
+        log
     }
 
     def getCsosLog(serviceId:Int,msgId:Int): Logger = {
-      val key = serviceId+"."+msgId
-      var log = csosLogMap.get(key,null)
-      if( log != null ) return log
-      val key2 = "jvmdbbroker.CsosLog."+key
-      log = LoggerFactory.getLogger(key2)
-      csosLogMap.put(key,log)
-      log
+        val key = serviceId+"."+msgId
+        var log = csosLogMap.get(key,null)
+        if( log != null ) return log
+        val key2 = "jvmdbbroker.CsosLog."+key
+        log = LoggerFactory.getLogger(key2)
+        csosLogMap.put(key,log)
+        log
     }
     def getHttpRequestLog(serviceId:Int,msgId:Int): Logger = {
-      val key = serviceId+"."+msgId
-      var log = httpRequestLogMap.get(key,null)
-      if( log != null ) return log
-      val key2 = "jvmdbbroker.HttpRequestLog."+key
-      log = LoggerFactory.getLogger(key2)
-      httpRequestLogMap.put(key,log)
-      log
+        val key = serviceId+"."+msgId
+        var log = httpRequestLogMap.get(key,null)
+        if( log != null ) return log
+        val key2 = "jvmdbbroker.HttpRequestLog."+key
+        log = LoggerFactory.getLogger(key2)
+        httpRequestLogMap.put(key,log)
+        log
     }
     def getHttpAccessLog(): Logger = {
-      val key = "access"
-      var log = httpRequestLogMap.get(key,null)
-      if( log != null ) return log
-      val key2 = "jvmdbbroker.HttpRequestLog."+key
-      log = LoggerFactory.getLogger(key2)
-      httpRequestLogMap.put(key,log)
-      log
+        val key = "access"
+        var log = httpRequestLogMap.get(key,null)
+        if( log != null ) return log
+        val key2 = "jvmdbbroker.HttpRequestLog."+key
+        log = LoggerFactory.getLogger(key2)
+        httpRequestLogMap.put(key,log)
+        log
     }
 
     def parseConnId(connId:String) : String = {
-      if( connId == null || connId == "" ) return connId
+        if( connId == null || connId == "" ) return connId
 
-      val p = connId.lastIndexOf(":")
-      if( p != -1 )
-          connId.substring(0,p)
-      else
-          ""
+        val p = connId.lastIndexOf(":")
+        if( p != -1 )
+            connId.substring(0,p)
+        else
+            ""
     }
 
     def parseFirstGsInfo(xhead:HashMapStringAny) = {
-      var s = xhead.s("gsInfoFirst","")
-      if( s == "" ) s = "0:0"
-      val gsInfo = s.split(":")
-      gsInfo
+        var s = xhead.s("gsInfoFirst","")
+        if( s == "" ) s = "0:0"
+        val gsInfo = s.split(":")
+        gsInfo
     }
     def parseLastGsInfo(xhead:HashMapStringAny) = {
-      var s = xhead.s("gsInfoLast","")
-      if( s == "" ) s = "0:0"
-      val gsInfo = s.split(":")
-      gsInfo
+        var s = xhead.s("gsInfoLast","")
+        if( s == "" ) s = "0:0"
+        val gsInfo = s.split(":")
+        gsInfo
     }
 
     def onReceive(v:Any)  {
 
-      v match {
+        v match {
 
-      case info : RequestResponseInfo =>
+            case info : RequestResponseInfo =>
 
-          val now = statf_tl.get().format(new Date(info.res.receivedTime))
-          val ts = (info.res.receivedTime - info.req.receivedTime).toInt
+                val now = statf_tl.get().format(new Date(info.res.receivedTime))
+                val ts = (info.res.receivedTime - info.req.receivedTime).toInt
 
-          val keyBuff = new StringBuilder()
-          keyBuff.append(now).append(",  ")
+                val keyBuff = new StringBuilder()
+                keyBuff.append(now).append(",  ")
 
-	      val fromSosOrSoc = info.req.sender != null && info.req.sender.isInstanceOf[RawRequestActor] 
-          if( !fromSosOrSoc ) {
+                val fromSosOrSoc = info.req.sender != null && info.req.sender.isInstanceOf[RawRequestActor] 
+                if( !fromSosOrSoc ) {
 
-            keyBuff.append(info.req.serviceId)
-            keyBuff.append(",  ")
-            keyBuff.append(info.req.msgId)
-            incSosStat(keyBuff.toString,ts,info.res.code)
+                    keyBuff.append(info.req.serviceId)
+                    keyBuff.append(",  ")
+                    keyBuff.append(info.req.msgId)
+                    incSosStat(keyBuff.toString,ts,info.res.code)
 
-            val log = getCsosLog(info.req.serviceId,info.req.msgId)
-            if( !log.isInfoEnabled ) return
+                    val log = getCsosLog(info.req.serviceId,info.req.msgId)
+                    if( !log.isInfoEnabled ) return
 
-            val buff = new StringBuilder
+                    val buff = new StringBuilder
 
-            buff.append(info.req.requestId).append(splitter)
-            buff.append(info.req.parentServiceId).append(splitter).append(info.req.parentMsgId).append(splitter)
-            buff.append(info.req.serviceId).append(splitter).append(info.req.msgId).append(splitter)
-            buff.append(info.res.remoteAddr).append(splitter)
-            buff.append(splitter).append(splitter)
+                    buff.append(info.req.requestId).append(splitter)
+                    buff.append(info.req.parentServiceId).append(splitter).append(info.req.parentMsgId).append(splitter)
+                    buff.append(info.req.serviceId).append(splitter).append(info.req.msgId).append(splitter)
+                    buff.append(info.res.remoteAddr).append(splitter)
+                    buff.append(splitter).append(splitter)
 
-            val codec = codecs.findTlvCodec(info.req.serviceId)
+                    val codec = codecs.findTlvCodec(info.req.serviceId)
 
-            val serviceNameMsgName = codec.serviceName + "." + codec.msgIdToNameMap.getOrElse(info.req.msgId,"unknown")
-            buff.append(serviceNameMsgName).append(splitter)
+                    val serviceNameMsgName = codec.serviceName + "." + codec.msgIdToNameMap.getOrElse(info.req.msgId,"unknown")
+                    buff.append(serviceNameMsgName).append(splitter)
 
-            val keysForReq = codec.msgKeysForReq.getOrElse(info.req.msgId,EMPTY_ARRAYBUFFERSTRING)
-            val keysForRes = codec.msgKeysForRes.getOrElse(info.req.msgId,EMPTY_ARRAYBUFFERSTRING)
+                    val keysForReq = codec.msgKeysForReq.getOrElse(info.req.msgId,EMPTY_ARRAYBUFFERSTRING)
+                    val keysForRes = codec.msgKeysForRes.getOrElse(info.req.msgId,EMPTY_ARRAYBUFFERSTRING)
 
-            appendToBuff(keysForReq,info.req.body,buff)
+                    appendToBuff(keysForReq,info.req.body,buff)
 
-            buff.append(splitter)
+                    buff.append(splitter)
 
-            appendToBuffForRes(keysForRes,null,info.res.body,info.logVars,buff)
+                    appendToBuffForRes(keysForRes,null,info.res.body,info.logVars,buff)
 
-            buff.append(splitter)
+                    buff.append(splitter)
 
-            buff.append(ts).append(splitter)
-            buff.append(info.res.code)
+                    buff.append(ts).append(splitter)
+                    buff.append(info.res.code)
 
-            log.info(buff.toString)
+                    log.info(buff.toString)
 
-          } else {
-
-            keyBuff.append(info.req.serviceId).append(",  ")
-            keyBuff.append(info.req.msgId).append(",  ")
-            keyBuff.append(parseConnId(info.req.connId))
-
-            incReqStat(keyBuff.toString,ts,info.res.code)
-
-            val log = getRequestLog(info.req.serviceId,info.req.msgId)
-            if( !log.isInfoEnabled ) return
-
-            val buff = new StringBuilder
-            val clientInfo = parseFirstGsInfo(info.req.xhead)
-            val gsInfo = parseLastGsInfo(info.req.xhead)
-            buff.append(gsInfo(0)).append(splitter).append(gsInfo(1)).append(splitter)
-            buff.append(clientInfo(0)).append(splitter).append(clientInfo(1)).append(splitter)
-            val xappid = info.req.xhead.getOrElse("appId","-10086")
-            val xareaid = info.req.xhead.getOrElse("areaId","-10087")
-            val xsocId = info.req.xhead.getOrElse("socId","")
-            buff.append(xappid).append(splitter).append(xareaid).append(splitter).append(xsocId).append(splitter)
-            buff.append(info.req.requestId).append(splitter).append(1).append(splitter)
-            buff.append(info.req.serviceId).append(splitter).append(info.req.msgId).append(splitter)
-            buff.append("").append(splitter)
-            val d = new Date(info.req.receivedTime)
-            buff.append(f_tl.get().format(d)).append(splitter).append(ts).append(splitter)
-            buff.append(splitter)
-            buff.append(splitter)
-
-            appendIndex(buff,info.req.serviceId,info.req.msgId,info.req.body,info.res.body,info.logVars) 
-
-            val codec = codecs.findTlvCodec(info.req.serviceId)
-
-            var keysForReq:ArrayBufferString = null
-            var keysForRes:ArrayBufferString = null
-            var keysForResVarFlag:ArrayBuffer[Boolean] = null
-
-            if( hasConfigFile ) keysForReq = findReqLogCfg(info.req.serviceId,info.req.msgId)
-            if( keysForReq == null || keysForReq.size == 0 ) { 
-                keysForReq = codec.msgKeysForReq.getOrElse(info.req.msgId,EMPTY_ARRAYBUFFERSTRING)
-                keysForRes = codec.msgKeysForRes.getOrElse(info.req.msgId,EMPTY_ARRAYBUFFERSTRING)
-                keysForResVarFlag =  null
-            } else {
-                keysForRes = findResLogCfg(info.req.serviceId,info.req.msgId)
-                keysForResVarFlag = findResLogCfgVarFlag(info.req.serviceId,info.req.msgId)
-            }
-
-            appendToBuff(keysForReq,info.req.body,buff)
-
-            buff.append(splitter)
-
-            appendToBuffForRes(keysForRes,keysForResVarFlag,info.res.body,info.logVars,buff)
-
-            buff.append(splitter)
-
-            buff.append(info.res.code)
-
-            log.info(buff.toString)
-          }
-
-
-      case rawInfo : RawRequestResponseInfo =>
-
-            val now = statf_tl.get().format(new Date(rawInfo.rawRes.receivedTime))
-            val ts = (rawInfo.rawRes.receivedTime - rawInfo.rawReq.receivedTime).toInt
-
-            val keyBuff = new StringBuilder()
-            keyBuff.append(now).append(",  ")
-            keyBuff.append(rawInfo.rawReq.data.serviceId).append(",  ")
-            keyBuff.append(rawInfo.rawReq.data.msgId).append(",  ")
-            keyBuff.append(parseConnId(rawInfo.rawReq.connId))
-
-            incReqStat(keyBuff.toString,ts,rawInfo.rawRes.data.code)
-
-            val log = getRequestLog(rawInfo.rawReq.data.serviceId,rawInfo.rawReq.data.msgId)
-            if( !log.isInfoEnabled ) return
-
-            val req = toReq(rawInfo.rawReq)
-            val res = toRes(req,rawInfo.rawRes)
-
-            val buff = new StringBuilder
-            val clientInfo = parseFirstGsInfo(req.xhead)
-            val gsInfo = parseLastGsInfo(req.xhead)
-            buff.append(gsInfo(0)).append(splitter).append(gsInfo(1)).append(splitter)
-            buff.append(clientInfo(0)).append(splitter).append(clientInfo(1)).append(splitter)
-            val xappid = req.xhead.getOrElse("appId","-10086")
-            val xareaid = req.xhead.getOrElse("areaId","-10087")
-            val xsocId = req.xhead.getOrElse("socId","")
-            buff.append(xappid).append(splitter).append(xareaid).append(splitter).append(xsocId).append(splitter)
-            buff.append(req.requestId).append(splitter).append(1).append(splitter)
-            buff.append(req.serviceId).append(splitter).append(req.msgId).append(splitter)
-            buff.append("").append(splitter)
-            val d = new Date(req.receivedTime)
-
-            buff.append(f_tl.get().format(d)).append(splitter).append(ts).append(splitter)
-            buff.append(splitter)
-            buff.append(splitter)
-
-            appendIndex(buff,req.serviceId,req.msgId,req.body,res.body,null) 
-
-            val codec = codecs.findTlvCodec(req.serviceId)
-
-            var keysForReq:ArrayBufferString = null
-            var keysForRes:ArrayBufferString = null
-
-            if( hasConfigFile ) keysForReq = findReqLogCfg(req.serviceId,req.msgId)
-            if( keysForReq == null || keysForReq.size == 0 ) { 
-                if( codec != null ) { 
-                    keysForReq = codec.msgKeysForReq.getOrElse(req.msgId,EMPTY_ARRAYBUFFERSTRING)
-                    keysForRes = codec.msgKeysForRes.getOrElse(req.msgId,EMPTY_ARRAYBUFFERSTRING)
                 } else {
-                    keysForReq = EMPTY_ARRAYBUFFERSTRING
-                    keysForRes = EMPTY_ARRAYBUFFERSTRING
+
+                    keyBuff.append(info.req.serviceId).append(",  ")
+                    keyBuff.append(info.req.msgId).append(",  ")
+                    keyBuff.append(parseConnId(info.req.connId))
+
+                    incReqStat(keyBuff.toString,ts,info.res.code)
+
+                    val log = getRequestLog(info.req.serviceId,info.req.msgId)
+                    if( !log.isInfoEnabled ) return
+
+                    val buff = new StringBuilder
+                    val clientInfo = parseFirstGsInfo(info.req.xhead)
+                    val gsInfo = parseLastGsInfo(info.req.xhead)
+                    buff.append(gsInfo(0)).append(splitter).append(gsInfo(1)).append(splitter)
+                    buff.append(clientInfo(0)).append(splitter).append(clientInfo(1)).append(splitter)
+                    val xappid = info.req.xhead.getOrElse("appId","-10086")
+                    val xareaid = info.req.xhead.getOrElse("areaId","-10087")
+                    val xsocId = info.req.xhead.getOrElse("socId","")
+                    buff.append(xappid).append(splitter).append(xareaid).append(splitter).append(xsocId).append(splitter)
+                    buff.append(info.req.requestId).append(splitter).append(1).append(splitter)
+                    buff.append(info.req.serviceId).append(splitter).append(info.req.msgId).append(splitter)
+                    buff.append("").append(splitter)
+                    val d = new Date(info.req.receivedTime)
+                    buff.append(f_tl.get().format(d)).append(splitter).append(ts).append(splitter)
+                    buff.append(splitter)
+                    buff.append(splitter)
+
+                    appendIndex(buff,info.req.serviceId,info.req.msgId,info.req.body,info.res.body,info.logVars) 
+
+                    val codec = codecs.findTlvCodec(info.req.serviceId)
+
+                    var keysForReq:ArrayBufferString = null
+                    var keysForRes:ArrayBufferString = null
+                    var keysForResVarFlag:ArrayBuffer[Boolean] = null
+
+                    if( hasConfigFile ) keysForReq = findReqLogCfg(info.req.serviceId,info.req.msgId)
+                    if( keysForReq == null || keysForReq.size == 0 ) { 
+                        keysForReq = codec.msgKeysForReq.getOrElse(info.req.msgId,EMPTY_ARRAYBUFFERSTRING)
+                        keysForRes = codec.msgKeysForRes.getOrElse(info.req.msgId,EMPTY_ARRAYBUFFERSTRING)
+                        keysForResVarFlag =  null
+                    } else {
+                        keysForRes = findResLogCfg(info.req.serviceId,info.req.msgId)
+                        keysForResVarFlag = findResLogCfgVarFlag(info.req.serviceId,info.req.msgId)
+                    }
+
+                    appendToBuff(keysForReq,info.req.body,buff)
+
+                    buff.append(splitter)
+
+                    appendToBuffForRes(keysForRes,keysForResVarFlag,info.res.body,info.logVars,buff)
+
+                    buff.append(splitter)
+
+                    buff.append(info.res.code)
+
+                    log.info(buff.toString)
                 }
-            } else {
-                keysForRes = findResLogCfg(req.serviceId,req.msgId)
-            }
 
-            appendToBuff(keysForReq,req.body,buff)
 
-            buff.append(splitter)
+            case rawInfo : RawRequestResponseInfo =>
 
-            appendToBuffForRes(keysForRes,null,res.body,null,buff)
+                val now = statf_tl.get().format(new Date(rawInfo.rawRes.receivedTime))
+                val ts = (rawInfo.rawRes.receivedTime - rawInfo.rawReq.receivedTime).toInt
 
-            buff.append(splitter)
+                val keyBuff = new StringBuilder()
+                keyBuff.append(now).append(",  ")
+                keyBuff.append(rawInfo.rawReq.data.serviceId).append(",  ")
+                keyBuff.append(rawInfo.rawReq.data.msgId).append(",  ")
+                keyBuff.append(parseConnId(rawInfo.rawReq.connId))
 
-            buff.append(res.code)
+                incReqStat(keyBuff.toString,ts,rawInfo.rawRes.data.code)
 
-            log.info(buff.toString)
+                val log = getRequestLog(rawInfo.rawReq.data.serviceId,rawInfo.rawReq.data.msgId)
+                if( !log.isInfoEnabled ) return
 
-      case httpInfo : HttpSosRequestResponseInfo =>
+                val req = toReq(rawInfo.rawReq)
+                val res = toRes(req,rawInfo.rawRes)
 
-            val req = httpInfo.req
-            val res = httpInfo.res
+                val buff = new StringBuilder
+                val clientInfo = parseFirstGsInfo(req.xhead)
+                val gsInfo = parseLastGsInfo(req.xhead)
+                buff.append(gsInfo(0)).append(splitter).append(gsInfo(1)).append(splitter)
+                buff.append(clientInfo(0)).append(splitter).append(clientInfo(1)).append(splitter)
+                val xappid = req.xhead.getOrElse("appId","-10086")
+                val xareaid = req.xhead.getOrElse("areaId","-10087")
+                val xsocId = req.xhead.getOrElse("socId","")
+                buff.append(xappid).append(splitter).append(xareaid).append(splitter).append(xsocId).append(splitter)
+                buff.append(req.requestId).append(splitter).append(1).append(splitter)
+                buff.append(req.serviceId).append(splitter).append(req.msgId).append(splitter)
+                buff.append("").append(splitter)
+                val d = new Date(req.receivedTime)
 
-            val now = statf_tl.get().format(new Date(res.receivedTime))
-            val ts = (res.receivedTime - req.receivedTime).toInt
+                buff.append(f_tl.get().format(d)).append(splitter).append(ts).append(splitter)
+                buff.append(splitter)
+                buff.append(splitter)
 
-            val keyBuff = new StringBuilder()
-            keyBuff.append(now).append(",  ")
+                appendIndex(buff,req.serviceId,req.msgId,req.body,res.body,null) 
 
-            keyBuff.append(req.serviceId).append(",  ")
-            keyBuff.append(req.msgId).append(",  ")
-            keyBuff.append(parseConnId(req.connId))
+                val codec = codecs.findTlvCodec(req.serviceId)
 
-            incReqStat(keyBuff.toString,ts,res.code)
+                var keysForReq:ArrayBufferString = null
+                var keysForRes:ArrayBufferString = null
 
-            var params = req.params
-            val p = params.indexOf("?")
-            var uri = params
-            if( p >= 0 ) {
-                uri = params.substring(0,p)
-                params = params.substring(p+1)
-            } else {
-                params = "-"
-            }
-
-            var staticFile = req.xhead.s("staticFile","0") == "1"
-
-            var contentType = req.xhead.s("contentType","application/json")
-            var content = res.content
-            var length = 0 
-            if( !staticFile ) {
-                if( contentType == "application/json" || contentType == "text/plain" ) {
-                    if( params.length > asyncLogMaxParamsLen ) params = params.substring(0,asyncLogMaxParamsLen)
-                    if( content.length > asyncLogMaxContentLen ) content = content.substring(0,asyncLogMaxContentLen)
-                    content = content.replace("\n","")
-                    length = content.length
+                if( hasConfigFile ) keysForReq = findReqLogCfg(req.serviceId,req.msgId)
+                if( keysForReq == null || keysForReq.size == 0 ) { 
+                    if( codec != null ) { 
+                        keysForReq = codec.msgKeysForReq.getOrElse(req.msgId,EMPTY_ARRAYBUFFERSTRING)
+                        keysForRes = codec.msgKeysForRes.getOrElse(req.msgId,EMPTY_ARRAYBUFFERSTRING)
+                    } else {
+                        keysForReq = EMPTY_ARRAYBUFFERSTRING
+                        keysForRes = EMPTY_ARRAYBUFFERSTRING
+                    }
                 } else {
-                    length = content.length
+                    keysForRes = findResLogCfg(req.serviceId,req.msgId)
+                }
+
+                appendToBuff(keysForReq,req.body,buff)
+
+                buff.append(splitter)
+
+                appendToBuffForRes(keysForRes,null,res.body,null,buff)
+
+                buff.append(splitter)
+
+                buff.append(res.code)
+
+                log.info(buff.toString)
+
+            case httpInfo : HttpSosRequestResponseInfo =>
+
+                val req = httpInfo.req
+                val res = httpInfo.res
+
+                val now = statf_tl.get().format(new Date(res.receivedTime))
+                val ts = (res.receivedTime - req.receivedTime).toInt
+
+                val keyBuff = new StringBuilder()
+                keyBuff.append(now).append(",  ")
+
+                keyBuff.append(req.serviceId).append(",  ")
+                keyBuff.append(req.msgId).append(",  ")
+                keyBuff.append(parseConnId(req.connId))
+
+                incReqStat(keyBuff.toString,ts,res.code)
+
+                var params = req.params
+                val p = params.indexOf("?")
+                var uri = params
+                if( p >= 0 ) {
+                    uri = params.substring(0,p)
+                    params = params.substring(p+1)
+                } else {
+                    params = "-"
+                }
+
+                var staticFile = req.xhead.s("staticFile","0") == "1"
+
+                var contentType = req.xhead.s("contentType","application/json")
+                var content = res.content
+                var length = 0 
+                if( !staticFile ) {
+                    if( contentType == "application/json" || contentType == "text/plain" ) {
+                        if( params.length > asyncLogMaxParamsLen ) params = params.substring(0,asyncLogMaxParamsLen)
+                        if( content.length > asyncLogMaxContentLen ) content = content.substring(0,asyncLogMaxContentLen)
+                        content = content.replace("\n","")
+                        length = content.length
+                    } else {
+                        length = content.length
+                        content = """{"contentType":"%s","contentLength":%d}""".format(contentType,length)
+                    }
+                } else {
+                    length = req.xhead.i("contentLength",0)
                     content = """{"contentType":"%s","contentLength":%d}""".format(contentType,length)
                 }
-            } else {
-                length = req.xhead.i("contentLength",0)
-                content = """{"contentType":"%s","contentLength":%d}""".format(contentType,length)
-            }
-            
-            val clientIpPort = req.xhead.s("clientIpPort","0:0")
 
-            if( !staticFile ) {
-                val log1 = getHttpRequestLog(req.serviceId,req.msgId)
-                if( log1.isInfoEnabled ) {
-                    val buff = new StringBuilder
-                    buff.append(clientIpPort).append(httpSplitter)
-                    buff.append(uri).append(httpSplitter)
-                    buff.append(req.serviceId).append(httpSplitter)
-                    buff.append(req.msgId).append(httpSplitter)
-                    buff.append("-1").append(httpSplitter)
-                    buff.append("-1").append(httpSplitter)
-                    buff.append(httpSplitter).append(httpSplitter).append(httpSplitter)
-                    buff.append(params).append(httpSplitter)
-                    buff.append(req.xhead.s("serverIpPort","0:0")).append(httpSplitter)
-                    buff.append(ts).append(httpSplitter)
-                    buff.append(res.code).append(httpSplitter)
-                    buff.append(content).append(httpSplitter)
-                    buff.append("tmstamp:0").append(httpSplitter)
-                    buff.append("sigstat:"+req.xhead.s("sigstat","0")).append(httpSplitter)
-                    buff.append(req.requestId).append(httpSplitter)
-                    buff.append(req.xhead.s("host","unknown_host"))
+                val clientIpPort = req.xhead.s("clientIpPort","0:0")
 
-                    log1.info(buff.toString)
+                if( !staticFile ) {
+                    val log1 = getHttpRequestLog(req.serviceId,req.msgId)
+                    if( log1.isInfoEnabled ) {
+                        val buff = new StringBuilder
+                        buff.append(clientIpPort).append(httpSplitter)
+                        buff.append(uri).append(httpSplitter)
+                        buff.append(req.serviceId).append(httpSplitter)
+                        buff.append(req.msgId).append(httpSplitter)
+                        buff.append("-1").append(httpSplitter)
+                        buff.append("-1").append(httpSplitter)
+                        buff.append(httpSplitter).append(httpSplitter).append(httpSplitter)
+                        buff.append(params).append(httpSplitter)
+                        buff.append(req.xhead.s("serverIpPort","0:0")).append(httpSplitter)
+                        buff.append(ts).append(httpSplitter)
+                        buff.append(res.code).append(httpSplitter)
+                        buff.append(content).append(httpSplitter)
+                        buff.append("tmstamp:0").append(httpSplitter)
+                        buff.append("sigstat:"+req.xhead.s("sigstat","0")).append(httpSplitter)
+                        buff.append(req.requestId).append(httpSplitter)
+                        buff.append(req.xhead.s("host","unknown_host"))
+
+                        log1.info(buff.toString)
+                    }
                 }
-            }
 
-            val log2 = getHttpAccessLog()
-            if( log2.isInfoEnabled ) {
+                val log2 = getHttpAccessLog()
+                if( log2.isInfoEnabled ) {
 
-                val splitter = "\t"
-                val buff = new StringBuilder
-                buff.append(ts).append(splitter) // time_used
-                buff.append(clientIpPort).append(splitter) // client ip
-                buff.append(req.xhead.s("remoteIpPort","-")).append(splitter) // upstream_addr
-                buff.append(req.xhead.s("method","-")).append(splitter) // method
-                buff.append(req.xhead.s("host","-")).append(splitter) // host
-                buff.append(uri).append(splitter) // uri
-                buff.append(params).append(splitter) // query string
-                buff.append(req.xhead.s("httpCode","-")).append(splitter) // http code
-                buff.append(length).append(splitter) // content length
-                buff.append(req.xhead.s("userAgent","-")) // user agent
+                    val splitter = "\t"
+                    val buff = new StringBuilder
+                    buff.append(ts).append(splitter) // time_used
+                    buff.append(clientIpPort).append(splitter) // client ip
+                    buff.append(req.xhead.s("remoteIpPort","-")).append(splitter) // upstream_addr
+                    buff.append(req.xhead.s("method","-")).append(splitter) // method
+                    buff.append(req.xhead.s("host","-")).append(splitter) // host
+                    buff.append(uri).append(splitter) // uri
+                    buff.append(params).append(splitter) // query string
+                    buff.append(req.xhead.s("httpCode","-")).append(splitter) // http code
+                    buff.append(length).append(splitter) // content length
+                    buff.append(req.xhead.s("userAgent","-")) // user agent
 
-                log2.info(buff.toString)
-            }
+                    log2.info(buff.toString)
+                }
 
 
-      case Stats(now) =>
+            case Stats(now) =>
 
-          writeStats(now)
+                writeStats(now)
 
-      case _ =>
+            case _ =>
 
-          log.error("unknown msg received")
+                log.error("unknown msg received")
 
-      }
+        }
     }
 
     def appendIndex(buff:StringBuilder,serviceId:Int,msgId:Int,req:HashMapStringAny,res:HashMapStringAny,logVars:HashMapStringAny) {
-            var indexFields:ArrayBufferString = null
-            if( hasConfigFile ) {
-                 indexFields = findIndexFields(serviceId,msgId)
+        var indexFields:ArrayBufferString = null
+        if( hasConfigFile ) {
+            indexFields = findIndexFields(serviceId,msgId)
+        }
+        if( indexFields == null || indexFields.size == 0 ) {
+            buff.append(splitter)
+            buff.append(splitter)
+            buff.append(splitter)
+        } else {
+            var i = 0
+            while(i<indexFields.size && i < 3) {
+                val key = indexFields(i)
+                var value = req.s(key,null)
+                if( value == null ) value = res.s(key,null)
+                if( value == null && logVars != null) value = logVars.s(key,null)
+                if( value == null ) value = ""
+                buff.append(value)
+            buff.append(splitter)
+            i += 1
             }
-            if( indexFields == null || indexFields.size == 0 ) {
+            while( i < 3 ) {
                 buff.append(splitter)
-                buff.append(splitter)
-                buff.append(splitter)
-            } else {
-                var i = 0
-                while(i<indexFields.size && i < 3) {
-                    val key = indexFields(i)
-                    var value = req.s(key,null)
-                    if( value == null ) value = res.s(key,null)
-                    if( value == null && logVars != null) value = logVars.s(key,null)
-                    if( value == null ) value = ""
-                    buff.append(value)
-                    buff.append(splitter)
-                    i += 1
-                }
-                while( i < 3 ) {
-                    buff.append(splitter)
-                    i += 1
-                }
+                i += 1
             }
+        }
     }
 
     def generateSequence():Int = {
@@ -955,75 +952,75 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
 
     def onDispatch(v:Any)  {
 
-      v match {
+        v match {
 
-          case info : RequestResponseInfo =>
+            case info : RequestResponseInfo =>
 
-            val serviceId = info.req.serviceId
-            val msgId = info.req.msgId
-            val key = serviceId + ":" + msgId
-            val defaultKey = serviceId + ":*" 
-            val defaultKey2 = serviceId + ":-1" 
-            var target= dispatchMap.getOrElse(key,null)
-            if( target == null ) 
-               target = dispatchMap.getOrElse(defaultKey,null)
-            if( target == null ) 
-               target = dispatchMap.getOrElse(defaultKey2,null)
-            if( target == null ) return
-            val (targetServiceId,targetMsgId) = target
+                val serviceId = info.req.serviceId
+                val msgId = info.req.msgId
+                val key = serviceId + ":" + msgId
+                val defaultKey = serviceId + ":*" 
+                val defaultKey2 = serviceId + ":-1" 
+                var target= dispatchMap.getOrElse(key,null)
+                if( target == null ) 
+                    target = dispatchMap.getOrElse(defaultKey,null)
+                if( target == null ) 
+                    target = dispatchMap.getOrElse(defaultKey2,null)
+                if( target == null ) return
+                val (targetServiceId,targetMsgId) = target
 
-            val array = toDispatchArray(info.req,info.res,info.logVars)
+                val array = toDispatchArray(info.req,info.res,info.logVars)
 
-            val newreq = new Request (
-                "ASYN"+RequestIdGenerator.nextId(),
-                Router.DO_NOT_REPLY,
-                generateSequence(),
-                1,
-                targetServiceId,
-                targetMsgId,
-                new HashMapStringAny(),
-                HashMapStringAny("serviceId"->serviceId,"msgId"->msgId,"kvarray"->array),
-                this
-              )
+                val newreq = new Request (
+                    "ASYN"+RequestIdGenerator.nextId(),
+                    Router.DO_NOT_REPLY,
+                    generateSequence(),
+                    1,
+                    targetServiceId,
+                    targetMsgId,
+                    new HashMapStringAny(),
+                    HashMapStringAny("serviceId"->serviceId,"msgId"->msgId,"kvarray"->array),
+                    this
+                )
 
-              router.send(newreq)
+                router.send(newreq)
 
-          case rawInfo : RawRequestResponseInfo =>
+            case rawInfo : RawRequestResponseInfo =>
 
-            val serviceId = rawInfo.rawReq.data.serviceId
-            val msgId = rawInfo.rawReq.data.msgId
-            val key = serviceId + ":" + msgId
-            val defaultKey = serviceId + ":*" 
-            val defaultKey2 = serviceId + ":-1" 
-            var target= dispatchMap.getOrElse(key,null)
-            if( target == null ) 
-               target = dispatchMap.getOrElse(defaultKey,null)
-            if( target == null ) 
-               target = dispatchMap.getOrElse(defaultKey2,null)
-            if( target == null ) return
-            val (targetServiceId,targetMsgId) = target
+                val serviceId = rawInfo.rawReq.data.serviceId
+                val msgId = rawInfo.rawReq.data.msgId
+                val key = serviceId + ":" + msgId
+                val defaultKey = serviceId + ":*" 
+                val defaultKey2 = serviceId + ":-1" 
+                var target= dispatchMap.getOrElse(key,null)
+                if( target == null ) 
+                    target = dispatchMap.getOrElse(defaultKey,null)
+                if( target == null ) 
+                    target = dispatchMap.getOrElse(defaultKey2,null)
+                if( target == null ) return
+                val (targetServiceId,targetMsgId) = target
 
-            val req = toReq(rawInfo.rawReq)
-            val res = toRes(req,rawInfo.rawRes)
-            val array = toDispatchArray(req,res,null)
+                val req = toReq(rawInfo.rawReq)
+                val res = toRes(req,rawInfo.rawRes)
+                val array = toDispatchArray(req,res,null)
 
-            val newreq = new Request (
-                "ASYN"+RequestIdGenerator.nextId(),
-                Router.DO_NOT_REPLY,
-                generateSequence(),
-                1,
-                targetServiceId,
-                targetMsgId,
-                new HashMapStringAny(),
-                HashMapStringAny("serviceId"->serviceId,"msgId"->msgId,"kvarray"->array),
-                this
-              )
+                val newreq = new Request (
+                    "ASYN"+RequestIdGenerator.nextId(),
+                    Router.DO_NOT_REPLY,
+                    generateSequence(),
+                    1,
+                    targetServiceId,
+                    targetMsgId,
+                    new HashMapStringAny(),
+                    HashMapStringAny("serviceId"->serviceId,"msgId"->msgId,"kvarray"->array),
+                    this
+                )
 
-              router.send(newreq)
+                router.send(newreq)
 
-          case _ =>
+            case _ =>
 
-      }
+        }
 
     }
 
@@ -1060,125 +1057,126 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         if( v == null ) return null
 
         v match {
-          case i: Int => String.valueOf(i) 
-          case s: String => s 
-          case m: HashMapStringAny => JsonCodec.mkString(m) 
-          case ai: ArrayBufferInt => 
-              if( ai.size == 0 ) null 
-              else ai(0).toString
-          case as: ArrayBufferString => 
-              if( as.size == 0 ) null 
-              else as(0)
-          case am: ArrayBufferMap => 
-              if( am.size == 0 ) null 
-              else JsonCodec.mkString(am(0))
-          case aa: ArrayBufferAny => 
-              if( aa.size == 0 ) null 
-              val vv = aa(0)
-              toValue(vv)
-          case _ => v.toString 
+            case i: Int => String.valueOf(i) 
+            case s: String => s 
+            case m: HashMapStringAny => JsonCodec.mkString(m) 
+            case ai: ArrayBufferInt => 
+                if( ai.size == 0 ) null 
+                else ai(0).toString
+            case as: ArrayBufferString => 
+                if( as.size == 0 ) null 
+                else as(0)
+            case am: ArrayBufferMap => 
+                if( am.size == 0 ) null 
+                else JsonCodec.mkString(am(0))
+            case aa: ArrayBufferAny => 
+                if( aa.size == 0 ) null 
+                val vv = aa(0)
+                toValue(vv)
+            case _ => v.toString 
         }
     }
 
     def appendToBuff(keys:ArrayBufferString,body:HashMapStringAny,buff:StringBuilder) {
-            var i = 0
-            while( i < keys.size ) {
-              if( i > 0 ) buff.append(valueSplitter)
+        var i = 0
+        while( i < keys.size ) {
+            if( i > 0 ) buff.append(valueSplitter)
 
-              val fieldName = keys(i)
-              val v = body.getOrElse(fieldName,"")
+            val fieldName = keys(i)
+        val v = body.getOrElse(fieldName,"")
 
-              if( asyncLogWithFieldName ) {
-                buff.append( fieldName ).append( ":" )
-              }
+        if( asyncLogWithFieldName ) {
+            buff.append( fieldName ).append( ":" )
+        }
 
-              if( v != null ) {
+        if( v != null ) {
 
-                if( passwordFieldsSet != null && passwordFieldsSet.contains( fieldName ) ) {
-                    buff.append("***")
-                } else { 
-                    v match {
-                      case i: Int => buff.append( String.valueOf(i) )
-                      case s: String => buff.append( removeCrNl(s) )
-                      case m: HashMapStringAny => buff.append( removeCrNl(m.toString) )
-                      case ai: ArrayBufferInt => buff.append( trimArrayBufferInt(ai).toString )
-                      case as: ArrayBufferString => buff.append( removeCrNl(trimArrayBufferString(as).toString) ) 
-                      case am: ArrayBufferMap => buff.append( removeCrNl(trimArrayBufferMap(am).toString) ) 
-                      case aa: ArrayBufferAny => buff.append( removeCrNl(trimArrayBufferAny(aa).toString) ) 
-                      case _ => buff.append( v.toString )
-                    }
+            if( passwordFieldsSet != null && passwordFieldsSet.contains( fieldName ) ) {
+                buff.append("***")
+            } else { 
+                v match {
+                    case i: Int => buff.append( String.valueOf(i) )
+                    case s: String => buff.append( removeCrNl(s) )
+                    case m: HashMapStringAny => buff.append( removeCrNl(m.toString) )
+                    case ai: ArrayBufferInt => buff.append( trimArrayBufferInt(ai).toString )
+                    case as: ArrayBufferString => buff.append( removeCrNl(trimArrayBufferString(as).toString) ) 
+                    case am: ArrayBufferMap => buff.append( removeCrNl(trimArrayBufferMap(am).toString) ) 
+                    case aa: ArrayBufferAny => buff.append( removeCrNl(trimArrayBufferAny(aa).toString) ) 
+                    case _ => buff.append( v.toString )
                 }
-              }
-              i+=1
             }
+        }
+        i+=1
+        }
     }
     def appendToBuffForRes(keys:ArrayBufferString,flags:ArrayBuffer[Boolean],body:HashMapStringAny,logVars:HashMapStringAny,buff:StringBuilder) {
 
-            var i = 0
-            while( i < keys.size ) {
-              if( i > 0 ) buff.append(valueSplitter)
+        var i = 0
+        while( i < keys.size ) {
+            if( i > 0 ) buff.append(valueSplitter)
 
-              val fieldName = keys(i)
-              var flag = false
-              if( flags != null && flags.length > i ) flag = flags(i)
+            val fieldName = keys(i)
+            var flag = false
+            if( flags != null && flags.length > i ) flag = flags(i)
 
-              var v:Any = null
-              if( flag ) {
-                  if( logVars != null )
-                      v = logVars.getOrElse(fieldName,"")
-                  else
-                      v = ""
-              } else {
-                  v = body.getOrElse(fieldName,"")
-              }
+            var v:Any = null
+            if( flag ) {
+                if( logVars != null )
+                    v = logVars.getOrElse(fieldName,"")
+                else
+                    v = ""
+            } else {
+                v = body.getOrElse(fieldName,"")
+            }
 
-              if( asyncLogWithFieldName ) {
+            if( asyncLogWithFieldName ) {
                 buff.append( fieldName ).append( ":" )
-              }
+            }
 
-              if( v != null ) {
+            if( v != null ) {
 
                 if( passwordFieldsSet != null && passwordFieldsSet.contains( fieldName ) ) {
                     buff.append("***")
                 } else { 
                     v match {
-                      case i: Int => buff.append( String.valueOf(i) )
-                      case s: String => buff.append( removeCrNl(s) )
-                      case m: HashMapStringAny => buff.append( removeCrNl(m.toString) )
-                      case ai: ArrayBufferInt => buff.append( trimArrayBufferInt(ai).toString )
-                      case as: ArrayBufferString => buff.append( removeCrNl(trimArrayBufferString(as).toString) ) 
-                      case am: ArrayBufferMap => buff.append( removeCrNl(trimArrayBufferMap(am).toString) ) 
-                      case aa: ArrayBufferAny => buff.append( removeCrNl(trimArrayBufferAny(aa).toString) ) 
-                      case _ => buff.append( v.toString )
+                        case i: Int => buff.append( String.valueOf(i) )
+                        case s: String => buff.append( removeCrNl(s) )
+                        case m: HashMapStringAny => buff.append( removeCrNl(m.toString) )
+                        case ai: ArrayBufferInt => buff.append( trimArrayBufferInt(ai).toString )
+                        case as: ArrayBufferString => buff.append( removeCrNl(trimArrayBufferString(as).toString) ) 
+                        case am: ArrayBufferMap => buff.append( removeCrNl(trimArrayBufferMap(am).toString) ) 
+                        case aa: ArrayBufferAny => buff.append( removeCrNl(trimArrayBufferAny(aa).toString) ) 
+                        case _ => buff.append( v.toString )
                     }
                 }
-              }
-              i+=1
             }
-            if( flags == null && logVars != null ) {
-                for( (fieldName,v) <- logVars ) {
-                    if( i > 0 ) buff.append(valueSplitter)
+            i+=1
+        }
 
-                    if( asyncLogWithFieldName ) {
-                        buff.append( fieldName ).append( ":" )
-                    }
+        if( flags == null && logVars != null ) {
+            for( (fieldName,v) <- logVars ) {
+                if( i > 0 ) buff.append(valueSplitter)
 
-                    if( v != null ) {
+                if( asyncLogWithFieldName ) {
+                    buff.append( fieldName ).append( ":" )
+                }
 
-                        if( passwordFieldsSet != null && passwordFieldsSet.contains( fieldName ) ) {
-                            buff.append("***")
-                        } else { 
-                            v match {
-                                case i: Int => buff.append( String.valueOf(i) )
-                                case s: String => buff.append( removeCrNl(s) )
-                                case m: HashMapStringAny => buff.append( removeCrNl(m.toString) )
-                                case ai: ArrayBufferInt => buff.append( trimArrayBufferInt(ai).toString )
-                                case as: ArrayBufferString => buff.append( removeCrNl(trimArrayBufferString(as).toString) ) 
-                                case am: ArrayBufferMap => buff.append( removeCrNl(trimArrayBufferMap(am).toString) ) 
-                                case aa: ArrayBufferAny => buff.append( removeCrNl(trimArrayBufferAny(aa).toString) ) 
-                                case _ => buff.append( v.toString )
-                            }
+                if( v != null ) {
+
+                    if( passwordFieldsSet != null && passwordFieldsSet.contains( fieldName ) ) {
+                        buff.append("***")
+                    } else { 
+                        v match {
+                            case i: Int => buff.append( String.valueOf(i) )
+                            case s: String => buff.append( removeCrNl(s) )
+                            case m: HashMapStringAny => buff.append( removeCrNl(m.toString) )
+                            case ai: ArrayBufferInt => buff.append( trimArrayBufferInt(ai).toString )
+                            case as: ArrayBufferString => buff.append( removeCrNl(trimArrayBufferString(as).toString) ) 
+                            case am: ArrayBufferMap => buff.append( removeCrNl(trimArrayBufferMap(am).toString) ) 
+                            case aa: ArrayBufferAny => buff.append( removeCrNl(trimArrayBufferAny(aa).toString) ) 
+                            case _ => buff.append( v.toString )
                         }
+                    }
                 }
             }
         }
@@ -1238,7 +1236,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
     }
 
     def makeCopy(buff:ByteBuffer):ByteBuffer = {
-      buff.duplicate()
+        buff.duplicate()
     }
 
     def toRes(req:Request, rawRes:RawResponse): Response = {
@@ -1265,10 +1263,10 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         var xhead = EMPTY_MAP
 
         try {
-          xhead = TlvCodec4Xhead.decode(rawReq.data.serviceId,rawReq.data.xhead)
+            xhead = TlvCodec4Xhead.decode(rawReq.data.serviceId,rawReq.data.xhead)
         } catch {
-          case e:Exception =>
-            log.error("decode exception in async log",e)
+            case e:Exception =>
+                log.error("decode exception in async log",e)
         }
 
         var body = EMPTY_MAP
@@ -1296,180 +1294,186 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         return req
 
     }
+
+    case class Stats(now:String)
+
 }
 
-class MonitorHttpClientCacheData(val url:String,val body:String,val sendTimes:Int )
 
 class MonitorHttpClient(
-      val asyncLogActor: AsyncLogActor,
-      val reportUrl : String,
-      val detailReportUrl : String,
-      val connectTimeout :Int = 5000,
-      val timerInterval :Int = 1000) extends HttpClient4Netty with Logging with Dumpable {
+    val asyncLogActor: AsyncLogActor,
+    val reportUrl : String,
+    val detailReportUrl : String,
+    val connectTimeout :Int = 5000,
+    val timerInterval :Int = 1000) extends HttpClient4Netty with Logging with Dumpable {
 
-  var nettyHttpClient : NettyHttpClient = _
-  val generator = new AtomicInteger(1)
-  val dataMap = new ConcurrentHashMap[Int,MonitorHttpClientCacheData]()
-  val localIp = IpUtils.localIp()
-  val timeout = 10000
+    var nettyHttpClient : NettyHttpClient = _
+    val generator = new AtomicInteger(1)
+    val dataMap = new ConcurrentHashMap[Int,CacheData]()
+    val localIp = IpUtils.localIp()
+    val timeout = 10000
 
-  init
+    init
 
-  def dump() {
+    def dump() {
 
-      val buff = new StringBuilder
+        val buff = new StringBuilder
 
-      buff.append("dataMap.size=").append(dataMap.size).append(",")
+        buff.append("dataMap.size=").append(dataMap.size).append(",")
 
-      log.info(buff.toString)
+        log.info(buff.toString)
 
-      nettyHttpClient.dump
-  }
+        nettyHttpClient.dump
+    }
 
-  def init() {
+    def init() {
 
-    nettyHttpClient = new NettyHttpClient(this,
-      connectTimeout,
-      timerInterval
-    )
+        nettyHttpClient = new NettyHttpClient(this,
+            connectTimeout,
+            timerInterval
+            )
 
-    log.info("MonitorHttpClient started")
-  }
+        log.info("MonitorHttpClient started")
+    }
 
-  def close() {
-    nettyHttpClient.close()
-    log.info("MonitorHttpClient stopped")
-  }
+    def close() {
+        nettyHttpClient.close()
+        log.info("MonitorHttpClient stopped")
+    }
 
-  def callStatPages(s:String) {
+    def callStatPages(s:String) {
 
-    if( detailReportUrl == "" ) return
+        if( detailReportUrl == "" ) return
 
-    val body = "ip="+localIp+s
-    send(detailReportUrl,body)
-  }
+        val body = "ip="+localIp+s
+        send(detailReportUrl,body)
+    }
 
-  def callStatMoreActions(s:String) {
+    def callStatMoreActions(s:String) {
 
-    if( reportUrl == "" ) return
+        if( reportUrl == "" ) return
 
-    val body = "ip="+localIp+s
-    send(reportUrl,body)
-  }
+        val body = "ip="+localIp+s
+        send(reportUrl,body)
+    }
 
-  def send(url: String, body:String, sendTimes : Int = 0 ):Unit = {
+    def send(url: String, body:String, sendTimes : Int = 0 ):Unit = {
 
-      val (host,path) = parseHostPath(url)
-      if( host == "" || path == "") {
-        return
-      }
+        val (host,path) = parseHostPath(url)
+        if( host == "" || path == "") {
+            return
+        }
 
-      var httpReq = generateRequest(host,path,body)
-      val sequence = generateSequence()
-      dataMap.put(sequence,new MonitorHttpClientCacheData(url,body,sendTimes))
-      nettyHttpClient.send(sequence,host,httpReq,timeout)
-  }
+        var httpReq = generateRequest(host,path,body)
+        val sequence = generateSequence()
+        dataMap.put(sequence,new CacheData(url,body,sendTimes))
+        nettyHttpClient.send(sequence,host,httpReq,timeout)
+    }
 
-  def retry(data: MonitorHttpClientCacheData) {
+    def retry(data: CacheData) {
 
-    val times = data.sendTimes + 1
-    if( times >= 3 ) return
-    val url = data.url
-    val body = data.body
+        val times = data.sendTimes + 1
+        if( times >= 3 ) return
+        val url = data.url
+        val body = data.body
 
-    if( !asyncLogActor.shutdown.get() ) {
+        if( !asyncLogActor.shutdown.get() ) {
 
-        try {
-          asyncLogActor.timer.schedule( new TimerTask() {
-              def run() {
-                send(url,body,times)
-              }
-            }, 5000 )
+            try {
+                asyncLogActor.timer.schedule( new TimerTask() {
+                    def run() {
+                        send(url,body,times)
+                    }
+                }, 5000 )
 
-        } catch {
-          case e:Throwable =>
+            } catch {
+                case e:Throwable =>
+            }
+
         }
 
     }
 
-  }
+    def receive(sequence:Int,httpRes:HttpResponse):Unit = {
+        val saved = dataMap.remove(sequence)
+        if( saved == null ) return
+        val ok = parseResult(httpRes)
+        if( !ok ) retry(saved)
+    }
 
-  def receive(sequence:Int,httpRes:HttpResponse):Unit = {
-      val saved = dataMap.remove(sequence)
-      if( saved == null ) return
-      val ok = parseResult(httpRes)
-      if( !ok ) retry(saved)
-  }
+    def networkError(sequence:Int) {
+        val saved = dataMap.remove(sequence)
+        if( saved == null ) return
+        retry(saved)
+    }
 
-  def networkError(sequence:Int) {
-      val saved = dataMap.remove(sequence)
-      if( saved == null ) return
-      retry(saved)
-  }
+    def timeoutError(sequence:Int) {
+        dataMap.remove(sequence)
+        // do nothing
+    }
 
-  def timeoutError(sequence:Int) {
-      dataMap.remove(sequence)
-      // do nothing
-  }
+    def parseHostPath(url:String):Tuple2[String,String] = {
+        var v = ("","")
+        val p1 = url.indexOf("//");
+            if( p1 < 0 ) return v
+            val p2 = url.indexOf("/",p1+2);
+        if( p2 < 0 ) return v
+        val host = url.substring(p1+2,p2)
+        val path = url.substring(p2)
+        (host,path)
+    }
 
-  def parseHostPath(url:String):Tuple2[String,String] = {
-    var v = ("","")
-    val p1 = url.indexOf("//");
-    if( p1 < 0 ) return v
-    val p2 = url.indexOf("/",p1+2);
-    if( p2 < 0 ) return v
-    val host = url.substring(p1+2,p2)
-    val path = url.substring(p2)
-    (host,path)
-  }
+    def generateSequence():Int = {
+        generator.getAndIncrement()
+    }
 
-  def generateSequence():Int = {
-    generator.getAndIncrement()
-  }
+    def generateRequest(host:String,path:String,body:String):HttpRequest = {
 
-  def generateRequest(host:String,path:String,body:String):HttpRequest = {
+        val httpReq = new DefaultHttpRequest(HttpVersion.HTTP_1_0,HttpMethod.POST,path)
 
-      val httpReq = new DefaultHttpRequest(HttpVersion.HTTP_1_0,HttpMethod.POST,path)
-
-      val buffer= new DynamicChannelBuffer(2048);
-      buffer.writeBytes(body.getBytes("ISO-8859-1"))
-
-      if( log.isDebugEnabled() ) {
-          log.debug("post path={}, content={}",path,body)
-      }
-
-      httpReq.setContent(buffer);
-      httpReq.setHeader("Host", host) // the host include port already
-      httpReq.setHeader("Content-Type", "application/x-www-form-urlencoded")
-      httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
-      httpReq.setHeader("User-Agent", "scalabpe monitor client")
-      httpReq.setHeader("Connection", "close")
-
-      httpReq
-  }
-
-  def parseResult(httpRes:HttpResponse):Boolean = {
-
-      val status = httpRes.getStatus
-
-      if( status.getCode() != 200 ) {
+        val buffer= new DynamicChannelBuffer(2048);
+        buffer.writeBytes(body.getBytes("ISO-8859-1"))
 
         if( log.isDebugEnabled() ) {
-            log.debug("status code={}",status.getCode())
+            log.debug("post path={}, content={}",path,body)
         }
 
-        return false
-      }
+        httpReq.setContent(buffer);
+        httpReq.setHeader("Host", host) // the host include port already
+        httpReq.setHeader("Content-Type", "application/x-www-form-urlencoded")
+        httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
+        httpReq.setHeader("User-Agent", "scalabpe monitor client")
+        httpReq.setHeader("Connection", "close")
 
-      val contentTypeStr = httpRes.getHeader("Content-Type")
-      val content = httpRes.getContent()
-      val contentStr = content.toString(Charset.forName("ISO-8859-1"))
+        httpReq
+    }
 
-      if( log.isDebugEnabled() ) {
-          log.debug("contentType={},contentStr={}",contentTypeStr,contentStr)
-      }
+    def parseResult(httpRes:HttpResponse):Boolean = {
 
-      contentStr == "true"
-  }
+        val status = httpRes.getStatus
+
+        if( status.getCode() != 200 ) {
+
+            if( log.isDebugEnabled() ) {
+                log.debug("status code={}",status.getCode())
+            }
+
+            return false
+        }
+
+        val contentTypeStr = httpRes.getHeader("Content-Type")
+        val content = httpRes.getContent()
+        val contentStr = content.toString(Charset.forName("ISO-8859-1"))
+
+        if( log.isDebugEnabled() ) {
+            log.debug("contentType={},contentStr={}",contentTypeStr,contentStr)
+        }
+
+        contentStr == "true"
+    }
+
+    class CacheData(val url:String,val body:String,val sendTimes:Int )
 
 }
+
+

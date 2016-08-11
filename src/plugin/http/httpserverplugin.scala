@@ -6,23 +6,23 @@ import jvmdbbroker.core._
 trait HttpServerPlugin {}
 
 trait HttpServerRequestParsePlugin {
-  def parseContent(serviceId:Int,msgId:Int,charset:String,contentType:String,contentStr:String,body:HashMapStringAny ):Unit
+    def parseContent(serviceId:Int,msgId:Int,charset:String,contentType:String,contentStr:String,body:HashMapStringAny ):Unit
 }
 
 trait HttpServerRequestPostParsePlugin {
-  def afterParse(serviceId:Int,msgId:Int,xhead:HashMapStringAny, body:HashMapStringAny ):Unit
+    def afterParse(serviceId:Int,msgId:Int,xhead:HashMapStringAny, body:HashMapStringAny ):Unit
 }
 
 trait HttpServerPreOutputPlugin {
-  def adjustBody(serviceId:Int,msgId:Int,errorCode:Int,body:HashMapStringAny):HashMapStringAny
+    def adjustBody(serviceId:Int,msgId:Int,errorCode:Int,body:HashMapStringAny):HashMapStringAny
 }
 
 trait HttpServerOutputPlugin {
-  def generateContent(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String):String
+    def generateContent(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String):String
 }
 
 trait HttpServerVerifyPlugin {
-  def verify(serviceId:Int,msgId:Int,xhead:HashMapStringAny,body:HashMapStringAny,httpReq:HttpRequest):Boolean
+    def verify(serviceId:Int,msgId:Int,xhead:HashMapStringAny,body:HashMapStringAny,httpReq:HttpRequest):Boolean
 }
 
 

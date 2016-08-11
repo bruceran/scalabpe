@@ -42,3 +42,4 @@ class RedirectPlugin extends HttpServerPlugin with HttpServerOutputPlugin {
     }
 
 }
+

@@ -1,4 +1,19 @@
 
+
+
+1.1.2 (20160811)
+================
+
+* 新增原生版memcache和redis插件
+    * 替代scalabpe-plugins里的memcache插件和redis插件
+    * 直接使用原生协议连接memcache和redis服务器，不使用第三方开源组件 
+    * 接口协议和原生协议基本一一对应，通过查看服务描述文件的入参和出参并参考原生协议可了解如何调用
+    * 配置连接多台服务器时支持3种模式：取余分布，一致性HASH, Master/Slave模式
+    * 所有模式都支持mget操作，可以从不同的服务器获取数据并汇总返回
+    * config.xml中使用新的配置节点 RedisCfgV2 和 MemCacheCfgV2
+* db插件message节点增加useSlave属性，对查询类语句，使用了useSlave则优先查从库,从库查失败再查主库
+* netty http代码移回http目录下
+
 1.1.1 (20160719)
 ================
 

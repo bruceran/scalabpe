@@ -27,7 +27,7 @@ trait Sos4Netty {
 }
 
 class NettyServerHandler(val nettyServer: NettyServer,val sos: Sos4Netty)
-  extends IdleStateAwareChannelHandler with Logging  {
+extends IdleStateAwareChannelHandler with Logging  {
 
     val conns = new ConcurrentHashMap[String,Channel]()
     val new_conns = new AtomicInteger(0)
@@ -38,9 +38,9 @@ class NettyServerHandler(val nettyServer: NettyServer,val sos: Sos4Netty)
     def close() = {stopFlag.set(true)}
 
     def stats() : Array[Int] = {
-      val a = new_conns.getAndSet(0)
-      val b = new_disconns.getAndSet(0)
-      Array(a,b,conns.size)
+        val a = new_conns.getAndSet(0)
+        val b = new_disconns.getAndSet(0)
+        Array(a,b,conns.size)
     }
 
     def write(connId:String, response:ByteBuffer) : Boolean = {
@@ -49,14 +49,14 @@ class NettyServerHandler(val nettyServer: NettyServer,val sos: Sos4Netty)
 
         val ch = conns.get(connId)
         if( ch == null ) {
-          log.error("connection not found, id={}",connId)
-          return false;
+            log.error("connection not found, id={}",connId)
+            return false;
         }
 
         if( ch.isOpen ) {
-          val resBuf = ChannelBuffers.wrappedBuffer(response);
-          ch.write(resBuf);
-          return true
+            val resBuf = ChannelBuffers.wrappedBuffer(response);
+            ch.write(resBuf);
+            return true
         }
 
         return false
@@ -76,10 +76,10 @@ class NettyServerHandler(val nettyServer: NettyServer,val sos: Sos4Netty)
         val bb = buf.toByteBuffer();
 
         try {
-          sos.receive(bb, connId);
+            sos.receive(bb, connId);
         } catch {
-          case e:Exception =>
-            log.error("sos decode error, connId="+connId,e);
+            case e:Exception =>
+                log.error("sos decode error, connId="+connId,e);
         }
     }
 
@@ -142,11 +142,11 @@ class NettyServerHandler(val nettyServer: NettyServer,val sos: Sos4Netty)
 }
 
 class NettyServer(val sos: Sos4Netty,
-                  val port:Int,
-                  val host:String = "*",
-                  val idleTimeoutMillis: Int = 180000,
-                  val maxPackageSize: Int = 2000000,
-                  val maxConns: Int = 500000) extends Logging with Dumpable {
+    val port:Int,
+    val host:String = "*",
+    val idleTimeoutMillis: Int = 180000,
+    val maxPackageSize: Int = 2000000,
+    val maxConns: Int = 500000) extends Logging with Dumpable {
 
     var nettyServerHandler : NettyServerHandler = _
     var allChannels:ChannelGroup= _
@@ -161,21 +161,21 @@ class NettyServer(val sos: Sos4Netty,
     var workerExecutor:ThreadPoolExecutor = _
 
     def stats() : Array[Int] = {
-      nettyServerHandler.stats
+        nettyServerHandler.stats
     }
 
     def dump() {
-      if( nettyServerHandler == null ) return
+        if( nettyServerHandler == null ) return
 
-      val buff = new StringBuilder
+        val buff = new StringBuilder
 
-      buff.append("nettyServerHandler.conns.size=").append(nettyServerHandler.conns.size).append(",")
-      buff.append("bossExecutor.getPoolSize=").append(bossExecutor.getPoolSize).append(",")
-      buff.append("bossExecutor.getQueue.size=").append(bossExecutor.getQueue.size).append(",")
-      buff.append("workerExecutor.getPoolSize=").append(workerExecutor.getPoolSize).append(",")
-      buff.append("workerExecutor.getQueue.size=").append(workerExecutor.getQueue.size).append(",")
+        buff.append("nettyServerHandler.conns.size=").append(nettyServerHandler.conns.size).append(",")
+        buff.append("bossExecutor.getPoolSize=").append(bossExecutor.getPoolSize).append(",")
+        buff.append("bossExecutor.getQueue.size=").append(bossExecutor.getQueue.size).append(",")
+        buff.append("workerExecutor.getPoolSize=").append(workerExecutor.getPoolSize).append(",")
+        buff.append("workerExecutor.getQueue.size=").append(workerExecutor.getQueue.size).append(",")
 
-      log.info(buff.toString)
+        log.info(buff.toString)
     }
 
     def start() : Unit = {
@@ -194,24 +194,24 @@ class NettyServer(val sos: Sos4Netty,
         channelFactory = new NioServerSocketChannelFactory(bossExecutor ,workerExecutor )
 
         val bootstrap = new ServerBootstrap(channelFactory)
-        bootstrap.setPipelineFactory(new NettyPipelineFactory())
+        bootstrap.setPipelineFactory(new PipelineFactory())
         bootstrap.setOption("child.tcpNoDelay", true)
         // bootstrap.setOption("child.keepAlive", true)
         bootstrap.setOption("reuseAddress", true)
         bootstrap.setOption("child.receiveBufferSize", 65536)
 
         val addr =
-          if (host == null || "*" == host) {
-              new InetSocketAddress(port)
-          } else {
-              new InetSocketAddress(host, port)
-          }
+            if (host == null || "*" == host) {
+                new InetSocketAddress(port)
+            } else {
+                new InetSocketAddress(host, port)
+            }
 
-        val channel = bootstrap.bind(addr)
-        allChannels.add(channel)
+            val channel = bootstrap.bind(addr)
+            allChannels.add(channel)
 
-        val s = "netty tcp server started on host(" + host + ") port(" + port + ")"
-        log.info(s)
+            val s = "netty tcp server started on host(" + host + ") port(" + port + ")"
+            log.info(s)
     }
 
     def write(connId:String, response:ByteBuffer) : Boolean = {
@@ -219,10 +219,10 @@ class NettyServer(val sos: Sos4Netty,
     }
 
     def closeReadChannel() {
-      if( nettyServerHandler != null ) {
-          nettyServerHandler.close()
-      }
-      log.info("nettyServerHandler read channel stopped")
+        if( nettyServerHandler != null ) {
+            nettyServerHandler.close()
+        }
+        log.info("nettyServerHandler read channel stopped")
     }
 
     def close() : Unit = {
@@ -236,7 +236,7 @@ class NettyServer(val sos: Sos4Netty,
 
             val chs = nettyServerHandler.conns.values.iterator
             while(chs.hasNext()) {
-              allChannels.add(chs.next())
+                allChannels.add(chs.next())
             }
             val future = allChannels.close()
             future.awaitUninterruptibly()
@@ -249,7 +249,7 @@ class NettyServer(val sos: Sos4Netty,
         }
     }
 
-    class NettyPipelineFactory extends Object with ChannelPipelineFactory {
+    class PipelineFactory extends Object with ChannelPipelineFactory {
 
         def getPipeline() : ChannelPipeline =  {
             val pipeline = Channels.pipeline();
@@ -262,3 +262,5 @@ class NettyServer(val sos: Sos4Netty,
     }
 
 }
+
+

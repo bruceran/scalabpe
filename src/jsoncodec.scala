@@ -12,110 +12,110 @@ object JsonCodec {
     val jsonFactory = new JsonFactory()
 
     def parseSimpleJson(s:String):HashMapStringAny = {
-      if( s == null || s == "" ) return null
-      try {
-          val valueTree = mapper.readTree(s)
-          val names = valueTree.fieldNames
-          val body = new HashMapStringAny()
-          while( names.hasNext ) {
-            val name = names.next()
-            body.put(name, valueTree.get(name).asText)
-          }
-          body
-      } catch {
-        case _:Throwable => return null
-      }
+        if( s == null || s == "" ) return null
+        try {
+            val valueTree = mapper.readTree(s)
+            val names = valueTree.fieldNames
+            val body = new HashMapStringAny()
+            while( names.hasNext ) {
+                val name = names.next()
+                body.put(name, valueTree.get(name).asText)
+            }
+            body
+        } catch {
+            case _:Throwable => return null
+        }
     }
     def parseJson(s:String):Any = {
-      if( s == null || s == "" ) return null
-      val node = mapper.readTree(s)
-      if( node == null ) return null
-      if( node.isInstanceOf[ObjectNode] ) 
-          return parseObject(node)
-      if( node.isInstanceOf[ArrayNode] ) 
-          return parseArray(node)
-      null
+        if( s == null || s == "" ) return null
+        val node = mapper.readTree(s)
+        if( node == null ) return null
+        if( node.isInstanceOf[ObjectNode] ) 
+            return parseObject(node)
+        if( node.isInstanceOf[ArrayNode] ) 
+            return parseArray(node)
+        null
     }
     def parseObject(s:String):HashMapStringAny = {
-      if( s == null || s == "" ) return null
-      try {
-          val escapeStr = s.replaceAll("[\\r\\n]"," ")
-          val node = mapper.readTree(escapeStr)
-          if( node == null ) return null
-          parseObject(node)
-      } catch {
-        case _:Throwable => return null
-      }
+        if( s == null || s == "" ) return null
+        try {
+            val escapeStr = s.replaceAll("[\\r\\n]"," ")
+            val node = mapper.readTree(escapeStr)
+            if( node == null ) return null
+            parseObject(node)
+        } catch {
+            case _:Throwable => return null
+        }
     }
     def parseArray(s:String):ArrayBufferAny = {
-      if( s == null || s == "" ) return null
-      try {
-          val escapeStr = s.replaceAll("[\\r\\n]"," ")
-          val node = mapper.readTree(escapeStr)
-          if( node == null ) return null
-          parseArray(node)
-      } catch {
-        case _:Throwable => return null
-      }
+        if( s == null || s == "" ) return null
+        try {
+            val escapeStr = s.replaceAll("[\\r\\n]"," ")
+            val node = mapper.readTree(escapeStr)
+            if( node == null ) return null
+            parseArray(node)
+        } catch {
+            case _:Throwable => return null
+        }
     }
     def parseObject(node:JsonNode):HashMapStringAny = {
-      val names = node.fieldNames
-      val body = new HashMapStringAny()
-      while( names.hasNext ) {
-        val name = names.next()
-        val o = node.get(name)
-        if( o.isInstanceOf[ArrayNode] ) {
-            val a = parseArray(o)
-            body.put(name, a)
-        } else if( o.isInstanceOf[ObjectNode] ) {
-            val m = parseObject(o)
-            body.put(name, m)
-        } else if( o.isInstanceOf[TextNode] ) {
-            body.put(name, o.asText)
-        } else if( o.isInstanceOf[IntNode] ) {
-            body.put(name, o.asText.toInt)
-        } else if( o.isInstanceOf[LongNode] ) {
-            body.put(name, o.asText.toLong)
-        } else if( o.isInstanceOf[DoubleNode] ) {
-            body.put(name, o.asText.toDouble)
-        } else if( o.isInstanceOf[BooleanNode] ) {
-            body.put(name, o.asText.toBoolean)
-        } else if( o.isInstanceOf[NullNode] ) {
-            body.put(name, null)
-        } else {
-            body.put(name, o.asText)
+        val names = node.fieldNames
+        val body = new HashMapStringAny()
+        while( names.hasNext ) {
+            val name = names.next()
+            val o = node.get(name)
+            if( o.isInstanceOf[ArrayNode] ) {
+                val a = parseArray(o)
+                body.put(name, a)
+            } else if( o.isInstanceOf[ObjectNode] ) {
+                val m = parseObject(o)
+                body.put(name, m)
+            } else if( o.isInstanceOf[TextNode] ) {
+                body.put(name, o.asText)
+            } else if( o.isInstanceOf[IntNode] ) {
+                body.put(name, o.asText.toInt)
+            } else if( o.isInstanceOf[LongNode] ) {
+                body.put(name, o.asText.toLong)
+            } else if( o.isInstanceOf[DoubleNode] ) {
+                body.put(name, o.asText.toDouble)
+            } else if( o.isInstanceOf[BooleanNode] ) {
+                body.put(name, o.asText.toBoolean)
+            } else if( o.isInstanceOf[NullNode] ) {
+                body.put(name, null)
+            } else {
+                body.put(name, o.asText)
+            }
         }
-      }
-      body
+        body
     }
     def parseArray(node:JsonNode):ArrayBufferAny = {
-      val elems = node.elements
-      val body = new ArrayBufferAny()
-      while( elems.hasNext ) {
-        val o = elems.next()
-        if( o.isInstanceOf[ArrayNode] ) {
-            val a = parseArray(o)
-            body += a
-        } else if( o.isInstanceOf[ObjectNode] ) {
-            val m = parseObject(o)
-            body += m
-        } else if( o.isInstanceOf[TextNode] ) {
-            body += o.asText
-        } else if( o.isInstanceOf[IntNode] ) {
-            body += o.asText.toInt
-        } else if( o.isInstanceOf[LongNode] ) {
-            body += o.asText.toLong
-        } else if( o.isInstanceOf[DoubleNode] ) {
-            body += o.asText.toDouble
-        } else if( o.isInstanceOf[BooleanNode] ) {
-            body += o.asText.toBoolean
-        } else if( o.isInstanceOf[NullNode] ) {
-            body += null
-        } else {
-            body += o.asText
+        val elems = node.elements
+        val body = new ArrayBufferAny()
+        while( elems.hasNext ) {
+            val o = elems.next()
+            if( o.isInstanceOf[ArrayNode] ) {
+                val a = parseArray(o)
+                body += a
+            } else if( o.isInstanceOf[ObjectNode] ) {
+                val m = parseObject(o)
+                body += m
+            } else if( o.isInstanceOf[TextNode] ) {
+                body += o.asText
+            } else if( o.isInstanceOf[IntNode] ) {
+                body += o.asText.toInt
+            } else if( o.isInstanceOf[LongNode] ) {
+                body += o.asText.toLong
+            } else if( o.isInstanceOf[DoubleNode] ) {
+                body += o.asText.toDouble
+            } else if( o.isInstanceOf[BooleanNode] ) {
+                body += o.asText.toBoolean
+            } else if( o.isInstanceOf[NullNode] ) {
+                body += null
+            } else {
+                body += o.asText
+            }
         }
-      }
-      body
+        body
     }
 
     def mkString(m:HashMapStringAny): String = {
@@ -125,53 +125,53 @@ object JsonCodec {
         jsonGenerator.writeStartObject()
 
         for( (key,value) <- m) {
-          
-          if( value == null ) {
-              jsonGenerator.writeNullField(key)
-          } else {
 
-              value match {
-                case s:String =>
-                  jsonGenerator.writeStringField(key,s)
-                case i:Int =>
-                  jsonGenerator.writeNumberField(key,i)
-                case l:Long =>
-                  jsonGenerator.writeNumberField(key,l)
-                case d:Double =>
-                  jsonGenerator.writeNumberField(key,d)
-                case d:Float =>
-                  jsonGenerator.writeNumberField(key,d)
-                case b:Boolean =>
-                  jsonGenerator.writeBooleanField(key,b)
-                case map:HashMapStringAny =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(map)
-                  jsonGenerator.writeRawValue(s)
-                case map:LinkedHashMapStringAny =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(map)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferString =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferInt =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferMap =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferAny =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case _ =>
-                  jsonGenerator.writeStringField(key, value.toString)
-              }
+            if( value == null ) {
+                jsonGenerator.writeNullField(key)
+            } else {
 
-          }
+                value match {
+                    case s:String =>
+                        jsonGenerator.writeStringField(key,s)
+                    case i:Int =>
+                        jsonGenerator.writeNumberField(key,i)
+                    case l:Long =>
+                        jsonGenerator.writeNumberField(key,l)
+                    case d:Double =>
+                        jsonGenerator.writeNumberField(key,d)
+                    case d:Float =>
+                        jsonGenerator.writeNumberField(key,d)
+                    case b:Boolean =>
+                        jsonGenerator.writeBooleanField(key,b)
+                    case map:HashMapStringAny =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(map)
+                        jsonGenerator.writeRawValue(s)
+                    case map:LinkedHashMapStringAny =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(map)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferString =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferInt =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferMap =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferAny =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case _ =>
+                        jsonGenerator.writeStringField(key, value.toString)
+                }
+
+            }
 
         }
 
@@ -189,53 +189,53 @@ object JsonCodec {
         jsonGenerator.writeStartObject()
 
         for( (key,value) <- m) {
-          
-          if( value == null ) {
-              jsonGenerator.writeNullField(key)
-          } else {
 
-              value match {
-                case s:String =>
-                  jsonGenerator.writeStringField(key,s)
-                case i:Int =>
-                  jsonGenerator.writeNumberField(key,i)
-                case l:Long =>
-                  jsonGenerator.writeNumberField(key,l)
-                case d:Double =>
-                  jsonGenerator.writeNumberField(key,d)
-                case d:Float =>
-                  jsonGenerator.writeNumberField(key,d)
-                case b:Boolean =>
-                  jsonGenerator.writeBooleanField(key,b)
-                case map:HashMapStringAny =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(map)
-                  jsonGenerator.writeRawValue(s)
-                case map:LinkedHashMapStringAny =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(map)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferString =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferInt =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferMap =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferAny =>
-                  jsonGenerator.writeFieldName(key)
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case _ =>
-                  jsonGenerator.writeStringField(key, value.toString)
-              }
+            if( value == null ) {
+                jsonGenerator.writeNullField(key)
+            } else {
 
-          }
+                value match {
+                    case s:String =>
+                        jsonGenerator.writeStringField(key,s)
+                    case i:Int =>
+                        jsonGenerator.writeNumberField(key,i)
+                    case l:Long =>
+                        jsonGenerator.writeNumberField(key,l)
+                    case d:Double =>
+                        jsonGenerator.writeNumberField(key,d)
+                    case d:Float =>
+                        jsonGenerator.writeNumberField(key,d)
+                    case b:Boolean =>
+                        jsonGenerator.writeBooleanField(key,b)
+                    case map:HashMapStringAny =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(map)
+                        jsonGenerator.writeRawValue(s)
+                    case map:LinkedHashMapStringAny =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(map)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferString =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferInt =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferMap =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferAny =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case _ =>
+                        jsonGenerator.writeStringField(key, value.toString)
+                }
+
+            }
 
         }
 
@@ -254,44 +254,44 @@ object JsonCodec {
         jsonGenerator.writeStartArray()
 
         for( value <- a) {
-          
-          if( value == null ) {
-              jsonGenerator.writeNull()
-          } else {
 
-              value match {
-                case s:String =>
-                  jsonGenerator.writeString(s)
-                case i:Int =>
-                  jsonGenerator.writeNumber(i)
-                case l:Long =>
-                  jsonGenerator.writeNumber(l)
-                case d:Double =>
-                  jsonGenerator.writeNumber(d)
-                case d:Float =>
-                  jsonGenerator.writeNumber(d)
-                case b:Boolean =>
-                  jsonGenerator.writeBoolean(b)
-                case map:HashMapStringAny =>
-                  val s = mkString(map)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferString =>
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferInt =>
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferMap =>
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case buff:ArrayBufferAny =>
-                  val s = mkString(buff)
-                  jsonGenerator.writeRawValue(s)
-                case _ =>
-                  jsonGenerator.writeString(value.toString)
-              }
+            if( value == null ) {
+                jsonGenerator.writeNull()
+            } else {
 
-          }
+                value match {
+                    case s:String =>
+                        jsonGenerator.writeString(s)
+                    case i:Int =>
+                        jsonGenerator.writeNumber(i)
+                    case l:Long =>
+                        jsonGenerator.writeNumber(l)
+                    case d:Double =>
+                        jsonGenerator.writeNumber(d)
+                    case d:Float =>
+                        jsonGenerator.writeNumber(d)
+                    case b:Boolean =>
+                        jsonGenerator.writeBoolean(b)
+                    case map:HashMapStringAny =>
+                        val s = mkString(map)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferString =>
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferInt =>
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferMap =>
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff:ArrayBufferAny =>
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case _ =>
+                        jsonGenerator.writeString(value.toString)
+                }
+
+            }
 
         }
 
@@ -309,13 +309,13 @@ object JsonCodec {
         jsonGenerator.writeStartArray()
 
         for( value <- a) {
-          
-          if( value == null ) {
-              jsonGenerator.writeNull()
-          } else {
-              val s = mkString(value)
-              jsonGenerator.writeRawValue(s)
-          }
+
+            if( value == null ) {
+                jsonGenerator.writeNull()
+            } else {
+                val s = mkString(value)
+                jsonGenerator.writeRawValue(s)
+            }
 
         }
 
@@ -333,7 +333,7 @@ object JsonCodec {
         jsonGenerator.writeStartArray()
 
         for( value <- a) {
-          jsonGenerator.writeNumber(value)
+            jsonGenerator.writeNumber(value)
         }
 
         jsonGenerator.writeEndArray()
@@ -350,12 +350,12 @@ object JsonCodec {
         jsonGenerator.writeStartArray()
 
         for( value <- a) {
-          
-          if( value == null ) {
-              jsonGenerator.writeNull()
-          } else {
-              jsonGenerator.writeString(value)
-          }
+
+            if( value == null ) {
+                jsonGenerator.writeNull()
+            } else {
+                jsonGenerator.writeString(value)
+            }
 
         }
 
@@ -366,3 +366,4 @@ object JsonCodec {
     }
 
 }
+

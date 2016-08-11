@@ -15,115 +15,116 @@ class TestCase(val serviceId:Int,val msgId:Int,val body:HashMapStringAny,val rep
 
 object TestCaseRunner {
 
-  var sendCount = 0
-  var receiveCount = 0
-  var soc : SocImpl = _
+    var sendCount = 0
+    var receiveCount = 0
+    var soc : SocImpl = _
 
-  val shutdown = new AtomicBoolean()
-  def callback(any:Any){
+    val shutdown = new AtomicBoolean()
+    def callback(any:Any){
 
-    any match {
+        any match {
 
-      case reqRes: SocRequestResponseInfo =>
+            case reqRes: SocRequestResponseInfo =>
 
-        val reqRes = any.asInstanceOf[SocRequestResponseInfo]
+                val reqRes = any.asInstanceOf[SocRequestResponseInfo]
 
-        println("res="+reqRes.res)
+                println("res="+reqRes.res)
 
-        receiveCount += 1
-        if( receiveCount == sendCount ) {
-          shutdown.set(true)
+                receiveCount += 1
+                if( receiveCount == sendCount ) {
+                    shutdown.set(true)
+                }
+
+            case ackInfo: SocRequestAckInfo =>
+
+                println("ack="+ackInfo.req.requestId)
+
+            case _ =>
         }
-
-      case ackInfo: SocRequestAckInfo =>
-
-        println("ack="+ackInfo.req.requestId)
-
-      case _ =>
     }
-  }
 
-  def main(args:Array[String]) {
+    def main(args:Array[String]) {
 
-      var file = "."+File.separator+"testcase"+File.separator+"default.txt"
-      if( args.size >= 1 ) file = args(0)
-      println("running file:  " + file)
+        var file = "."+File.separator+"testcase"+File.separator+"default.txt"
+        if( args.size >= 1 ) file = args(0)
+        println("running file:  " + file)
 
-      val codecs = new TlvCodecs("."+File.separator+"avenue_conf")
+        val codecs = new TlvCodecs("."+File.separator+"avenue_conf")
 
-      val in = new InputStreamReader(new FileInputStream("."+File.separator+"config.xml"),"UTF-8")
-      val cfgXml = XML.load(in)
-      val port = (cfgXml \ "SapPort").text.toInt
-      val timeout = 15000
-      var serverAddr = "127.0.0.1:"+port
-      var s = (cfgXml \ "TestServerAddr").text
-      if( s != "" ) serverAddr = s
-      
-      soc = new SocImpl(serverAddr,codecs,callback,connSizePerAddr=1)
+        val in = new InputStreamReader(new FileInputStream("."+File.separator+"config.xml"),"UTF-8")
+        val cfgXml = XML.load(in)
+        val port = (cfgXml \ "SapPort").text.toInt
+        val timeout = 15000
+        var serverAddr = "127.0.0.1:"+port
+        var s = (cfgXml \ "TestServerAddr").text
+        if( s != "" ) serverAddr = s
 
-      val lines = Source.fromFile(file,"UTF-8").getLines.toList.filter( _.trim != "").filter( !_.startsWith("#") )
+        soc = new SocImpl(serverAddr,codecs,callback,connSizePerAddr=1)
 
-      val testcases = parseLines(lines)
+        val lines = Source.fromFile(file,"UTF-8").getLines.toList.filter( _.trim != "").filter( !_.startsWith("#") )
 
-      sendCount = testcases.foldLeft(0) { (sum,tc) => sum + tc.repeat }
+        val testcases = parseLines(lines)
 
-      println("total request count : "+sendCount)
+        sendCount = testcases.foldLeft(0) { (sum,tc) => sum + tc.repeat }
 
-      var seq = 0
+        println("total request count : "+sendCount)
 
-      for( i <- 1 to testcases.size ) {
+        var seq = 0
 
-        val t = testcases(i-1)
+        for( i <- 1 to testcases.size ) {
 
-        for( j <- 1 to t.repeat ) {
+            val t = testcases(i-1)
 
-          seq += 1
-          val req = new SocRequest(seq.toString,t.serviceId,t.msgId,t.body)
-          println("req="+req)
-          soc.send(req,timeout)
+            for( j <- 1 to t.repeat ) {
+
+                seq += 1
+                val req = new SocRequest(seq.toString,t.serviceId,t.msgId,t.body)
+                println("req="+req)
+                soc.send(req,timeout)
+            }
+
         }
 
-      }
+        while( !shutdown.get ) {
+            Thread.sleep(500)
+        }
 
-      while( !shutdown.get ) {
-        Thread.sleep(500)
-      }
+        soc.close
+    }
 
-      soc.close
-  }
+    def parseLines(lines: List[String]) : ArrayBuffer[TestCase] = {
 
-  def parseLines(lines: List[String]) : ArrayBuffer[TestCase] = {
+        val testcases = new ArrayBuffer[TestCase]()
 
-      val testcases = new ArrayBuffer[TestCase]()
+        for( line <- lines ) {
+            val tc = parseLine(line)
+            if( tc != null )
+                testcases += tc
+        }
 
-      for( line <- lines ) {
-        val tc = parseLine(line)
-        if( tc != null )
-          testcases += tc
-      }
+        testcases
+    }
 
-      testcases
-  }
+    def parseLine(line:String) : TestCase = {
 
-  def parseLine(line:String) : TestCase = {
+        val p1 = line.indexOf(",")
+        if( p1 <= 0 ) return null
 
-      val p1 = line.indexOf(",")
-      if( p1 <= 0 ) return null
+        val p2 = line.indexOf(",",p1+1)
+        if( p2 <= 0 ) return null
 
-      val p2 = line.indexOf(",",p1+1)
-      if( p2 <= 0 ) return null
+        val serviceId = line.substring(0,p1).toInt
+        val msgId = line.substring(p1+1,p2).toInt
+        val json = line.substring(p2+1)
 
-      val serviceId = line.substring(0,p1).toInt
-      val msgId = line.substring(p1+1,p2).toInt
-      val json = line.substring(p2+1)
+        val body = JsonCodec.parseObject(json)
 
-      val body = JsonCodec.parseObject(json)
+        var repeat = body.i("x_repeat")
+        if( repeat == 0 ) repeat = 1
 
-      var repeat = body.i("x_repeat")
-      if( repeat == 0 ) repeat = 1
-
-      val tc = new TestCase(serviceId,msgId,body,repeat)
-      tc
-  }
+        val tc = new TestCase(serviceId,msgId,body,repeat)
+        tc
+    }
 
 }
+

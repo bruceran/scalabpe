@@ -30,7 +30,11 @@
 
 [MemCache服务配置](#memcache)
 
+[原生版MemCache服务配置](#newmemcache)
+
 [Redis服务配置](#redis)
+
+[原生版Redis服务配置](#newredis)
 
 [本地持久化队列配置](#queue)
 
@@ -376,6 +380,8 @@
 
 # <a name="memcache">MemCache服务配置</a>
 
+    此插件依赖开源组件xmemcached, 建议使用原生版memcache插件, 原生版本更简单，支持更多功能
+
     <CacheThreadNum>2</CacheThreadNum>
     <CacheWriteThreadNum>1</CacheWriteThreadNum>
 
@@ -434,7 +440,58 @@
 
 [返回](#toc)
 
+# <a name="newmemcache">原生版MemCache服务配置</a>
+
+    <MemCacheCfgV2 threadNum="2" 
+        timeout="10000"
+        connectTimeout="15000"
+        pingInterval="60000"
+        connSizePerAddr="4"
+        timerInterval="100"
+        reconnectInterval="1"
+        failOver="true" 
+        errorCountToSwitch="50">
+        <ServiceId>990,45612</ServiceId>
+        <ConHash/> 或 <ArrayHash/> 或不配置
+        <ServerAddr>10.241.37.37:11211</ServerAddr>
+        <ServerAddr>10.241.37.37:11211</ServerAddr>
+        ...
+    </MemCacheCfgV2>
+
+    threadNum 若未配置，默认为2
+    timeout 超时时间，默认10秒
+    connectTimeout 连接超时时间，默认15秒
+    pingInterval 心跳间隔时间，默认60秒
+    connSizePerAddr 每个地址连接数，默认4
+    timerInterval 内部定时器间隔时间，默认100毫秒
+    reconnectInterval 重连间隔时间，默认1秒
+    failOver hash或数组模式下是否自动错误转移, 默认为 true
+    errorCountToSwitch hash或数组模式下达到多少次错误后自动故障转移, 默认为50
+
+    3种模式：
+
+      ArrayHash模式: 数据hash后取余定位服务器，数据只有1份；
+      ConHash模式: 数据用一致性hash算法，数据只有1份；
+      Master/Slave模式：数据写2份；
+
+      如果只配置了1个ServerAddr，且是ArrayHash方式
+      如果配置了2个ServerAddr，且未指定模式, 为Master/Slave模式；
+      如果超过2个ServerAddr，且未指定模式, 为ConHash方式
+      如果配置了2个或2个以上地址且指定了 <ConHash/> 或 <ArrayHash/> 则为指定模式
+
+      特殊说明：
+        如果配置多台服务器，非master/slave模式，则涉及多个key的接口，只有mget接口能正确得到分布在多台服务器上的结果
+
+    服务描述文件：
+
+       只允许修改服务名和服务号，不允许修改其它内容
+
+[返回](#toc)
+
 # <a name="redis">Redis服务配置</a>
+
+    此插件依赖开源组件jedis, 建议使用原生版redis插件
+    此版本只实现redis少数接口, 原生版本更简单，实现了redis大多数有用接口
 
     redis服务提供缓存数据的持久化功能
 
@@ -480,6 +537,52 @@
       <message name="sget" id="10"> id必须为10, name没有限制
       <message name="sadd" id="11"> id必须为11, name没有限制
       <message name="sremove" id="12"> id必须为12, name没有限制
+
+# <a name="newredis">原生版Redis服务配置</a>
+
+    <RedisCacheCfgV2 threadNum="2" 
+        timeout="10000"
+        connectTimeout="15000"
+        pingInterval="60000"
+        connSizePerAddr="4"
+        timerInterval="100"
+        reconnectInterval="1"
+        failOver="true" 
+        errorCountToSwitch="50">
+        <ServiceId>990,45612</ServiceId>
+        <ConHash/> 或 <ArrayHash/> 或不配置
+        <ServerAddr>10.241.37.37:11211</ServerAddr>
+        <ServerAddr>10.241.37.37:11211</ServerAddr>
+        ...
+    </RedisCacheCfgV2>
+
+    threadNum 若未配置，默认为2
+    timeout 超时时间，默认10秒
+    connectTimeout 连接超时时间，默认15秒
+    pingInterval 心跳间隔时间，默认60秒
+    connSizePerAddr 每个地址连接数，默认4
+    timerInterval 内部定时器间隔时间，默认100毫秒
+    reconnectInterval 重连间隔时间，默认1秒
+    failOver hash或数组模式下是否自动错误转移, 默认为 true
+    errorCountToSwitch hash或数组模式下达到多少次错误后自动故障转移, 默认为50
+
+    3种模式：
+
+      ArrayHash模式: 数据hash后取余定位服务器，数据只有1份；
+      ConHash模式: 数据用一致性hash算法，数据只有1份；
+      Master/Slave模式：数据写2份；
+
+      如果只配置了1个ServerAddr，且是ArrayHash方式
+      如果配置了2个ServerAddr，且未指定模式, 为Master/Slave模式；
+      如果超过2个ServerAddr，且未指定模式, 为ConHash方式
+      如果配置了2个或2个以上地址且指定了 <ConHash/> 或 <ArrayHash/> 则为指定模式
+
+      特殊说明：
+        如果配置多台服务器，非master/slave模式，则涉及多个key的接口，只有mget接口能正确得到分布在多台服务器上的结果
+
+    服务描述文件：
+
+       只允许修改服务名和服务号，不允许修改其它内容
 
 [返回](#toc)
 

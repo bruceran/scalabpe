@@ -1,14 +1,14 @@
 @echo off
 
-set version=1.1.1
-set pluginversion=1.1.1
+set version=1.1.2
+set pluginversion=1.1.2
 
 if "%1"=="" goto build
 if "%1"=="clean" goto clean
 
 :build
 mkdir classes\jvmdbbroker\plugin\  2>>nul 1>>nul
-call scalac -deprecation -encoding UTF-8 -cp ".\lib\*;." -d ".\classes"   src\*.scala src\plugin\*.scala src\plugin\http\*.scala
+call scalac -deprecation -encoding UTF-8 -cp ".\lib\*;." -d ".\classes"   src\*.scala src\plugin\*.scala src\plugin\http\*.scala src\plugin\cache\*.scala
 copy /Y src\plugin\jvmdbbroker.plugins.conf .\classes\  2>>nul 1>>nul
 copy /Y src\release_notes.txt .\classes\  2>>nul 1>>nul
 jar cf .\lib\scalabpe-core-%version%.jar -C .\classes\  .\jvmdbbroker\core -C .\classes\ .\release_notes.txt

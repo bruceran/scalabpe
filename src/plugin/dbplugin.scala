@@ -4,12 +4,12 @@ import jvmdbbroker.core._
 
 // implement customed split table policy, splitTableType="custom" splitTableCustomCls="jvmdbbroker.flow.SampleDbPlugin"
 trait SplitTablePlugin {
-  def generateTableIdx(req:Request):String
+    def generateTableIdx(req:Request):String
 }
 
 // implement customed split db policy, splitDbType="custom" splitDbCustomCls="jvmdbbroker.flow.SampleDbPlugin"
 trait SplitDbPlugin {
-  def generateDbIdx(req:Request):Int
+    def generateDbIdx(req:Request):Int
 }
 
 // usage in flow:
@@ -36,6 +36,6 @@ trait SplitDbPlugin {
 //
 
 trait QueryCallback {
-  def process(rowNum:Int, buff:ArrayBufferString):Boolean
+    def process(rowNum:Int, buff:ArrayBufferString):Boolean
 }
 

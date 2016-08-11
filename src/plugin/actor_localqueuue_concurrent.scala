@@ -14,53 +14,51 @@ import com.sdo.billing.queue.impl._
 import jvmdbbroker.core._
 
 class ConnLocalQueueActor(override val router:Router,override val cfgNode: Node)
-   extends LocalQueueActor(router,cfgNode) {
+extends LocalQueueActor(router,cfgNode) {
 
-       var concurrentNum = 1
-       val queueConnNumMap = new ConcurrentHashMap[String,AtomicInteger]()
+    var concurrentNum = 1
+    val queueConnNumMap = new ConcurrentHashMap[String,AtomicInteger]()
 
-       init_this
+    init_this
 
-       def init_this() {
-           var s = (cfgNode \ "@concurrentNum").text
-           if( s != "" ) concurrentNum = s.toInt 
-           log.info("concurrentNum="+concurrentNum)
-       }
+    def init_this() {
+        var s = (cfgNode \ "@concurrentNum").text
+        if( s != "" ) concurrentNum = s.toInt 
+        log.info("concurrentNum="+concurrentNum)
+    }
 
-       override def onReceiveResponse(res:InvokeResult)  {
+    override def onReceiveResponse(res:InvokeResult)  {
 
-           if( concurrentNum <= 1 ) { 
-               super.onReceiveResponse(res)
-               return
-           }
+        if( concurrentNum <= 1 ) { 
+            super.onReceiveResponse(res)
+            return
+        }
 
-           // 相比LocalQueue, 这里会将concurrentNum减1再继续后续处理
-           
-           val sendingdata = requestIdMap.remove(res.requestId)
-           if( sendingdata == null ) return
+        // 相比LocalQueue, 这里会将concurrentNum减1再继续后续处理
 
-           val body = jsonToBody(sendingdata.json)
-           if (body == null) return
-    
-           val msgId = body.i("X-MSGID")
-           if (msgId <= 0) {
-             log.error("X-MSGID not found or not valid in json " + sendingdata.json)
-             return
-           }
-    
-           val maxSendTimes = getMaxSendTimes(msgId)
-           val retryInterval = getRetryInterval(msgId)
+        val sendingdata = requestIdMap.remove(res.requestId)
+        if( sendingdata == null ) return
 
+        val body = jsonToBody(sendingdata.json)
+        if (body == null) return
 
+        val msgId = body.i("X-MSGID")
+        if (msgId <= 0) {
+            log.error("X-MSGID not found or not valid in json " + sendingdata.json)
+            return
+        }
 
-            if( res.code == 0 || sendingdata.sendCount >= maxSendTimes ) {
+        val maxSendTimes = getMaxSendTimes(msgId)
+        val retryInterval = getRetryInterval(msgId)
 
-               if( res.code != 0 ) {
-                  log.error("send failed, requestId="+sendingdata.requestId)
-               }
+        if( res.code == 0 || sendingdata.sendCount >= maxSendTimes ) {
 
-                waitingRunnableList.enqueue(
-                  new Runnable() {
+            if( res.code != 0 ) {
+                log.error("send failed, requestId="+sendingdata.requestId)
+            }
+
+            waitingRunnableList.enqueue(
+                new Runnable() {
                     def run() {
 
                         val ai = queueConnNumMap.get(sendingdata.queueName)
@@ -79,67 +77,67 @@ class ConnLocalQueueActor(override val router:Router,override val cfgNode: Node)
 
                         sendingdata.reset()
                     }
-                  }
+                }
                 )
 
-               wakeUpSendThread()
-               return
+            wakeUpSendThread()
+            return
 
-            }
+        }
 
-            timer.schedule( new TimerTask() {
-              def run() {
+        timer.schedule( new TimerTask() {
+            def run() {
 
                 waitingRunnableList.enqueue(
-                  new Runnable() {
-                    def run() {
-                       val ai = queueConnNumMap.get(sendingdata.queueName)
-                       if( ai == null ) {
-                           log.error("queueConnNumMap not found!!!, queueName="+sendingdata.queueName)
-                       } else {
-                           ai.decrementAndGet() 
-                       }
-                       retry(sendingdata)
+                    new Runnable() {
+                        def run() {
+                            val ai = queueConnNumMap.get(sendingdata.queueName)
+                            if( ai == null ) {
+                                log.error("queueConnNumMap not found!!!, queueName="+sendingdata.queueName)
+                            } else {
+                                ai.decrementAndGet() 
+                            }
+                            retry(sendingdata)
+                        }
                     }
-                  }
-                )
+                    )
                 wakeUpSendThread()
 
-              }
-            }, retryInterval )
+            }
+        }, retryInterval )
 
-       }
+    }
 
-       override def send(sendingdata:LocalQueueSendingData,generatedRequestId:String=null):Boolean = {
-           if( concurrentNum <= 1 ) {
-               return super.send(sendingdata)
-           }
+    override def send(sendingdata:LocalQueueSendingData,generatedRequestId:String=null):Boolean = {
+        if( concurrentNum <= 1 ) {
+            return super.send(sendingdata)
+        }
 
-           var ai = queueConnNumMap.get(sendingdata.queueName)
-           if( ai == null ) {
-                ai = new AtomicInteger(0)
-                queueConnNumMap.put(sendingdata.queueName,ai)
-           }
-           val connNum = ai.incrementAndGet()
+        var ai = queueConnNumMap.get(sendingdata.queueName)
+        if( ai == null ) {
+            ai = new AtomicInteger(0)
+            queueConnNumMap.put(sendingdata.queueName,ai)
+        }
+        val connNum = ai.incrementAndGet()
 
-           val d = new LocalQueueSendingData(sendingdata.queueName,sendingdata.requestId,sendingdata.idx,sendingdata.json,sendingdata.sendCount)
-           d.createTime = sendingdata.createTime
-           d.requestId = "LQ"+RequestIdGenerator.nextId()
-           requestIdMap.put(d.requestId,d)
+        val d = new LocalQueueSendingData(sendingdata.queueName,sendingdata.requestId,sendingdata.idx,sendingdata.json,sendingdata.sendCount)
+        d.createTime = sendingdata.createTime
+        d.requestId = "LQ"+RequestIdGenerator.nextId()
+        requestIdMap.put(d.requestId,d)
 
-           val ok = super.send(d,d.requestId)
-           if(!ok) {
-               ai.decrementAndGet() 
-               requestIdMap.remove(d.requestId)
-               return false
-           }
+        val ok = super.send(d,d.requestId)
+        if(!ok) {
+            ai.decrementAndGet() 
+            requestIdMap.remove(d.requestId)
+            return false
+        }
 
-           if( connNum < concurrentNum ) {
-               sendingdata.reset()
-           }
+        if( connNum < concurrentNum ) {
+            sendingdata.reset()
+        }
 
-           ok
-       }
+        ok
+    }
 
 }
 
