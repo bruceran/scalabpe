@@ -2,206 +2,206 @@
 1.1.2 (20160811)
 ================
 
-* ´úÂëÖØÐÂformat
-* netty http´úÂëÒÆ»ØhttpÄ¿Â¼ÏÂ
+* ä»£ç é‡æ–°format
+* netty httpä»£ç ç§»å›žhttpç›®å½•ä¸‹
 
 1.1.1 (20160719)
 ================
 
-* (07/19)HashMapStringAnyµÄ.lm .ls .li·½·¨Ö§³Ö´ÓArrayBufferAny¶ÔÏóÖÐÈ¡Êý¾Ý, ÓÃÓÚ´ÓJsonCodec½âÎö³öµÄ¶ÔÏóÈ¡Öµ
-* (07/19)Ôö¼ÓLinkedHashMapStringAny£¬ÓÃÓÚÉú³ÉÐèÒª±£³Ö²åÈëË³ÐòµÄjsonÊý¾Ý
+* (07/19)HashMapStringAnyçš„.lm .ls .liæ–¹æ³•æ”¯æŒä»ŽArrayBufferAnyå¯¹è±¡ä¸­å–æ•°æ®, ç”¨äºŽä»ŽJsonCodecè§£æžå‡ºçš„å¯¹è±¡å–å€¼
+* (07/19)å¢žåŠ LinkedHashMapStringAnyï¼Œç”¨äºŽç”Ÿæˆéœ€è¦ä¿æŒæ’å…¥é¡ºåºçš„jsonæ•°æ®
 
 1.1.0 (20160617)
 ================
 
-* (06/17)¿ªÔ´°æ±¾
+* (06/17)å¼€æºç‰ˆæœ¬
 
 1.0.12 (20160525)
 ================
 
-* (05/25)routerÀïÔö¼ÓgetRawConfig
-* (05/25)routerÀïÔö¼ÓInitHook£¬¿ÉÒÔµ÷ÓÃµÚÈý·½µÄÀàÀ´¼ÓÔØÅäÖÃ²ÎÊý, ÎªÅäÖÃ²ÎÊý·ÅÔÚucs·þÎñÀïÌá¹©Ö§³Ö
-* (05/19)Ôö¼Ólibsec.so, ½âÃÜÃÜÔ¿ºÍËã·¨ÒÆµ½jni´úÂëÖÐ
-* (05/17)routerÆô¶¯µÄÊ±ºòÖ§³Öinit bean, »áµÈ´ýbeanÆô¶¯Íê±Ï²Å»á¼ÌÐøÆô¶¯·þÎñ
-* (05/17)config.xmlÖ§³ÖÊ¹ÓÃ@xxx¶¨Òå±äÁ¿£¬´Óconfig_parameter.xmlÎÄ¼þÖÐ¶ÁÈ¡£¬ÓÃÓÚ·ÖÀëÃô¸ÐÊý¾Ý
+* (05/25)routeré‡Œå¢žåŠ getRawConfig
+* (05/25)routeré‡Œå¢žåŠ InitHookï¼Œå¯ä»¥è°ƒç”¨ç¬¬ä¸‰æ–¹çš„ç±»æ¥åŠ è½½é…ç½®å‚æ•°, ä¸ºé…ç½®å‚æ•°æ”¾åœ¨ucsæœåŠ¡é‡Œæä¾›æ”¯æŒ
+* (05/19)å¢žåŠ libsec.so, è§£å¯†å¯†é’¥å’Œç®—æ³•ç§»åˆ°jniä»£ç ä¸­
+* (05/17)routerå¯åŠ¨çš„æ—¶å€™æ”¯æŒinit bean, ä¼šç­‰å¾…beanå¯åŠ¨å®Œæ¯•æ‰ä¼šç»§ç»­å¯åŠ¨æœåŠ¡
+* (05/17)config.xmlæ”¯æŒä½¿ç”¨@xxxå®šä¹‰å˜é‡ï¼Œä»Žconfig_parameter.xmlæ–‡ä»¶ä¸­è¯»å–ï¼Œç”¨äºŽåˆ†ç¦»æ•æ„Ÿæ•°æ®
 
 1.0.11 (20160504)
 ================
 
-* (05/04)À©Õ¹°üÍ·Ö§³ÖhttpType, responsefilterÖ§³Öreq²ÎÊý
-* (04/20)nettyhttpserverÖ§³ÖmaxContentLength²ÎÊý
-* (04/15)Á÷³ÌÖÐÔö¼Ósleep(callback,timeout)·½·¨£¬¿ÉÒÔµ÷ÓÃ´Ë·½·¨ÒÔÒì²½µÄ·½Ê½µÈ´ý£¬²»»á×èÈûÏß³Ì; 
-         ÔÚsleep callbackÖÐµÃµ½µÄ´íÎóÂë×ÜÊÇ-10242504(³¬Ê±)£¬Èç¹ûÁ÷³ÌÖÐ»áÑ­»·sleep, Ó¦¼ì²éFlow.router.shutdown.get()ÊÇ·ñÎªtrue£¬ÈôÎªtrue,Ó¦¾¡¿ì½áÊøÁ÷³Ì
-* (02/26)Ôö¼Ómaskencoder, ¶Ôphone,account, emailºÍÒ»°ãµÄ¼ÓÑÚÂë´¦ÀíµÄÖ§³Ö
-* (02/26)htmlfilter,attackfilterÔö¼Ó¶Ô\µÄ¹ýÂË
-* (02/25)validatorÀïµÄrequire¸Ä³Érequired
-* (02/17)Ôö¼Ónocaseencoder,attackfilter; Ôö¼Ó¶Ôcommons-lang 3.1 jar°üµÄÒÀÀµ
-* (02/17)¶Ôencoder¹¦ÄÜ£¬½öÏÞÖÆÔÚ¶ÔÇëÇó½âÂëºÍ¶ÔÏìÓ¦±àÂëÊ±£»  ¶ÔÇëÇó±àÂëºÍÏìÓ¦½âÂëÊ±²»×ö±àÂë´¦Àí;
-* (02/14)·þÎñÃèÊöÎÄ¼þÔö¼Ó¶ÔdefaultValue, validator, encoderµÄÖ§³Ö
+* (05/04)æ‰©å±•åŒ…å¤´æ”¯æŒhttpType, responsefilteræ”¯æŒreqå‚æ•°
+* (04/20)nettyhttpserveræ”¯æŒmaxContentLengthå‚æ•°
+* (04/15)æµç¨‹ä¸­å¢žåŠ sleep(callback,timeout)æ–¹æ³•ï¼Œå¯ä»¥è°ƒç”¨æ­¤æ–¹æ³•ä»¥å¼‚æ­¥çš„æ–¹å¼ç­‰å¾…ï¼Œä¸ä¼šé˜»å¡žçº¿ç¨‹; 
+         åœ¨sleep callbackä¸­å¾—åˆ°çš„é”™è¯¯ç æ€»æ˜¯-10242504(è¶…æ—¶)ï¼Œå¦‚æžœæµç¨‹ä¸­ä¼šå¾ªçŽ¯sleep, åº”æ£€æŸ¥Flow.router.shutdown.get()æ˜¯å¦ä¸ºtrueï¼Œè‹¥ä¸ºtrue,åº”å°½å¿«ç»“æŸæµç¨‹
+* (02/26)å¢žåŠ maskencoder, å¯¹phone,account, emailå’Œä¸€èˆ¬çš„åŠ æŽ©ç å¤„ç†çš„æ”¯æŒ
+* (02/26)htmlfilter,attackfilterå¢žåŠ å¯¹\çš„è¿‡æ»¤
+* (02/25)validatoré‡Œçš„requireæ”¹æˆrequired
+* (02/17)å¢žåŠ nocaseencoder,attackfilter; å¢žåŠ å¯¹commons-lang 3.1 jaråŒ…çš„ä¾èµ–
+* (02/17)å¯¹encoderåŠŸèƒ½ï¼Œä»…é™åˆ¶åœ¨å¯¹è¯·æ±‚è§£ç å’Œå¯¹å“åº”ç¼–ç æ—¶ï¼›  å¯¹è¯·æ±‚ç¼–ç å’Œå“åº”è§£ç æ—¶ä¸åšç¼–ç å¤„ç†;
+* (02/14)æœåŠ¡æè¿°æ–‡ä»¶å¢žåŠ å¯¹defaultValue, validator, encoderçš„æ”¯æŒ
 
 1.0.10 (20151222)
 ================
 
-* (12/22)ServerSosÔö¼ÓmaxConnsÅäÖÃ²ÎÊý£¬¿ØÖÆ×î´óÁ¬½ÓÊý£»È¥µôspsÄ£Ê½ÏÂÁ¬½Ó¶Ï¿ªÊ±Í¨ÖªºóÌ¨·þÎñ¶à´òÓ¡µÄÒ»ÐÐ´íÎóÈÕÖ¾
-* (12/18)·´Ïòµ÷ÓÃ´úÂëÓÅ»¯£¬½«·´Ïòµ÷ÓÃÏà¹ØÅäÖÃ²ÎÊý¼¯ÖÐµ½<ServerSos>½ÚµãÅäÖÃ
-         ÐÞ¸´sosÄÚ´æÐ¹Â¶ÎÊÌâ£¬ÔÚ×öÄÚÍø³¤Á¬½Ó·þÎñ²»»á´¥·¢£¬µ«×÷ÎªÍâÍø½ÚµãÆµ·±µÄÁ¬½Ó»áÓÐÎÊÌâ
-         ÓÅ»¯sosÁ¬½ÓÐÅÏ¢µÄmap£¬²»Ê¹ÓÃ·´Ïòµ÷ÓÃ·þÎñÊ±²»¼ÇÂ¼ÕâÐ©ÐÅÏ¢
-         Ö§³ÖspsÄ£Ê½ÏÂÎÕÊÖºÍ¼ÓÃÜ
-         ÐÞ¸´12/08ÈÕ°æ±¾ÒýÈëµÄbug: sos´¦ÀíÁ÷³ÌÍê±ÏºóÎÞ·¨»ØÏûÏ¢
-* (12/16)httpserverÓÅ»¯
-* (12/10)httpserverÔö¼Ó¶Ô¾²Ì¬ÎÄ¼þºÍÄ£°åÎÄ¼þµÄÖ§³Ö
-* (12/08)Ö§³Ö×÷Îª²»¼ÓÃÜµÄSPS·þÎñÆô¶¯£¬¿ÉÒÔºÍroute·þÎñÍ¨Ñ¶£¬Ö§³Ö3ºÅ·þÎñÏÂ·¢ÏûÏ¢, ÐÂÔöÅäÖÃ²ÎÊý£ºisSps, spsReportTo, spsDisconnectNotifyTo
-* (11/20)ÐÞ¸ÄÒì²½ÈÕÖ¾request_auditÈÕÖ¾¸ñÊ½£¬µ÷Õû¼¸¸öfield¼ÇÂ¼²»×¼È·µÄÖµ£ºclient_ip client_port soc_name server_ip×Ö¶ÎµÄÖµ
-* (11/13)ÐÞ¸ÄbaseEndFlowµÄÒ»¸öbug, ¶àÓàµÄunlock
-* (10/14)Flow¶ÔÏóÔö¼ÓbaseReceiveºÍbaseEndFlow£¬ÓÃÓÚÓÃ»§×Ô¶¨ÒåÁ÷³ÌÀà
-* (10/14)ÐÞ¸ÄÆô¶¯µÄ±àÒë¹ý³Ì£¬flowÎÄ¼þµÄ·þÎñÃûÉùÃ÷Ê±Ö§³Ö.with(classname)Óï·¨, classname¿ÉÒÔÊÇÀàÃû(Ä¬ÈÏÎªjvmdbbroerk.flow°ü)»ò°üº¬°üÃûµÄÀàÃû, Ôò¸ÃÁ÷³Ì½«¼Ì³Ð¸ÃÀà
-* (10/13)µ÷ÕûÔ´ÂëÎ»ÖÃ£¬½«actor_socÒÆµ½core°ü
-* (10/13)Ôö¼Óhttpserver°ü£¬¼æÈÝhpsµÄ»ù±¾¹¦ÄÜ,²Î¿¼manual
+* (12/22)ServerSoså¢žåŠ maxConnsé…ç½®å‚æ•°ï¼ŒæŽ§åˆ¶æœ€å¤§è¿žæŽ¥æ•°ï¼›åŽ»æŽ‰spsæ¨¡å¼ä¸‹è¿žæŽ¥æ–­å¼€æ—¶é€šçŸ¥åŽå°æœåŠ¡å¤šæ‰“å°çš„ä¸€è¡Œé”™è¯¯æ—¥å¿—
+* (12/18)åå‘è°ƒç”¨ä»£ç ä¼˜åŒ–ï¼Œå°†åå‘è°ƒç”¨ç›¸å…³é…ç½®å‚æ•°é›†ä¸­åˆ°<ServerSos>èŠ‚ç‚¹é…ç½®
+         ä¿®å¤soså†…å­˜æ³„éœ²é—®é¢˜ï¼Œåœ¨åšå†…ç½‘é•¿è¿žæŽ¥æœåŠ¡ä¸ä¼šè§¦å‘ï¼Œä½†ä½œä¸ºå¤–ç½‘èŠ‚ç‚¹é¢‘ç¹çš„è¿žæŽ¥ä¼šæœ‰é—®é¢˜
+         ä¼˜åŒ–sosè¿žæŽ¥ä¿¡æ¯çš„mapï¼Œä¸ä½¿ç”¨åå‘è°ƒç”¨æœåŠ¡æ—¶ä¸è®°å½•è¿™äº›ä¿¡æ¯
+         æ”¯æŒspsæ¨¡å¼ä¸‹æ¡æ‰‹å’ŒåŠ å¯†
+         ä¿®å¤12/08æ—¥ç‰ˆæœ¬å¼•å…¥çš„bug: soså¤„ç†æµç¨‹å®Œæ¯•åŽæ— æ³•å›žæ¶ˆæ¯
+* (12/16)httpserverä¼˜åŒ–
+* (12/10)httpserverå¢žåŠ å¯¹é™æ€æ–‡ä»¶å’Œæ¨¡æ¿æ–‡ä»¶çš„æ”¯æŒ
+* (12/08)æ”¯æŒä½œä¸ºä¸åŠ å¯†çš„SPSæœåŠ¡å¯åŠ¨ï¼Œå¯ä»¥å’ŒrouteæœåŠ¡é€šè®¯ï¼Œæ”¯æŒ3å·æœåŠ¡ä¸‹å‘æ¶ˆæ¯, æ–°å¢žé…ç½®å‚æ•°ï¼šisSps, spsReportTo, spsDisconnectNotifyTo
+* (11/20)ä¿®æ”¹å¼‚æ­¥æ—¥å¿—request_auditæ—¥å¿—æ ¼å¼ï¼Œè°ƒæ•´å‡ ä¸ªfieldè®°å½•ä¸å‡†ç¡®çš„å€¼ï¼šclient_ip client_port soc_name server_ipå­—æ®µçš„å€¼
+* (11/13)ä¿®æ”¹baseEndFlowçš„ä¸€ä¸ªbug, å¤šä½™çš„unlock
+* (10/14)Flowå¯¹è±¡å¢žåŠ baseReceiveå’ŒbaseEndFlowï¼Œç”¨äºŽç”¨æˆ·è‡ªå®šä¹‰æµç¨‹ç±»
+* (10/14)ä¿®æ”¹å¯åŠ¨çš„ç¼–è¯‘è¿‡ç¨‹ï¼Œflowæ–‡ä»¶çš„æœåŠ¡åå£°æ˜Žæ—¶æ”¯æŒ.with(classname)è¯­æ³•, classnameå¯ä»¥æ˜¯ç±»å(é»˜è®¤ä¸ºjvmdbbroerk.flowåŒ…)æˆ–åŒ…å«åŒ…åçš„ç±»å, åˆ™è¯¥æµç¨‹å°†ç»§æ‰¿è¯¥ç±»
+* (10/13)è°ƒæ•´æºç ä½ç½®ï¼Œå°†actor_socç§»åˆ°coreåŒ…
+* (10/13)å¢žåŠ httpserveråŒ…ï¼Œå…¼å®¹hpsçš„åŸºæœ¬åŠŸèƒ½,å‚è€ƒmanual
 
 1.0.9 (20150828)
 ================
 
-* (08/28)Ôö¼ÓÅäÖÃ²ÎÊýdisabledMsgIdFrom_·þÎñºÅ=xxx(xxx±ØÐë>=1000)£¬¿ÉÅäÖÃÄ³·þÎñºÅÏÂ´ÓÄÄ¸ömsgId¿ªÊ¼²»ÔÊÐíÍâ²¿µ÷ÓÃ,Ö»ÔÊÐí±¾»úµ÷ÓÃ£¬ÓÃÔÚ·þÎñÃèÊöÎÄ¼þÖÐµÄÒ»Ð©²»¶ÔÍâµÄ×Ó·þÎñ
-* (08/10)Ôö¼Ó¶ÔÀ©Õ¹tlvÖ§³Ö£¬ÔÊÐítlvÊý¾Ý³¬¹ý65535
-* (05/04)Ôö¼Óselfcheck server´¦ÀíÊ±µÄtry catch
-* (03/19)trigger.xmlÖÐË÷Òý×Ö¶Î¿ÉÓÃmsgId=-1ÅäÖÃÄ¬ÈÏÖµ£¬¼ò»¯ÅäÖÃ
-* (03/19)ÐÞ¸Ä»ñÈ¡±¾µØIPµÄ·½Ê½
-* (02/27)Ôö¼Ógenereate scala src fileµÄµ¥¶À¹¦ÄÜ£¬ÓÃÓÚeclipse,ideal¼¯³ÉÊ±¸ù¾ÝflowÎÄ¼þÉú³ÉscalaÎÄ¼þ
-* (02/27)Æô¶¯Ê±¼ì²érunninginide»·¾³±äÁ¿£¬Èç¹ûµÈÓÚyes,ÔòÌø¹ý±àÒë½×¶Î£¬Ö±½ÓÔËÐÐ£»ÓÃÓÚeclipse,ideal¼¯³É
-* (02/27)ÐÞ¸ÄTypeSafe.anyToString(name,defaultValue)ÀïµÄbug
-* (02/27)ÐÞ¸Ä2/16ÈÕ°æ±¾±àÒë³¬¹ý2¼¶Ä¿Â¼ÒýÈëµÄÐÂbug: Î´¿¼ÂÇwindowsÂ·¾¶, windowsÏÂÎÞ·¨ÔËÐÐ
-* (02/16)·þÎñÃèÊöÎÄ¼þÖÐÃ¿¸öÏûÏ¢ÀïµÄfieldÏîtypeÍ¨³£¶¼ÊÇ$key_type£¬¸ÄÎªÔÊÐíÎª¿Õ£¬Èç¹ûÎª¿Õ£¬ÔòÈÏÎªÖµÎª $key_type
-         ×¢Òâ£¬¶ÔÓÚÐèÒªºÍc++°æ±¾½»»¥µÄ·þÎñÃèÊöÎÄ¼þ£¬²»ÄÜÊ¡ÂÔ£¬c++°æ±¾²»Ö§³ÖÊ¡ÂÔtype¶¨Òå
-* (02/16)ÐÞ¸ÄÆô¶¯Ê±µÄ±àÒë¹ý³Ì
-        compose_confÄ¿Â¼²»ÔÙÏÞÖÆÖ»ÓÐ2²ãÄ¿Â¼£¬ÔÊÐí¶à²ãÄ¿Â¼
-        compose_confÄ¿Â¼¼°×ÓÄ¿Â¼ÏÂµÄscala,flowÎÄ¼þÖ»ÒªÔÚ²»Í¬Ä¿Â¼¾ÍÔÊÐíÍ¬Ãû
-* (02/16)½«Òì²½ÈÕÖ¾µÄÏß³ÌÊýÄ¬ÈÏÖµÓÉ2¸ÄÎª1£¬ÕâÑùÒì²½ÈÕÖ¾ÖÐÄ¬ÈÏÊÇ·¢ÉúË³ÐòÊä³ö¶ø²»»áÂÒÐò
-* (02/12)ÐÂÔöµÄroute dump»¹ÓÐbug, ÐÞ¸ÄÒÔÃâÓ°ÏìÕý³£´íÎóÈÕÖ¾µÄÊä³ö
-* (02/06)ÐÞ¸ÄÁ÷³ÌÖÐÎÞ·¨·µ»Øµ¥¸öµÄ½á¹¹ÌåµÄbug
-* (01/28)route dumpµÄÊ±ºò¼ÓÉÏtry catch£¬ÒÔÃâÓ°ÏìÕý³£´íÎóÈÕÖ¾µÄÊä³ö
-* (01/26)runtestÎÄ¼þÀïµÄjsonÏÖÔÚ¿ÉÒÔÖ§³Ö´«µÝÊý×éºÍ½á¹¹Ìå²ÎÊý£»Èç¹ûconfig.xmlÀïÅäÖÃÁË  <TestServerAddr>host:port</TestServerAddr>, ÔòÒ²¿ÉÒÔÓÃruntest¹¤¾ß½«ÇëÇó·¢¸øÔ¶³Ì·þÎñÆ÷¡£
-* (01/26)Ôö¼ÓDumpBeforeCloseÅäÖÃ²ÎÊý£¬ÔÚ¹Ø±ÕÏµÍ³Ç°ÏÈ×öÒ»´Îdump£¬±ãÓÚ·þÎñ¶ËÒì³£Ê±·ÖÎöÄÚ´æÊý¾Ý¶Ñ»ýÎÊÌâ£»Ä¬ÈÏÎªtrue
-* (01/21)Ïß³Ì³ØµÄ¶ÓÁÐ´óÐ¡Í³Ò»´Ó100000ÐÞ¸ÄÎª20000
-* (01/20)jvmdbbroker.core°üÖÐÔö¼ÓJsonCodecÀàÓÃÓÚjsonµÄ×ª»»²Ù×÷
-    ³£ÓÃ·½·¨£º
-        def parseSimpleJson(s:String):HashMapStringAny // ½âÎöÎÞÇ¶Ì×µÄjson´® 
-        def parseJson(s:String):Any // ½âÎöÇ¶Ì×json´®£¬¸ù¾Ý¶¥²ãÀàÐÍ¿ÉÄÜÊÇHashMapStringAny»òArrayBufferAny£¬Ðè×Ô¼º×ª»»ÀàÐÍ
-        def parseObject(s:String):HashMapStringAny // ½âÎöÇ¶Ì×¶ÔÏó
-        def parseArray(s:String):ArrayBufferAny // ½âÎöÇ¶Ì×Êý×é
-        def mkString(m:HashMapStringAny): String // map×ª»»³Éjson´®
-        def mkString(a:ArrayBufferInt): String // array×ª»»³Éjson´®
-        def mkString(a:ArrayBufferString): String // array×ª»»³Éjson´®
-        def mkString(a:ArrayBufferMap): String // array×ª»»³Éjson´®
-        def mkString(a:ArrayBufferAny): String // array×ª»»³Éjson´®
-* (01/20)Á÷³ÌÖÐ¿ÉÊ¹ÓÃlogVar(key,value)½«±äÁ¿¼ÓÈëÒì²½ÈÕÖ¾,´ËÖµÒ²»áÓÉAsyncLogDispatch×ª·¢¸ø½ÓÊÕ·½£»
-* (01/20)trigger_config.xmlÔö¼ÓÈÕÖ¾Ë÷Òý×Ö¶ÎµÄÅäÖÃ£¬ºÍc++°æ±¾ÅäÖÃ²»Í¬£¬Ê¹ÓÃ index="a,b,c" ÊôÐÔÅäÖÃ£»Ë÷Òý×Ö¶Î¿ÉÒÔÎªÇëÇó/ÏìÓ¦/Á÷³Ì±äÁ¿
-    Ä¬ÈÏ°´·þÎñÃèÊöÎÄ¼þÊä³öËùÓÐÇëÇó£¬ÏìÓ¦£¬Á÷³Ì±äÁ¿£»ÈçÅäÖÃÁËtrigger_config.xmlÔò°´ÅäÖÃÊä³ö£¬item×Ó½Úµãrequest,response¿É²»ÅäÖÃ£¬Ôò°´·þÎñÃèÊöÎÄ¼þÊä³ö
-    µ±ÐèÒªÅäÖÃË÷Òý×Ö¶ÎÊ±£¬±ØÐëÊ¹ÓÃtrigger_config.xml£¬µ«¿É¼ò»¯³ÉÈçÏÂÅäÖÃ·½Ê½:
-    <item serviceid="999" msgid="27" index="b,nn"/> ÖµÅäÖÃË÷Òý×Ö¶Î£¬²»ÅäÖÃ¾ßÌå²ÎÊý
-* (01/20)Ôö¼ÓÈÕÖ¾×ª·¢¹¦ÄÜ£¬¶ÔÓ¦ÅäÖÃ½Úµã:
+* (08/28)å¢žåŠ é…ç½®å‚æ•°disabledMsgIdFrom_æœåŠ¡å·=xxx(xxxå¿…é¡»>=1000)ï¼Œå¯é…ç½®æŸæœåŠ¡å·ä¸‹ä»Žå“ªä¸ªmsgIdå¼€å§‹ä¸å…è®¸å¤–éƒ¨è°ƒç”¨,åªå…è®¸æœ¬æœºè°ƒç”¨ï¼Œç”¨åœ¨æœåŠ¡æè¿°æ–‡ä»¶ä¸­çš„ä¸€äº›ä¸å¯¹å¤–çš„å­æœåŠ¡
+* (08/10)å¢žåŠ å¯¹æ‰©å±•tlvæ”¯æŒï¼Œå…è®¸tlvæ•°æ®è¶…è¿‡65535
+* (05/04)å¢žåŠ selfcheck serverå¤„ç†æ—¶çš„try catch
+* (03/19)trigger.xmlä¸­ç´¢å¼•å­—æ®µå¯ç”¨msgId=-1é…ç½®é»˜è®¤å€¼ï¼Œç®€åŒ–é…ç½®
+* (03/19)ä¿®æ”¹èŽ·å–æœ¬åœ°IPçš„æ–¹å¼
+* (02/27)å¢žåŠ genereate scala src fileçš„å•ç‹¬åŠŸèƒ½ï¼Œç”¨äºŽeclipse,idealé›†æˆæ—¶æ ¹æ®flowæ–‡ä»¶ç”Ÿæˆscalaæ–‡ä»¶
+* (02/27)å¯åŠ¨æ—¶æ£€æŸ¥runninginideçŽ¯å¢ƒå˜é‡ï¼Œå¦‚æžœç­‰äºŽyes,åˆ™è·³è¿‡ç¼–è¯‘é˜¶æ®µï¼Œç›´æŽ¥è¿è¡Œï¼›ç”¨äºŽeclipse,idealé›†æˆ
+* (02/27)ä¿®æ”¹TypeSafe.anyToString(name,defaultValue)é‡Œçš„bug
+* (02/27)ä¿®æ”¹2/16æ—¥ç‰ˆæœ¬ç¼–è¯‘è¶…è¿‡2çº§ç›®å½•å¼•å…¥çš„æ–°bug: æœªè€ƒè™‘windowsè·¯å¾„, windowsä¸‹æ— æ³•è¿è¡Œ
+* (02/16)æœåŠ¡æè¿°æ–‡ä»¶ä¸­æ¯ä¸ªæ¶ˆæ¯é‡Œçš„fieldé¡¹typeé€šå¸¸éƒ½æ˜¯$key_typeï¼Œæ”¹ä¸ºå…è®¸ä¸ºç©ºï¼Œå¦‚æžœä¸ºç©ºï¼Œåˆ™è®¤ä¸ºå€¼ä¸º $key_type
+         æ³¨æ„ï¼Œå¯¹äºŽéœ€è¦å’Œc++ç‰ˆæœ¬äº¤äº’çš„æœåŠ¡æè¿°æ–‡ä»¶ï¼Œä¸èƒ½çœç•¥ï¼Œc++ç‰ˆæœ¬ä¸æ”¯æŒçœç•¥typeå®šä¹‰
+* (02/16)ä¿®æ”¹å¯åŠ¨æ—¶çš„ç¼–è¯‘è¿‡ç¨‹
+        compose_confç›®å½•ä¸å†é™åˆ¶åªæœ‰2å±‚ç›®å½•ï¼Œå…è®¸å¤šå±‚ç›®å½•
+        compose_confç›®å½•åŠå­ç›®å½•ä¸‹çš„scala,flowæ–‡ä»¶åªè¦åœ¨ä¸åŒç›®å½•å°±å…è®¸åŒå
+* (02/16)å°†å¼‚æ­¥æ—¥å¿—çš„çº¿ç¨‹æ•°é»˜è®¤å€¼ç”±2æ”¹ä¸º1ï¼Œè¿™æ ·å¼‚æ­¥æ—¥å¿—ä¸­é»˜è®¤æ˜¯å‘ç”Ÿé¡ºåºè¾“å‡ºè€Œä¸ä¼šä¹±åº
+* (02/12)æ–°å¢žçš„route dumpè¿˜æœ‰bug, ä¿®æ”¹ä»¥å…å½±å“æ­£å¸¸é”™è¯¯æ—¥å¿—çš„è¾“å‡º
+* (02/06)ä¿®æ”¹æµç¨‹ä¸­æ— æ³•è¿”å›žå•ä¸ªçš„ç»“æž„ä½“çš„bug
+* (01/28)route dumpçš„æ—¶å€™åŠ ä¸Štry catchï¼Œä»¥å…å½±å“æ­£å¸¸é”™è¯¯æ—¥å¿—çš„è¾“å‡º
+* (01/26)runtestæ–‡ä»¶é‡Œçš„jsonçŽ°åœ¨å¯ä»¥æ”¯æŒä¼ é€’æ•°ç»„å’Œç»“æž„ä½“å‚æ•°ï¼›å¦‚æžœconfig.xmlé‡Œé…ç½®äº†  <TestServerAddr>host:port</TestServerAddr>, åˆ™ä¹Ÿå¯ä»¥ç”¨runtestå·¥å…·å°†è¯·æ±‚å‘ç»™è¿œç¨‹æœåŠ¡å™¨ã€‚
+* (01/26)å¢žåŠ DumpBeforeCloseé…ç½®å‚æ•°ï¼Œåœ¨å…³é—­ç³»ç»Ÿå‰å…ˆåšä¸€æ¬¡dumpï¼Œä¾¿äºŽæœåŠ¡ç«¯å¼‚å¸¸æ—¶åˆ†æžå†…å­˜æ•°æ®å †ç§¯é—®é¢˜ï¼›é»˜è®¤ä¸ºtrue
+* (01/21)çº¿ç¨‹æ± çš„é˜Ÿåˆ—å¤§å°ç»Ÿä¸€ä»Ž100000ä¿®æ”¹ä¸º20000
+* (01/20)jvmdbbroker.coreåŒ…ä¸­å¢žåŠ JsonCodecç±»ç”¨äºŽjsonçš„è½¬æ¢æ“ä½œ
+    å¸¸ç”¨æ–¹æ³•ï¼š
+        def parseSimpleJson(s:String):HashMapStringAny // è§£æžæ— åµŒå¥—çš„jsonä¸² 
+        def parseJson(s:String):Any // è§£æžåµŒå¥—jsonä¸²ï¼Œæ ¹æ®é¡¶å±‚ç±»åž‹å¯èƒ½æ˜¯HashMapStringAnyæˆ–ArrayBufferAnyï¼Œéœ€è‡ªå·±è½¬æ¢ç±»åž‹
+        def parseObject(s:String):HashMapStringAny // è§£æžåµŒå¥—å¯¹è±¡
+        def parseArray(s:String):ArrayBufferAny // è§£æžåµŒå¥—æ•°ç»„
+        def mkString(m:HashMapStringAny): String // mapè½¬æ¢æˆjsonä¸²
+        def mkString(a:ArrayBufferInt): String // arrayè½¬æ¢æˆjsonä¸²
+        def mkString(a:ArrayBufferString): String // arrayè½¬æ¢æˆjsonä¸²
+        def mkString(a:ArrayBufferMap): String // arrayè½¬æ¢æˆjsonä¸²
+        def mkString(a:ArrayBufferAny): String // arrayè½¬æ¢æˆjsonä¸²
+* (01/20)æµç¨‹ä¸­å¯ä½¿ç”¨logVar(key,value)å°†å˜é‡åŠ å…¥å¼‚æ­¥æ—¥å¿—,æ­¤å€¼ä¹Ÿä¼šç”±AsyncLogDispatchè½¬å‘ç»™æŽ¥æ”¶æ–¹ï¼›
+* (01/20)trigger_config.xmlå¢žåŠ æ—¥å¿—ç´¢å¼•å­—æ®µçš„é…ç½®ï¼Œå’Œc++ç‰ˆæœ¬é…ç½®ä¸åŒï¼Œä½¿ç”¨ index="a,b,c" å±žæ€§é…ç½®ï¼›ç´¢å¼•å­—æ®µå¯ä»¥ä¸ºè¯·æ±‚/å“åº”/æµç¨‹å˜é‡
+    é»˜è®¤æŒ‰æœåŠ¡æè¿°æ–‡ä»¶è¾“å‡ºæ‰€æœ‰è¯·æ±‚ï¼Œå“åº”ï¼Œæµç¨‹å˜é‡ï¼›å¦‚é…ç½®äº†trigger_config.xmlåˆ™æŒ‰é…ç½®è¾“å‡ºï¼Œitemå­èŠ‚ç‚¹request,responseå¯ä¸é…ç½®ï¼Œåˆ™æŒ‰æœåŠ¡æè¿°æ–‡ä»¶è¾“å‡º
+    å½“éœ€è¦é…ç½®ç´¢å¼•å­—æ®µæ—¶ï¼Œå¿…é¡»ä½¿ç”¨trigger_config.xmlï¼Œä½†å¯ç®€åŒ–æˆå¦‚ä¸‹é…ç½®æ–¹å¼:
+    <item serviceid="999" msgid="27" index="b,nn"/> å€¼é…ç½®ç´¢å¼•å­—æ®µï¼Œä¸é…ç½®å…·ä½“å‚æ•°
+* (01/20)å¢žåŠ æ—¥å¿—è½¬å‘åŠŸèƒ½ï¼Œå¯¹åº”é…ç½®èŠ‚ç‚¹:
     <AsyncLogDispatch defaultTarget="999.28">
             <Item serviceId="999" msgId="27" target="999.28"/>
     </AsyncLogDispatch>
-    ÆäÖÐmsgId¿ÉÓÃ*´úÌæÆ¥ÅäËùÓÐÏûÏ¢; target¿É²»ÅäÖÃ£¬ÔòÈ¡defaultTargetÄ¬ÈÏÖµ
-    ¿É×ª·¢¸ø±¾µØ·þÎñ»òÔ¶³Ì·þÎñ£»Îª±ÜÃâÏûÏ¢¶ªÊ§£¬¿ÉÔÚ·þÎñÃèÊöÎÄ¼þ½«ÏûÏ¢ÉèÎª±Ø´ïÏûÏ¢, isAck="true"
-    Ä¿±êÏûÏ¢µÄ·þÎñÃèÊöÎÄ¼þÒªÇó£º
-        serviceId ·þÎñºÅ
-        msgId ÏûÏ¢ºÅ
-        kvarray string array, ÇëÇó£¬ÏìÓ¦£¬Á÷³Ì±äÁ¿
-* (01/19)ÐÞ¸ÄÒì²½ÈÕÖ¾ÖÐSimpleDateFormat¶ÔÏóÔÚ¶àÏß³Ì·ÃÎÊÊ±format¿ÉÄÜ³ö´íµÄÎÊÌâ
-* (01/11)Æô¶¯Ê±¼ì²é·þÎñÃèÊöÎÄ¼þÖÐÊÇ·ñ´æÔÚÒ»¸öcode¶ÔÓ¦¶à¸öÊý×éÀàÐÍµÄ¶¨Òå
-* (01/11)invoke·½·¨¿ÉÍ¨¹ý´«µÝhead.encoding²ÎÊýÖ¸¶¨×Ö·û¼¯
-* (11/24)Òì²½ÈÕÖ¾·þÎñ ÐÞ¸´¶Ô´íÎóÂëÎªÕýÊýµÄÅÐ¶¨ÎªÇëÇóÊ§°Ü¶ø²»ÊÇ³É¹¦
-* (11/25)Òì²½ÈÕÖ¾·þÎñ ÐÞ¸´AsyncLogArrayÅäÖÃ²ÎÊý¶Ôdb·µ»Ø½á¹ûÎª×Ö·û´®/intÊý×é²»Æð×÷ÓÃµÄbug
+    å…¶ä¸­msgIdå¯ç”¨*ä»£æ›¿åŒ¹é…æ‰€æœ‰æ¶ˆæ¯; targetå¯ä¸é…ç½®ï¼Œåˆ™å–defaultTargeté»˜è®¤å€¼
+    å¯è½¬å‘ç»™æœ¬åœ°æœåŠ¡æˆ–è¿œç¨‹æœåŠ¡ï¼›ä¸ºé¿å…æ¶ˆæ¯ä¸¢å¤±ï¼Œå¯åœ¨æœåŠ¡æè¿°æ–‡ä»¶å°†æ¶ˆæ¯è®¾ä¸ºå¿…è¾¾æ¶ˆæ¯, isAck="true"
+    ç›®æ ‡æ¶ˆæ¯çš„æœåŠ¡æè¿°æ–‡ä»¶è¦æ±‚ï¼š
+        serviceId æœåŠ¡å·
+        msgId æ¶ˆæ¯å·
+        kvarray string array, è¯·æ±‚ï¼Œå“åº”ï¼Œæµç¨‹å˜é‡
+* (01/19)ä¿®æ”¹å¼‚æ­¥æ—¥å¿—ä¸­SimpleDateFormatå¯¹è±¡åœ¨å¤šçº¿ç¨‹è®¿é—®æ—¶formatå¯èƒ½å‡ºé”™çš„é—®é¢˜
+* (01/11)å¯åŠ¨æ—¶æ£€æŸ¥æœåŠ¡æè¿°æ–‡ä»¶ä¸­æ˜¯å¦å­˜åœ¨ä¸€ä¸ªcodeå¯¹åº”å¤šä¸ªæ•°ç»„ç±»åž‹çš„å®šä¹‰
+* (01/11)invokeæ–¹æ³•å¯é€šè¿‡ä¼ é€’head.encodingå‚æ•°æŒ‡å®šå­—ç¬¦é›†
+* (11/24)å¼‚æ­¥æ—¥å¿—æœåŠ¡ ä¿®å¤å¯¹é”™è¯¯ç ä¸ºæ­£æ•°çš„åˆ¤å®šä¸ºè¯·æ±‚å¤±è´¥è€Œä¸æ˜¯æˆåŠŸ
+* (11/25)å¼‚æ­¥æ—¥å¿—æœåŠ¡ ä¿®å¤AsyncLogArrayé…ç½®å‚æ•°å¯¹dbè¿”å›žç»“æžœä¸ºå­—ç¬¦ä¸²/intæ•°ç»„ä¸èµ·ä½œç”¨çš„bug
 
 1.0.8 (20141121)
 ================
 
-* Òì²½ÈÕÖ¾·þÎñÔö¼ÓAsyncLogPasswordFields²ÎÊý£¬¿É¿ØÖÆÈÕÖ¾ÖÐÊÇ·ñ´òÓ¡ÃÜÂë 
-* ÐÞ¸Ä½á¹¹ÌåÊý×éÎ´°´Ä¿±ê·þÎñÃèÊöÎÄ¼þ×ö±à½âÂëµ¼ÖÂmapÀàÐÍ²»ÕýÈ·£¬²»»áÓ°ÏìÁ÷³Ì£¬µ«Èç¹ûÒª¸ù¾Ý¸ÃmapÉú³Éjson£¬jsonµÄÀàÐÍ²»ÕýÈ·
-* ²»Í¬×ÓÄ¿Â¼ÏÂÎÄ¼þÃû²»ÔÊÐíÖØ¸´£¬ÐÞ¸ÄÃ»ÓÐÕýÈ·¼ì³öµÄBUG
-* ÐÞ¸ÄºÍc++ bpe²»¼æÈÝµÄµØ·½£ºc++°æ±¾ÒªÇóÊý×éÀàÐÍtlv±àÂëºó±ØÐëÁ¬Ðø£¬scala°æ±¾ÎÞ´ËÒªÇó£¬ÒÑ¸ÄÎª¼æÈÝ
-* ÐÞ¸ÄÒì²½ÈÕÖ¾Èç¹û·þÎñÃèÊö²»´æÔÚ»á±¨Òì³£µÄbug 
-* É¾³ýÒì²½ÈÕÖ¾µÄÄÚÈÝÖÐ³öÏÖµÄ»Ø³µ»»ÐÐ·ûÒÔ±ÜÃâÒ»ÐÐµÄÈÕÖ¾²»ÍêÕû
-* ÐÞ¸ÄÁËÒì²½ÈÕÖ¾Ïß³Ì³ØµÄexecute(runnable)Î´catchµÄÎÊÌâ£¬Èç¹û´ÅÅÌ¹ÊÕÏ»ò¿Õ¼äÂú¿ÉÄÜµ¼ÖÂrejectÒì³£½ø¶øµ¼ÖÂÏß³Ì±»É±µôºó²»¶Ï´´½¨Ïß³Ì£¬¼ì²éËùÓÐÀàËÆµØ·½¼ÓÉÏcatch 
+* å¼‚æ­¥æ—¥å¿—æœåŠ¡å¢žåŠ AsyncLogPasswordFieldså‚æ•°ï¼Œå¯æŽ§åˆ¶æ—¥å¿—ä¸­æ˜¯å¦æ‰“å°å¯†ç  
+* ä¿®æ”¹ç»“æž„ä½“æ•°ç»„æœªæŒ‰ç›®æ ‡æœåŠ¡æè¿°æ–‡ä»¶åšç¼–è§£ç å¯¼è‡´mapç±»åž‹ä¸æ­£ç¡®ï¼Œä¸ä¼šå½±å“æµç¨‹ï¼Œä½†å¦‚æžœè¦æ ¹æ®è¯¥mapç”Ÿæˆjsonï¼Œjsonçš„ç±»åž‹ä¸æ­£ç¡®
+* ä¸åŒå­ç›®å½•ä¸‹æ–‡ä»¶åä¸å…è®¸é‡å¤ï¼Œä¿®æ”¹æ²¡æœ‰æ­£ç¡®æ£€å‡ºçš„BUG
+* ä¿®æ”¹å’Œc++ bpeä¸å…¼å®¹çš„åœ°æ–¹ï¼šc++ç‰ˆæœ¬è¦æ±‚æ•°ç»„ç±»åž‹tlvç¼–ç åŽå¿…é¡»è¿žç»­ï¼Œscalaç‰ˆæœ¬æ— æ­¤è¦æ±‚ï¼Œå·²æ”¹ä¸ºå…¼å®¹
+* ä¿®æ”¹å¼‚æ­¥æ—¥å¿—å¦‚æžœæœåŠ¡æè¿°ä¸å­˜åœ¨ä¼šæŠ¥å¼‚å¸¸çš„bug 
+* åˆ é™¤å¼‚æ­¥æ—¥å¿—çš„å†…å®¹ä¸­å‡ºçŽ°çš„å›žè½¦æ¢è¡Œç¬¦ä»¥é¿å…ä¸€è¡Œçš„æ—¥å¿—ä¸å®Œæ•´
+* ä¿®æ”¹äº†å¼‚æ­¥æ—¥å¿—çº¿ç¨‹æ± çš„execute(runnable)æœªcatchçš„é—®é¢˜ï¼Œå¦‚æžœç£ç›˜æ•…éšœæˆ–ç©ºé—´æ»¡å¯èƒ½å¯¼è‡´rejectå¼‚å¸¸è¿›è€Œå¯¼è‡´çº¿ç¨‹è¢«æ€æŽ‰åŽä¸æ–­åˆ›å»ºçº¿ç¨‹ï¼Œæ£€æŸ¥æ‰€æœ‰ç±»ä¼¼åœ°æ–¹åŠ ä¸Šcatch 
 
 1.0.7 (20140904)
 ================
 
-* ÐÞ¸Äsoc,sos£¬Ö§³Ö·´Ïòµ÷ÓÃ(SOSµ÷ÓÃSOC)£¬¿ÉÒÔÔÚÁ÷³ÌÖÐµ÷ÓÃ¿Í»§¶ËµÄ½Ó¿Ú£¬±ÈÈçÍÆËÍ¸ø3ºÅ·þÎñ»òÆäËü·þÎñ
-* SOSµ÷ÓÃSOCÖ§³ÖÓÐ×´Ì¬ºÍÎÞ×´Ì¬µÄ¿Í»§¶Ë, ¶ÔÎÞ×´Ì¬¿Í»§¶Ë£¬¿ÉÅäÖÃÔÊÐíµÄIP
-* Ôö¼ÓreverseServiceIdsÅäÖÃ·´Ïòµ÷ÓÃµÄ·þÎñºÅ
-* Ôö¼ÓServerSosÅäÖÃ½Úµã£¬Ìá¹©¸ü¶àÅäÖÃ²ÎÊý
-* ÐÞ¸ÄinvokeWithToAddr½Ó¿Ú²»Ö§³ÖÓÃÓòÃûÅäÖÃ·þÎñÆ÷(logsearcherÊ¹ÓÃ)
+* ä¿®æ”¹soc,sosï¼Œæ”¯æŒåå‘è°ƒç”¨(SOSè°ƒç”¨SOC)ï¼Œå¯ä»¥åœ¨æµç¨‹ä¸­è°ƒç”¨å®¢æˆ·ç«¯çš„æŽ¥å£ï¼Œæ¯”å¦‚æŽ¨é€ç»™3å·æœåŠ¡æˆ–å…¶å®ƒæœåŠ¡
+* SOSè°ƒç”¨SOCæ”¯æŒæœ‰çŠ¶æ€å’Œæ— çŠ¶æ€çš„å®¢æˆ·ç«¯, å¯¹æ— çŠ¶æ€å®¢æˆ·ç«¯ï¼Œå¯é…ç½®å…è®¸çš„IP
+* å¢žåŠ reverseServiceIdsé…ç½®åå‘è°ƒç”¨çš„æœåŠ¡å·
+* å¢žåŠ ServerSosé…ç½®èŠ‚ç‚¹ï¼Œæä¾›æ›´å¤šé…ç½®å‚æ•°
+* ä¿®æ”¹invokeWithToAddræŽ¥å£ä¸æ”¯æŒç”¨åŸŸåé…ç½®æœåŠ¡å™¨(logsearcherä½¿ç”¨)
 
-* struct ÀïstringÈç¹ûlen²»ÊÇ4µÄÕûÊý±¶ÓÐbug£¬±àÂëÊ±Î´¶ÔÆë£¬»áµ¼ÖÂ½âÂë´íÎó
+* struct é‡Œstringå¦‚æžœlenä¸æ˜¯4çš„æ•´æ•°å€æœ‰bugï¼Œç¼–ç æ—¶æœªå¯¹é½ï¼Œä¼šå¯¼è‡´è§£ç é”™è¯¯
 
-    !!! ×¢Òâ£¬ÀÏ°æ±¾ÈôÓÐ½á¹¹Ìå¶¨Òå£¬Ðè¼ì²éÏÂstring lenÊÇ·ñÎª4µÄÕûÊý±¶
+    !!! æ³¨æ„ï¼Œè€ç‰ˆæœ¬è‹¥æœ‰ç»“æž„ä½“å®šä¹‰ï¼Œéœ€æ£€æŸ¥ä¸‹string lenæ˜¯å¦ä¸º4çš„æ•´æ•°å€
 
-* struct ±àÂëÊ±´«ÈëµÄmapÈç¹ûÓÐkeyµ«valueÎªnull»á±¨Òì³££¬µ÷ÕûÎª±àÂëÎª¿Õ×Ö·û´®
-* string array±àÂëÊ±£¬Èç¹ûÊý×éÖÐÓÐnullÖµ£¬±àÂëÊ±»á±»ºöÂÔ£¬¸ÄÎª±àÂëÎª¿Õ×Ö·û´®
-* struct ÀïÖ§³Ö systemstring£¬¿É²»ÓÃÖ¸¶¨len
-* Request¶ÔÏóÔö¼ÓclientIp·µ»Ø¿Í»§¶ËIP, remoteIp·µ»Ø¶Ô¶ËIP, remoteAddr·µ»Ø¶Ô¶ËIP:PORT
-* À©Õ¹°üÍ·È¡×Ö¶Î´¦Àí, È¡µÚÒ»¸ö¶ø²»ÊÇ×îºóÒ»¸ö
-* Request¶ÔÏóÔö¼Ói(key,defaultValue)·½·¨£¬ÓÃÓÚÈ¡ÕûÊý
+* struct ç¼–ç æ—¶ä¼ å…¥çš„mapå¦‚æžœæœ‰keyä½†valueä¸ºnullä¼šæŠ¥å¼‚å¸¸ï¼Œè°ƒæ•´ä¸ºç¼–ç ä¸ºç©ºå­—ç¬¦ä¸²
+* string arrayç¼–ç æ—¶ï¼Œå¦‚æžœæ•°ç»„ä¸­æœ‰nullå€¼ï¼Œç¼–ç æ—¶ä¼šè¢«å¿½ç•¥ï¼Œæ”¹ä¸ºç¼–ç ä¸ºç©ºå­—ç¬¦ä¸²
+* struct é‡Œæ”¯æŒ systemstringï¼Œå¯ä¸ç”¨æŒ‡å®šlen
+* Requestå¯¹è±¡å¢žåŠ clientIpè¿”å›žå®¢æˆ·ç«¯IP, remoteIpè¿”å›žå¯¹ç«¯IP, remoteAddrè¿”å›žå¯¹ç«¯IP:PORT
+* æ‰©å±•åŒ…å¤´å–å­—æ®µå¤„ç†, å–ç¬¬ä¸€ä¸ªè€Œä¸æ˜¯æœ€åŽä¸€ä¸ª
+* Requestå¯¹è±¡å¢žåŠ i(key,defaultValue)æ–¹æ³•ï¼Œç”¨äºŽå–æ•´æ•°
 
-* AsyncLog×é¼þÔö¼ÓÅäÖÃÏî<AsyncLogArray>1</AsyncLogArray>,ÓÃÓÚ¿ØÖÆ¶ÔÊý×éÀàÐÍÈÕÖ¾´òÓ¡Ç°¼¸ÌõÊý¾Ý£¬Ä¬ÈÏÎª1 
+* AsyncLogç»„ä»¶å¢žåŠ é…ç½®é¡¹<AsyncLogArray>1</AsyncLogArray>,ç”¨äºŽæŽ§åˆ¶å¯¹æ•°ç»„ç±»åž‹æ—¥å¿—æ‰“å°å‰å‡ æ¡æ•°æ®ï¼Œé»˜è®¤ä¸º1 
 
 1.0.6 (20140805)
 ================
 
-* tlv ½âÂë¶Ôsession·þÎñ8×Ö½Ú¶ÔÆëÊ±µÄÌî³äµÄ×Ö½Ú×öÌØÊâ´¦Àí£¬²»´ò´íÎóÈÕÖ¾
+* tlv è§£ç å¯¹sessionæœåŠ¡8å­—èŠ‚å¯¹é½æ—¶çš„å¡«å……çš„å­—èŠ‚åšç‰¹æ®Šå¤„ç†ï¼Œä¸æ‰“é”™è¯¯æ—¥å¿—
 
 1.0.5 (20140404)
 ================
 
-* Á÷³ÌFlow¶ÔÏóÖÐÐÂÔöinvokeMulti·½·¨£¬½ÓÊÕArrayBuffer[InvokeInfo]²ÎÊý£¬ÄÚ²¿¾ù¸ÄÎªµ÷ÓÃ´Ë·½·¨£» Ô­À´µÄinvokeÊÇÓÃList[InvokeInfo]
-* soc×é¼þÔö¼ÓÁËÐÂ¹¦ÄÜ£¬ÕâÐ©ÐÂÔö¹¦ÄÜ¾ùÍ¨¹ýÐÂÔöµÄ¿ª¹ØÀ´¿ªÆô£¬ÕâÐ©ÐÂÔöµÄ¹¦ÄÜÄ¿Ç°½öÔÚÁÄÌìÑ¹Á¦²âÊÔ¿Í»§¶Ë³¡¾°ÏÂÓÃµ½
-		waitForAllConnected: ÊÇ·ñµÈ´ýËùÓÐÁ¬½ÓÍê³ÉÔÙ¼ÌÐøÆô¶¯
-		waitForAllConnectedTimeout: waitForAllConnected¿ª¹Ø¶ÔÓ¦µÄÊ±¼ä,ºÁÃë
-		connectOneByOne: ÊÇ·ñÒ»¸öÒ»¸ö°´Ë³ÐòÁ¬½Ó£¬¶ø²»ÊÇ²¢·¢Á¬½Ó
-		reuseAddress: ÊÇ·ñÖØÓÃµØÖ·
-		startPort: Ê¹ÓÃstartPort¿ªÊ¼µÄ¶Ë¿Ú£¬Ã¿ÓÃÍêÒ»¸öµÝÔöÒ»¸ö¶Ë¿Ú£¬Èç±»Õ¼ÓÃ£¬ÔòÈ¡ÏÂÒ»¸ö
-* core°üÀïÃærequest¶ÔÏóÐÂÔötoAddrÊôÐÔ£¬Á÷³ÌFLow¶ÔÏóÔö¼ÓÒ»¸öinvokeWithToAddr·½·¨£¬ÓÃÀ´Ñ¡ÔñÏàÍ¬·þÎñºÅµÄÖ¸¶¨µÄ·þÎñÆ÷(½öÊÊÓÃÓÚÍ¬Ò»·þÎñºÅÌá¹©²»Í¬·þÎñ£¬Ä¿Ç°½öÓÃÔÚsearch engineÉÏ)
-* ÐÞ¸Ätlv½âÂëÊ± short -> int ×ª»»bug (µ¥¸öfield³¬¹ýsigned short»áµ¼ÖÂ½âÎö´íÎó)
+* æµç¨‹Flowå¯¹è±¡ä¸­æ–°å¢žinvokeMultiæ–¹æ³•ï¼ŒæŽ¥æ”¶ArrayBuffer[InvokeInfo]å‚æ•°ï¼Œå†…éƒ¨å‡æ”¹ä¸ºè°ƒç”¨æ­¤æ–¹æ³•ï¼› åŽŸæ¥çš„invokeæ˜¯ç”¨List[InvokeInfo]
+* socç»„ä»¶å¢žåŠ äº†æ–°åŠŸèƒ½ï¼Œè¿™äº›æ–°å¢žåŠŸèƒ½å‡é€šè¿‡æ–°å¢žçš„å¼€å…³æ¥å¼€å¯ï¼Œè¿™äº›æ–°å¢žçš„åŠŸèƒ½ç›®å‰ä»…åœ¨èŠå¤©åŽ‹åŠ›æµ‹è¯•å®¢æˆ·ç«¯åœºæ™¯ä¸‹ç”¨åˆ°
+		waitForAllConnected: æ˜¯å¦ç­‰å¾…æ‰€æœ‰è¿žæŽ¥å®Œæˆå†ç»§ç»­å¯åŠ¨
+		waitForAllConnectedTimeout: waitForAllConnectedå¼€å…³å¯¹åº”çš„æ—¶é—´,æ¯«ç§’
+		connectOneByOne: æ˜¯å¦ä¸€ä¸ªä¸€ä¸ªæŒ‰é¡ºåºè¿žæŽ¥ï¼Œè€Œä¸æ˜¯å¹¶å‘è¿žæŽ¥
+		reuseAddress: æ˜¯å¦é‡ç”¨åœ°å€
+		startPort: ä½¿ç”¨startPortå¼€å§‹çš„ç«¯å£ï¼Œæ¯ç”¨å®Œä¸€ä¸ªé€’å¢žä¸€ä¸ªç«¯å£ï¼Œå¦‚è¢«å ç”¨ï¼Œåˆ™å–ä¸‹ä¸€ä¸ª
+* coreåŒ…é‡Œé¢requestå¯¹è±¡æ–°å¢žtoAddrå±žæ€§ï¼Œæµç¨‹FLowå¯¹è±¡å¢žåŠ ä¸€ä¸ªinvokeWithToAddræ–¹æ³•ï¼Œç”¨æ¥é€‰æ‹©ç›¸åŒæœåŠ¡å·çš„æŒ‡å®šçš„æœåŠ¡å™¨(ä»…é€‚ç”¨äºŽåŒä¸€æœåŠ¡å·æä¾›ä¸åŒæœåŠ¡ï¼Œç›®å‰ä»…ç”¨åœ¨search engineä¸Š)
+* ä¿®æ”¹tlvè§£ç æ—¶ short -> int è½¬æ¢bug (å•ä¸ªfieldè¶…è¿‡signed shortä¼šå¯¼è‡´è§£æžé”™è¯¯)
 
 1.0.4 (20140303)
 ================
 
-* soc×é¼þÔö¼ÓÁËÐÂ¹¦ÄÜ£¬¾ùÍ¨¹ýÐÂÔöµÄ¿ª¹ØÀ´¿ªÆô£¬ÕâÐ©ÐÂÔöµÄ¹¦ÄÜ½öÓÃÓÚÁÄÌìÑ¹Á¦²âÊÔ¿Í»§¶Ë
-		1) Ö§³Ö¶à¸ösoc¹²ÏíÏß³Ì³Ø×ÊÔ´£¬timerµÈ
-		2) socÖ§³Ö¶ÔÊý¾Ý°ü×öÕûÌå¼ÓÃÜ
-		3) socÖ§³Ö¶ÔÃ¿¸öÁ¬½Ó½øÐÐÎÕÊÖ£¬Ã¿¸öÁ¬½ÓÊ¹ÓÃ²»Í¬µÄ¼ÓÃÜÃØÔ¿
+* socç»„ä»¶å¢žåŠ äº†æ–°åŠŸèƒ½ï¼Œå‡é€šè¿‡æ–°å¢žçš„å¼€å…³æ¥å¼€å¯ï¼Œè¿™äº›æ–°å¢žçš„åŠŸèƒ½ä»…ç”¨äºŽèŠå¤©åŽ‹åŠ›æµ‹è¯•å®¢æˆ·ç«¯
+		1) æ”¯æŒå¤šä¸ªsocå…±äº«çº¿ç¨‹æ± èµ„æºï¼Œtimerç­‰
+		2) socæ”¯æŒå¯¹æ•°æ®åŒ…åšæ•´ä½“åŠ å¯†
+		3) socæ”¯æŒå¯¹æ¯ä¸ªè¿žæŽ¥è¿›è¡Œæ¡æ‰‹ï¼Œæ¯ä¸ªè¿žæŽ¥ä½¿ç”¨ä¸åŒçš„åŠ å¯†ç§˜é’¥
 
 1.0.3 (20140122)
 ================
 
-* Á÷³ÌÒì³£Ê±Êä³öÍêÕûµÄÕ»ÐÅÏ¢£¬±ãÓÚ¶¨Î»ÎÊÌâ
-* Ôö¼ÓÅäÖÃ²ÎÊýAsyncLogWithFieldName£¬¿ØÖÆÊäÈëÊä³ö²ÎÊýÈÕÖ¾ÊÇ·ñ¼Ó²ÎÊýÃûÇ°×º
+* æµç¨‹å¼‚å¸¸æ—¶è¾“å‡ºå®Œæ•´çš„æ ˆä¿¡æ¯ï¼Œä¾¿äºŽå®šä½é—®é¢˜
+* å¢žåŠ é…ç½®å‚æ•°AsyncLogWithFieldNameï¼ŒæŽ§åˆ¶è¾“å…¥è¾“å‡ºå‚æ•°æ—¥å¿—æ˜¯å¦åŠ å‚æ•°åå‰ç¼€
 
 1.0.2 (20131212)
 ================
 
-* ¼à¿ØÊý¾ÝÉÏ±¨¹¦ÄÜ
-* ½«plugin/http/nettyhttpclient¸Äµ½core°üÏÂ
+* ç›‘æŽ§æ•°æ®ä¸ŠæŠ¥åŠŸèƒ½
+* å°†plugin/http/nettyhttpclientæ”¹åˆ°coreåŒ…ä¸‹
 
 1.0.1 (20131210)
 ================
 
-* ¼æÈÝdbbroker¹¦ÄÜ£º·þÎñÃèÊöÎÄ¼þÖÐµÄ type µÄÃû³Æ²»Çø·Ö´óÐ¡Ð´
-* ¼æÈÝdbbroker¹¦ÄÜ£ºavenue_confÖ§³ÖÒ»¼¶×ÓÄ¿Â¼£¬µ«ÊÇÒªÇó×ÓÄ¿Â¼ÖÐµÄÎÄ¼þÃû²»ÄÜºÍÉÏ²ãÄ¿Â¼ÎÄ¼þÃûÖØ¸´
-* ¼æÈÝdbbroker¹¦ÄÜ£ºcompose_confÖ§³ÖÒ»¼¶×ÓÄ¿Â¼£¬µ«ÊÇÒªÇó×ÓÄ¿Â¼ÖÐµÄÎÄ¼þÃû²»ÄÜºÍÉÏ²ãÄ¿Â¼ÎÄ¼þÃûÖØ¸´
-* Á÷³ÌÒýÇæÖÐÔö¼ÓautoReply¹¦ÄÜ: Èç¹ûÁ÷³Ì½áÊø¶øÃ»ÓÐreply¹ý£¬»á×Ô¶¯»Ø¸´×îºóÒ»´Îerrorcode
-* ±Ø´ïÏûÏ¢·þÎñÃèÊöÎÄ¼þÀïµÄisack, isAck´óÐ¡Ð´¼æÈÝ
+* å…¼å®¹dbbrokeråŠŸèƒ½ï¼šæœåŠ¡æè¿°æ–‡ä»¶ä¸­çš„ type çš„åç§°ä¸åŒºåˆ†å¤§å°å†™
+* å…¼å®¹dbbrokeråŠŸèƒ½ï¼šavenue_confæ”¯æŒä¸€çº§å­ç›®å½•ï¼Œä½†æ˜¯è¦æ±‚å­ç›®å½•ä¸­çš„æ–‡ä»¶åä¸èƒ½å’Œä¸Šå±‚ç›®å½•æ–‡ä»¶åé‡å¤
+* å…¼å®¹dbbrokeråŠŸèƒ½ï¼šcompose_confæ”¯æŒä¸€çº§å­ç›®å½•ï¼Œä½†æ˜¯è¦æ±‚å­ç›®å½•ä¸­çš„æ–‡ä»¶åä¸èƒ½å’Œä¸Šå±‚ç›®å½•æ–‡ä»¶åé‡å¤
+* æµç¨‹å¼•æ“Žä¸­å¢žåŠ autoReplyåŠŸèƒ½: å¦‚æžœæµç¨‹ç»“æŸè€Œæ²¡æœ‰replyè¿‡ï¼Œä¼šè‡ªåŠ¨å›žå¤æœ€åŽä¸€æ¬¡errorcode
+* å¿…è¾¾æ¶ˆæ¯æœåŠ¡æè¿°æ–‡ä»¶é‡Œçš„isack, isAckå¤§å°å†™å…¼å®¹
 
 1.0.0 (20131120)
 ================
 
-* ³õÊ¼°æ±¾
-* avenueÐ­ÒéÕ»Ö§³Ö: codec, sos, soc
-* flowÒýÇæ: router, flow
-* ²å¼þÌåÏµ: router
-* Òì²½ÈÕÖ¾: aysnclog
-* flow±àÒë¹¦ÄÜ: compiler
-* ±Ø´ïÏûÏ¢Ö§³Ö£ºmustreach
-* ¹ÜÀí¹¦ÄÜ: ×Ô¼ì,Ë¢ÐÂ,DUMP
+* åˆå§‹ç‰ˆæœ¬
+* avenueåè®®æ ˆæ”¯æŒ: codec, sos, soc
+* flowå¼•æ“Ž: router, flow
+* æ’ä»¶ä½“ç³»: router
+* å¼‚æ­¥æ—¥å¿—: aysnclog
+* flowç¼–è¯‘åŠŸèƒ½: compiler
+* å¿…è¾¾æ¶ˆæ¯æ”¯æŒï¼šmustreach
+* ç®¡ç†åŠŸèƒ½: è‡ªæ£€,åˆ·æ–°,DUMP
