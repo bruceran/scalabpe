@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <service  name="appconfig" id="986" IsTreeStruct ="false">
 	
 	<!-- 小于10000的是key，可以多个，实际key由多个key组成 -->
