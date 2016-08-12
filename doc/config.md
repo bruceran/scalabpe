@@ -484,6 +484,7 @@
 
     服务描述文件：
 
+       参考 avenue_conf/internal/newmemcache_681.xml
        只允许修改服务名和服务号，不允许修改其它内容
 
 [返回](#toc)
@@ -582,6 +583,7 @@
 
     服务描述文件：
 
+       参考 avenue_conf/internal/newredis_680.xml
        只允许修改服务名和服务号，不允许修改其它内容
 
 [返回](#toc)

@@ -244,6 +244,7 @@
 			<field name="key" type="key_type"/>
 			<field name="field" type="field_type"/>
 			<field name="value" type="value_type"/>
+			<field name="expire" type="expire_type" default="-1"/>
 		</requestParameter>
 		<responseParameter>
 			<field name="count" type="count_type"/>
@@ -254,6 +255,7 @@
 			<field name="key" type="key_type"/>
 			<field name="field" type="field_type"/>
 			<field name="value" type="value_type"/>
+			<field name="expire" type="expire_type" default="-1"/>
 		</requestParameter>
 		<responseParameter>
 			<field name="count" type="count_type"/>
@@ -263,6 +265,7 @@
 		<requestParameter>
 			<field name="key" type="key_type"/>
 			<field name="fieldvalues" type="keyvalues_type"/>
+			<field name="expire" type="expire_type" default="-1"/>
 		</requestParameter>
 		<responseParameter>
 		</responseParameter>
@@ -358,6 +361,7 @@
 		<requestParameter>
 			<field name="key" type="key_type"/>
 			<field name="value" type="value_type"/>
+			<field name="expire" type="expire_type" default="-1"/>
 		</requestParameter>
 		<responseParameter>
 			<field name="count" type="count_type"/>
@@ -367,6 +371,7 @@
 		<requestParameter>
 			<field name="key" type="key_type"/>
 			<field name="values" type="values_type"/>
+			<field name="expire" type="expire_type" default="-1"/>
 		</requestParameter>
 		<responseParameter>
 			<field name="count" type="count_type"/>
@@ -432,6 +437,7 @@
 		<requestParameter>
 			<field name="key" type="key_type"/>
 			<field name="value" type="value_type"/>
+			<field name="expire" type="expire_type" default="-1"/>
 		</requestParameter>
 		<responseParameter>
 			<field name="count" type="count_type"/>
@@ -441,6 +447,7 @@
 		<requestParameter>
 			<field name="key" type="key_type"/>
 			<field name="values" type="values_type"/>
+			<field name="expire" type="expire_type" default="-1"/>
 		</requestParameter>
 		<responseParameter>
 			<field name="count" type="count_type"/>
