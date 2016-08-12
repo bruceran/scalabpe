@@ -850,7 +850,7 @@
         如 <message name="queryUserFromSlave" id="15" useSlave="true">
     2) 每个select语句的入参里可以增加一个可选的useSlave入参，若请求里传了值，则入参会覆盖message节点属性useSlave值
         在流程中可以使用useSlave动态的决定访问那个库
-    3) 注意：对mysql设置master/slave模式的情况, 由于master/slave库共用相同的连接池，slave连接故障不应该影响到master, 所以
+    3) 注意：对mysql设置master/slave模式的情况, 由于master/slave库共用相同的线程池，slave连接故障不应该影响到master, 所以
         slave连接串中应设置autoReconnect=false, 这样失败不重试,减少阻塞时间
 
 [返回](#toc)
