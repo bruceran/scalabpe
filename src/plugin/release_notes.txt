@@ -1,6 +1,4 @@
 
-
-
 1.1.2 (20160811)
 ================
 
@@ -11,7 +9,13 @@
     * 配置连接多台服务器时支持3种模式：取余分布，一致性HASH, Master/Slave模式
     * 所有模式都支持mget操作，可以从不同的服务器获取数据并汇总返回
     * config.xml中使用新的配置节点 RedisCfgV2 和 MemCacheCfgV2
-* db插件message节点增加useSlave属性，对查询类语句，使用了useSlave则优先查从库,从库查失败再查主库
+* 对db插件的master/slave模式进行修改
+    修复了一个加载slave连接串的bug: 会加载到master的连接串
+    对select语句的message节点增加useSlave属性，默认总是访问master库，若设置为1，则默认访问slave库，访问失败，再访问master库
+    每个select语句的消息里可以增加一个可选的useSlave入参，若设置了此值，则此值会覆盖message节点属性useSlave值
+    这样，可以配置一个sql语句，在流程中使用useSlave动态的决定访问那个库
+    注意：对mysql设置master/slave模式的情况, 由于master/slave库共用相同的连接池，slave连接故障不应该影响到master, 所以
+    slave连接串中应设置autoReconnect=false, 这样失败不重试,减少阻塞时间
 * netty http代码移回http目录下
 
 1.1.1 (20160719)

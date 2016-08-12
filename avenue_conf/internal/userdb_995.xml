@@ -7,12 +7,14 @@
 	<type name="nickName_type" class="string" code="4"/>
 	<type name="createTime_type" class="string" code="5"/>
 	<type name="updateTime_type" class="string" code="6"/>
+	<type name="useSlave_type" class="string" code="7"/>
 	
 	<message name="queryUser" id="1">
 		<sql><![CDATA[
 			select id, name, nickname, createtime, updatetime from tb_user where id = :userid
 		]]></sql>
 		<requestParameter>
+			<field name="useSlave" type="useSlave_type"/>
 			<field name="userId" type="userId_type"/>
 		</requestParameter>
 		<responseParameter>
@@ -78,5 +80,21 @@
 		</responseParameter>
 	</message>
 	
+	<message name="queryUserFromSlave" id="15" useSlave="true">
+		<sql><![CDATA[
+			select id, name, nickname, createtime, updatetime from tb_user where id = :userid
+		]]></sql>
+		<requestParameter>
+			<field name="useSlave" type="useSlave_type"/>
+			<field name="userId" type="userId_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="rowcount" type="rowcount_type"/>
+			<field name="name" type="name_type"/>
+			<field name="nickName" type="nickName_type"/>
+			<field name="createTime" type="createTime_type"/>
+			<field name="updateTime" type="updateTime_type"/>
+		</responseParameter>
+	</message>
 </service>
 

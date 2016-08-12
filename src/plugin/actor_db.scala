@@ -378,7 +378,7 @@ abstract class BaseDbActor(val router:Router,val cfgNode: Node,val dbMode:Int ) 
             val conns = ( slaveNode \ "@conns" ).text.toInt
 
             var defaultConnStr = ( slaveNode \ "defaultconn" ).text
-            if( defaultConnStr == "" ) defaultConnStr = ( masterNode \ "DefaultConn" ).text
+            if( defaultConnStr == "" ) defaultConnStr = ( slaveNode \ "DefaultConn" ).text
 
             if( defaultConnStr != "" ) {
                 slaveConfig = new DbConfig(conns,defaultConnStr,null)
@@ -680,7 +680,7 @@ class DbClient(
                         useSlaveAttr = "0"
                     }
                     var useSlave = isTrue(useSlaveAttr)
-                    if( useSlave ) println("use slave, msgId="+msgId)
+                    //if( useSlave ) println("use slave, msgId="+msgId)
 
                     var splitTableTypeStr = map.getOrElse("splitTableType","nodefine")
                     if( splitTableTypeStr == "" ) splitTableTypeStr = "nodefine"
@@ -1524,8 +1524,9 @@ class DbClient(
 
                 val (sql,params) = replaceSql(msgDefine.sqls(0),req,splitTableType)
                 val keyTypes = msgDefine.sqls(0).keyTypes
-
-                results = query_db(sql,params,keyTypes,masterList,slaveList,dbIdx,msgDefine.useSlave)
+                var useSlave = msgDefine.useSlave
+                if( req.s("useSlave","") != "" ) { useSlave = isTrue(req.s("useSlave")) }
+                results = query_db(sql,params,keyTypes,masterList,slaveList,dbIdx,useSlave)
 
             case MsgDefine.SQLTYPE_UPDATE =>
 

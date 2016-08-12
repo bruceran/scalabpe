@@ -834,7 +834,7 @@
 
 ## master/slave模式
 
-    master/slave模式: 所有select先查slave,查失败，查master,非select直接用master
+    master/slave模式: 
 
         <DbSosList>
           <ServiceId>45601,...</ServiceId>
@@ -846,7 +846,12 @@
           </SlaveDb>
         </DbSosList>
 
-    此模式未实际运用过，慎用
+    1) 每个select语句的message节点增加useSlave属性，默认总是访问master库，若设置为1，则默认访问slave库，访问失败，再访问master库
+        如 <message name="queryUserFromSlave" id="15" useSlave="true">
+    2) 每个select语句的入参里可以增加一个可选的useSlave入参，若请求里传了值，则入参会覆盖message节点属性useSlave值
+        在流程中可以使用useSlave动态的决定访问那个库
+    3) 注意：对mysql设置master/slave模式的情况, 由于master/slave库共用相同的连接池，slave连接故障不应该影响到master, 所以
+        slave连接串中应设置autoReconnect=false, 这样失败不重试,减少阻塞时间
 
 [返回](#toc)
 

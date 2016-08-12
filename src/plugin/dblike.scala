@@ -335,7 +335,6 @@ class DbLike extends Logging  {
     }
 
     def query_db(sql:String, params:ArrayBufferString, keyTypes:ArrayBuffer[Int], masterList: ArrayBuffer[DataSource], slaveList: ArrayBuffer[DataSource], dbIdx:Int,useSlave:Boolean = false ):DbResults = {
-
         if( useSlave && slaveList != null && slaveList.size > 0 ) {
             var ds = slaveList(dbIdx)
 
