@@ -1,6 +1,6 @@
 @echo off
 set pluginname=hadoop
-set pluginversion=1.0.0
+set pluginversion=1.0.1
 
 mkdir classes\jvmdbbroker\plugin\  2>>nul 1>>nul
 call scalac -deprecation -encoding "UTF-8" -classpath "lib\*;..\..\lib\*;.\*"  -d "./classes"  ./src/*.scala

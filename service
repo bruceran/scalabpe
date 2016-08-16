@@ -37,7 +37,7 @@ start_app()
 		if [ -f dev_mode ]; then
 			echo "---- dev mode, running in console, press CTRL+C to stop ----"
 			mkdir -p temp/classes
-			env JAVA_OPTS="-Xmx256M -Xms128M -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "lib/*:temp/classes:." jvmdbbroker.core.Main
+			env JAVA_OPTS="-Xmx256M -Xms128M -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "lib/*:lib/hadoop/*:temp/classes:." jvmdbbroker.core.Main
 			exit 0
 		fi
 
@@ -55,7 +55,7 @@ start_app()
 
 		echo -n "starting scalabpe"
 
-		env JAVA_OPTS="-server -Xms1024m -Xmx1024m -XX:+UseConcMarkSweepGC -XX:NewSize=256m -XX:MaxNewSize=256m -XX:PermSize=96m -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "lib/*:temp/classes:." jvmdbbroker.core.Main 1>$consolelog 2>&1 &
+		env JAVA_OPTS="-server -Xms1024m -Xmx1024m -XX:+UseConcMarkSweepGC -XX:NewSize=256m -XX:MaxNewSize=256m -XX:PermSize=96m -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "lib/*:lib/hadoop/*:temp/classes:." jvmdbbroker.core.Main 1>$consolelog 2>&1 &
 		parentpid=$!
 
 		echo -n " ."

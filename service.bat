@@ -12,7 +12,7 @@ if "%1"=="runscala" goto runscala
 :run
 set JAVA_OPTS="-Dapplication.name=%APPLICATION_NAME%" 
 mkdir temp\classes 2>>nul >>nul 
-scala -encoding UTF-8 -cp "lib\*;temp\classes;."  jvmdbbroker.core.Main
+scala -encoding UTF-8 -cp "lib\*;lib\hadoop\*;temp\classes;."  jvmdbbroker.core.Main
 goto end
 
 :runtest

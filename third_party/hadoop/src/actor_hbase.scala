@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package jvmdbbroker.plugin.hadoop
 
 import java.util._
 import java.util.concurrent._
@@ -11,6 +11,7 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.hbase._
 import org.apache.hadoop.hbase.client._
 import org.apache.hadoop.hbase.util._
+import org.apache.hadoop.hbase.filter._
 
 import jvmdbbroker.core._
 
@@ -55,7 +56,6 @@ class HbaseActor(val router:Router,val cfgNode: Node)
       pool.prestartAllCoreThreads()
 
       hbase = new HbaseClient(serviceIds,cfgNode,router,this)
-
       log.info("HbaseActor started {}",serviceIds)
     }
 
@@ -133,14 +133,11 @@ object HbaseClient {
     val ACTION_GET = 1
     val ACTION_PUT = 2
     val ACTION_DELETE = 3
+    val ACTION_SCAN = 4
+
+    val ROW_KEY = "rowKey"
 
     val EMPTY_STRINGMAP = new HashMapStringString()
-
-    val ACTION = "action"
-    val TABLE_NAME = "tableName"
-    val COLUMN_FAMILY = "columnFamily"
-    val ROW_KEY = "rowKey"
-    val IS_DYNAMIC = "isDynamic"
 
     val HBASE_ERROR = -10242500
     val HBASE_TIMEOUT = -10242504
@@ -148,25 +145,28 @@ object HbaseClient {
 
     def parseAction(s:String):Int = {
         
-        if( s == null ) return ACTION_UNKNOWN
+        if( s == null || s == "" ) return ACTION_UNKNOWN
 
         s.toLowerCase match {
             case "get" => return ACTION_GET 
             case "put" => return ACTION_PUT
             case "delete" => return ACTION_DELETE
+            case "scan" => return ACTION_SCAN
             case _ => return ACTION_UNKNOWN
         }
     }
 
 }
    
-class HbaseMsg(val serviceId:Int,val msgId:Int,val action:Int,
-        val defaultTable:String, val defaultColumnFamily:String,
-        val columnNames:ArrayBufferString, val defaultValues:ArrayBufferString, val isDynamics:ArrayBuffer[Boolean]){
+class ColumnInfo(val fn:String,val cf:String,val cn:String) {
+    var isDynamic: Boolean = false
+    var compare: String = "="
+}
+
+class HbaseMsg(val serviceId:Int,val msgId:Int,val action:Int, val tableName:String,val columnFamily:String, 
+    val reqInfos:ArrayBuffer[ColumnInfo],val resInfos:ArrayBuffer[ColumnInfo] ) {
     override def toString() = {
-        "serviceId=%d,msgId=%s,action=%d,defaultTable=%s,defaultColumnFamily=%s,columnNames=%s,defaultValues=%s,isDynamics=%s".format(
-            serviceId,msgId,action,defaultTable,defaultColumnFamily,
-            columnNames.mkString(","),defaultValues.mkString(","),isDynamics.mkString(","))
+        "serviceId=%d,msgId=%s,action=%d,tableName=%s".format( serviceId,msgId,action,tableName)
     }
 }
 
@@ -175,7 +175,7 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
 
     val msgMap = HashMap[String,HbaseMsg]()
     var hbaseCfg : Configuration = _
-    var hconn : HConnection = _
+    var hconn : Connection = _
     val lock = new ReentrantLock(false)
 
     init
@@ -186,19 +186,29 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
 
         val serverAddr = (cfgNode \ "ZooKeeperServerAddr").text
         val clientPort = (cfgNode \ "ZooKeeperServerPort").text
-        val connectTimeout = (cfgNode \ "ConnectTimeout").text
-        val timeout = (cfgNode \ "Timeout").text
 
         val config = new Configuration()
         config.set("hbase.zookeeper.quorum", serverAddr)
         config.set("hbase.zookeeper.property.clientPort", clientPort)
-        if( connectTimeout != "" )
-            config.set("ipc.socket.timeout", connectTimeout)
-        if( timeout != "" )
-            config.set("hbase.rpc.timeout", timeout)
+
+        /*
+        val timeout = (cfgNode \ "Timeout").text
+
+        if( timeout != "" ) {
+            config.set("hbase.rpc.timeout", timeout) // 貌似没有用
+            config.set("hbase.client.operation.timeout", timeout) // 貌似没有用
+        }
+        */
+
+        // regionserver连不上改成重试1次就返回结果
+        config.set("hbase.client.retries.number", "1") // 每次重试时间可参考 hbase.client.pause 参数说明 
 
         hbaseCfg = HBaseConfiguration.create(config)
-        hconn = HConnectionManager.createConnection(hbaseCfg)
+
+        log.info("HbaseActor creating connection {}",serviceIds)
+        // 在这一步，zookeeper连不上会一直重试，导致程序无法启动
+        hconn = ConnectionFactory.createConnection(hbaseCfg)
+        log.info("HbaseActor connection connected {}",serviceIds)
 
         log.info("hbase client started")
     }
@@ -216,12 +226,12 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
         log.info("hbase client stopped")
     }
 
-    def getTable(tableName:String):HTableInterface = {
-        val table = hconn.getTable(Bytes.toBytes(tableName))
+    def getTable(tableName:String):Table = {
+        val table = hconn.getTable(TableName.valueOf(tableName))
         table    
     }
 
-    def closeTable(table:HTableInterface) {
+    def closeTable(table:Table) {
 
         if( table == null ) return
 
@@ -230,6 +240,18 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
         } catch {
             case e:Throwable =>
                 log.error("hbase close table error, e="+e.getMessage)
+        }
+    }
+
+    def closeResults(results:ResultScanner) {
+
+        if( results == null ) return
+
+        try {
+            results.close()
+        } catch {
+            case e:Throwable =>
+                log.error("hbase close results error, e="+e.getMessage)
         }
     }
 
@@ -245,65 +267,86 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
 
             for( (msgId,map) <- codec.msgAttributes  ) {
 
-                val action = parseAction( map.getOrElse(ACTION,null) )
+                val action = parseAction( map.getOrElse("action","") )
                 if(action == ACTION_UNKNOWN ) {
-                    throw new RuntimeException(ACTION+" not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
+                    throw new RuntimeException("action not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
                 }
-                
+                val tableName = map.getOrElse("tableName","") 
+                if( tableName == "" ) {
+                    throw new RuntimeException("tableName not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
+                }
+                val columnFamily = map.getOrElse("columnFamily","") 
+                if( action != ACTION_DELETE && columnFamily == "" ) {
+                    throw new RuntimeException("columnFamily not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
+                }
+
                 val reqFields = codec.msgKeyToTypeMapForReq.getOrElse(msgId,EMPTY_STRINGMAP).keys.toList
                 val resFields = codec.msgKeyToTypeMapForRes.getOrElse(msgId,EMPTY_STRINGMAP).keys.toList
 
-                if( !reqFields.contains(TABLE_NAME) ) {
-                    throw new RuntimeException(TABLE_NAME+" not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
-                }
-                if( !reqFields.contains(ROW_KEY) ) {
+                if( action !=  ACTION_SCAN && !reqFields.contains(ROW_KEY) ) {
                     throw new RuntimeException(ROW_KEY+" not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
                 }
 
-                var defaultTable = map.getOrElse("req-"+TABLE_NAME+"-default",null)
-                var defaultColumnFamily = map.getOrElse("req-"+COLUMN_FAMILY+"-default",null)
+                val reqInfos = new ArrayBuffer[ColumnInfo]()
+                val resInfos = new ArrayBuffer[ColumnInfo]()
 
-                val columnNames = ArrayBufferString()
-                val defaultValues = ArrayBufferString()
-                val isDynamics = ArrayBuffer[Boolean]()
-
-                if( action == ACTION_PUT ) {
-                    if( !reqFields.contains(COLUMN_FAMILY) ) {
-                        throw new RuntimeException(COLUMN_FAMILY+" not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
-                    }
-                    for(f<-reqFields if f != TABLE_NAME if f != COLUMN_FAMILY if f != ROW_KEY ) {
-                      columnNames += f
-                      val defaultValue = map.getOrElse("req-"+f+"-default",null)
-                      defaultValues += defaultValue
-                      val isDynamic = map.getOrElse("req-"+f+"-isDynamic","0").toLowerCase
-                      val b = ( isDynamic == "1" || isDynamic == "t" || isDynamic == "y" || isDynamic == "true" || isDynamic == "yes" )
-                      isDynamics += b
-                    }
-                    if( columnNames.size == 0 ) {
-                        throw new RuntimeException("value not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
-                    }
+                action match {
+                    case ACTION_PUT =>
+                        for(f<-reqFields if f != ROW_KEY ) {
+                          val (cf,cn) = genColumnInfo(columnFamily,f)
+                          val isDynamic = map.getOrElse("req-"+f+"-isDynamic","0").toLowerCase
+                          val b = ( isDynamic == "1" || isDynamic == "t" || isDynamic == "y" || isDynamic == "true" || isDynamic == "yes" )
+                          val ci = new ColumnInfo(f,cf,cn)
+                          ci.isDynamic = b
+                          reqInfos += ci
+                        }
+                        if( reqInfos.size == 0 ) {
+                            throw new RuntimeException("value not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
+                        }
+                    case ACTION_GET =>
+                        for(f<-resFields ) {
+                          val (cf,cn) = genColumnInfo(columnFamily,f)
+                          val ci = new ColumnInfo(f,cf,cn)
+                          resInfos += ci
+                        }
+                        if( resInfos.size == 0 ) {
+                            throw new RuntimeException("value not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
+                        }
+                    case ACTION_SCAN =>
+                        for(f<-resFields ) {
+                          val (cf,cn) = genColumnInfo(columnFamily,f)
+                          val ci = new ColumnInfo(f,cf,cn)
+                          resInfos += ci
+                        }
+                        if( resInfos.size == 0 ) {
+                            throw new RuntimeException("value not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
+                        }
+                    case _ =>
                 }
-                if( action == ACTION_GET ) {
-                    if( !reqFields.contains(COLUMN_FAMILY) ) {
-                        throw new RuntimeException(COLUMN_FAMILY+" not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
-                    }
-                    for(f<-resFields) {
-                      val defaultValue = map.getOrElse("res-"+f+"-default",null)
-                      columnNames += f
-                      defaultValues += defaultValue
-                    }
-                    if( columnNames.size == 0 ) {
-                        throw new RuntimeException("value not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
-                    }
-                }
-                val msg =  new HbaseMsg(serviceId,msgId,action,
-                        defaultTable,defaultColumnFamily,
-                        columnNames, defaultValues,isDynamics)
+                val msg =  new HbaseMsg(serviceId,msgId,action,tableName,columnFamily,reqInfos,resInfos)
                 msgMap.put( key(serviceId,msgId),msg)
 
             }
 
         }
+    }
+
+    def genColumnInfo(defaultColumnFamily:String,fieldName:String):Tuple2[String,String] = {
+        val p = fieldName.indexOf(".")
+        if( p >= 0 ) {
+            val cf = fieldName.substring(0,p)
+            val cn = fieldName.substring(p+1)
+            return ( cf,cn )
+        } else {
+            return ( defaultColumnFamily,fieldName)
+        }
+    }
+
+    def toFilter(columnFamily:String,resInfos:ArrayBuffer[ColumnInfo],filter:String):Filter = {
+        val expr = FilterExprParser.parse(filter)
+        if( expr != null )
+            return expr.eval(columnFamily,resInfos)
+        null
     }
 
     def key(serviceId:Int,msgId:Int):String = serviceId + ":" + msgId
@@ -316,77 +359,40 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
           return
         }
 
-        val tableName = req.s(TABLE_NAME,msg.defaultTable)
-        if( tableName == null ) {
-          reply(req,HBASE_ERROR)
-          return
-        }
-
-        val rowKey = req.s(ROW_KEY)
-        if( rowKey == null ) {
-          reply(req,HBASE_ERROR)
-          return
-        }
-        val columnFamily = req.s(COLUMN_FAMILY,msg.defaultColumnFamily)
-
         msg.action match {
             case ACTION_GET =>
-                if( columnFamily == null ) {
-                  reply(req,HBASE_ERROR)
-                  return
-                }
-                get(req,tableName,rowKey,columnFamily,msg.columnNames,msg.defaultValues)
+                get(msg,req)
+            case ACTION_SCAN =>
+                scan(msg,req)
             case ACTION_PUT =>
-                if( columnFamily == null ) {
-                  reply(req,HBASE_ERROR)
-                  return
-                }
-                put(req,tableName,rowKey,columnFamily,msg.columnNames,msg.defaultValues,msg.isDynamics)
+                put(msg,req)
             case ACTION_DELETE =>
-                delete(req,tableName,rowKey)
+                delete(msg,req)
             case _ =>
                 reply(req,HBASE_ERROR)
         }
     }
 
-    def genColumnNames(defaultColumnFamily:String,columnNames:ArrayBufferString):Tuple2[ArrayBufferString,ArrayBufferString] = {
-
-        val cfs = ArrayBufferString()
-        val fns = ArrayBufferString()
-
-        var i = 0
-        while(i< columnNames.size) {
-            var f = columnNames(i)
-            if( f.indexOf(".") >= 0 ) {
-                val ss = f.split("\\.")
-                cfs += ss(0)
-                fns += ss(1)
-            } else {
-                cfs += defaultColumnFamily
-                fns += f
-            }
-            i+=1    
+    def get(msg:HbaseMsg,req:Request) {
+        val rowKey = req.s(ROW_KEY,"")
+        if( rowKey == "" ) {
+          reply(req,HBASE_ERROR)
+          return
         }
-
-        (cfs,fns)
-    }
-
-    def get(req:Request,tableName:String,rowKey:String,defaultColumnFamily:String,columnNames:ArrayBufferString,defaultValues:ArrayBufferString) {
-
-        val (cfs,fns) = genColumnNames(defaultColumnFamily,columnNames)
-
-        var table:HTableInterface = null
+        
+        var table:Table = null
         var result:Result = null
         try{
 
             val g = new Get(Bytes.toBytes(rowKey))
             var i = 0
-            while(i< cfs.size) {
-                g.addColumn(Bytes.toBytes(cfs(i)),Bytes.toBytes(fns(i)))
+            while(i< msg.resInfos.size) {
+                val ci = msg.resInfos(i)
+                g.addColumn(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn))
                 i += 1    
             }
 
-            table = getTable(tableName)
+            table = getTable(msg.tableName)
             result = table.get(g)
         } catch {
             case e :Throwable =>
@@ -398,35 +404,110 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
 
         val map = new HashMapStringAny()
         var i = 0
-        while(i< cfs.size) {
-            var value =  Bytes.toString(result.getValue(Bytes.toBytes(cfs(i)),Bytes.toBytes(fns(i))))
-            if( value == null ) value = defaultValues(i)
-            map.put(columnNames(i),value)
+        while(i< msg.resInfos.size) {
+            val ci = msg.resInfos(i)
+            var value =  Bytes.toString(result.getValue(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn)))
+            map.put(ci.fn,value)
             i += 1    
         }
 
         reply(req,0,map)
     }
 
-    def put(req:Request,tableName:String,rowKey:String,defaultColumnFamily:String,columnNames:ArrayBufferString,defaultValues:ArrayBufferString,isDynamics:ArrayBuffer[Boolean]) {
-        val (cfs,fns) = genColumnNames(defaultColumnFamily,columnNames)
+    def scan(msg:HbaseMsg,req:Request) {
+        val startRow = req.s("startRow","")
+        val stopRow = req.s("stopRow","")
 
-        var table:HTableInterface = null
+        val maxResultSize = req.i("maxResultSize",10)
+        val caching = req.i("caching",10)
+
+        var table:Table = null
+        var results:ResultScanner = null
+        val map = new HashMapStringAny()
+        
+        try{
+
+            val s = new Scan()
+            if( startRow != "" ) 
+                s.setStartRow(Bytes.toBytes(startRow))
+            if( stopRow != "" ) 
+                s.setStopRow(Bytes.toBytes(stopRow))
+            s.setMaxResultSize(maxResultSize)
+            s.setCaching(caching)
+            var i = 0
+            while(i< msg.resInfos.size) {
+                val ci = msg.resInfos(i)
+                s.addColumn(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn))
+                i += 1    
+            }
+
+            val filter = req.s("filter","")
+            if( filter != "" ) {
+                val f = toFilter(msg.columnFamily,msg.resInfos,filter)
+                if( f != null )
+                    s.setFilter(f)
+            }
+
+            table = getTable(msg.tableName)
+            results = table.getScanner(s)
+
+            i = 0
+            while(i< msg.resInfos.size) {
+                val ci = msg.resInfos(i)
+                map.put(ci.fn,ArrayBufferString())
+                i += 1    
+            }
+            var result = results.next()
+            var cnt = 0
+            while( result != null && cnt < maxResultSize ) {
+                var i = 0
+                while(i< msg.resInfos.size) {
+                    val ci = msg.resInfos(i)
+                    var value =  Bytes.toString(result.getValue(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn)))
+                    val arr = map.ls(ci.fn)
+                    arr += value
+                    i += 1    
+                }
+                cnt += 1
+                if( cnt < maxResultSize )
+                    result = results.next()
+            }
+            
+        } catch {
+            case e :Throwable =>
+                log.error("hbase get error, e="+e.getMessage+",req="+req.toString)
+                throw e
+        } finally {
+            closeResults(results)
+            closeTable(table)
+        }
+        reply(req,0,map)
+    }
+
+    def put(msg:HbaseMsg,req:Request) {
+        val rowKey = req.s(ROW_KEY,"")
+        if( rowKey == "" ) {
+          reply(req,HBASE_ERROR)
+          return
+        }
+
+        var table:Table = null
         try{
 
             val p = new Put(Bytes.toBytes(rowKey))
             var i = 0
-            while(i< cfs.size) {
-                var value = req.s(columnNames(i),defaultValues(i))
-                if( value == null && isDynamics(i) ) {
+            while(i< msg.reqInfos.size) {
+                val ci = msg.reqInfos(i)
+                var value = req.s(ci.fn)
+                if( value == null && ci.isDynamic ) {
                     // ignore dynamic fields
                 } else {
-                    p.add(Bytes.toBytes(cfs(i)),Bytes.toBytes(fns(i)),if( value != null ) Bytes.toBytes(value) else null ) 
+                    p.addColumn(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn),if( value != null ) Bytes.toBytes(value) else null ) 
                 }
                 i += 1    
             }
             
-            table = getTable(tableName)
+            table = getTable(msg.tableName)
             table.put(p)
         } catch {
             case e :Throwable =>
@@ -439,14 +520,18 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
         reply(req,0)
     }
 
-    def delete(req:Request,tableName:String,rowKey:String) {
+    def delete(msg:HbaseMsg,req:Request) {
+        val rowKey = req.s(ROW_KEY,"")
+        if( rowKey == "" ) {
+          reply(req,HBASE_ERROR)
+          return
+        }
 
-        var table:HTableInterface = null
+        var table:Table = null
         try{
 
             val d = new Delete(Bytes.toBytes(rowKey))
-
-            table = getTable(tableName)
+            table = getTable(msg.tableName)
             table.delete(d)
         } catch {
             case e :Throwable =>

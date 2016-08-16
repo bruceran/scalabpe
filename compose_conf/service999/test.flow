@@ -1,7 +1,60 @@
-//$service999.test
+//$service999.test.withsyncedinvoke
 
 //#receive
+    
+    var ret :InvokeResult = null
+/*
+    ret = syncedInvoke("hbaseservice.get",3000,
+        "rowKey"->"r1")
+    println("ret="+ret.toString)
 
+    ret = syncedInvoke("hbaseservice.put",3000,
+        "rowKey"->"r1","field1"->"nanjing")
+    println("ret="+ret.toString)
+
+    ret = syncedInvoke("hbaseservice.get",3000,
+        "rowKey"->"r1")
+    println("ret="+ret.toString)
+
+    ret = syncedInvoke("hbaseservice.put",3000,
+        "rowKey"->"r2","field1"->"yunan")
+    println("ret="+ret.toString)
+
+    ret = syncedInvoke("hbaseservice.get",3000,
+        "rowKey"->"r2")
+    println("ret="+ret.toString)
+
+    val random = new java.util.Random()
+    for(i <- 100 until 200) {
+        val rowKey = "city_" + i
+        val v1 = random.nextInt(100)
+        val v2 = random.nextInt(100)
+        ret = syncedInvoke("hbaseservice.put",3000,
+            "rowKey"->rowKey,"field1"->v1,"field2"->v2)
+        println("ret="+ret.toString)
+    }
+
+    ret = syncedInvoke("hbaseservice.get",3000,
+        "rowKey"->"city_199")
+    println("ret="+ret.toString)
+
+*/
+
+    ret = syncedInvoke("hbaseservice.scan",3000,
+        "startRow"->"r0")
+    println("ret="+ret.toString)
+
+    var filter = ""
+    //var filter = """ ( field1 >= 90 && field2 >= 90 ) || ( field1 <= 20 && field2 <= 20 ) """
+
+    ret = syncedInvoke("hbaseservice.scan",3000,
+        //"startRow"->"city_000",
+        //"stopRow"->"city_200",
+        "maxResultSize" -> 500,
+        "filter"->filter)
+    if( ret.ls("field1") != null )
+        println("ret="+ret.ls("field1").size)
+    println("ret="+ret.toString)
 
     reply(0)
   

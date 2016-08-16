@@ -181,5 +181,14 @@
     </MemCacheCfgV2>
 -->
 
+<!-- hbase配置 -->
+<!-- 
+	<HbaseCfg>
+		<ServiceId>980</ServiceId>
+        <ZooKeeperServerAddr>192.168.52.128</ZooKeeperServerAddr>
+        <ZooKeeperServerPort>2181</ZooKeeperServerPort>
+	</HbaseCfg>
+-->
+
 </parameters>
 
