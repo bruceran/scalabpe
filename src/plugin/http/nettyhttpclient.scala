@@ -122,13 +122,11 @@ extends Logging with Dumpable {
         log.info("netty http client started")
     }
 
-    def send(sequence:Int, addr:String, httpReq:HttpRequest, timeout:Int) : Unit = {
+    def send(sequence:Int, ssl:Boolean, addr:String, httpReq:HttpRequest, timeout:Int) : Unit = {
 
         var ss = addr.split(":")
         var host = ss(0)
         var port = if( ss.size >= 2 ) ss(1).toInt else 80
-
-        val ssl = port >= 443 && port <= 449
 
         val bootstrap = new ClientBootstrap(factory);
         if( ssl ) {

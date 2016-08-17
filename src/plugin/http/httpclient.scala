@@ -105,6 +105,7 @@ class HttpMsgDefine(
     val reqFields:ArrayBuffer[HttpMsgRequest],
     val resFields:ArrayBuffer[HttpMsgResponse],
 
+    val ssl:Boolean,
     val host:String,
     val path:String,
 
@@ -321,7 +322,7 @@ class HttpClientImpl(
                 if( serverUrl == "" && defaultAhtCfg != null && defaultAhtCfg.serverUrl != "") serverUrl = defaultAhtCfg.serverUrl
                 if( ahtCfg != null && ahtCfg.serverUrlSuffix != "" ) serverUrl = serverUrl + ahtCfg.serverUrlSuffix
 
-                val (host,path) = parseHostPath(serverUrl)
+                val (ssl,host,path) = parseHostPath(serverUrl)
                 if( ( host == "" || path == "") && customUrlField == "" ) {
                     throw new RuntimeException("msg url not defined in aht cfg serviceId=%d,msgId=%d".format(serviceId,msgId))
                 }
@@ -394,7 +395,7 @@ class HttpClientImpl(
                 val msg = new HttpMsgDefine(
                     serviceId,msgId,name,
                     reqs, ress,
-                    host, path,
+                    ssl, host, path,
                     needSignature, signatureKey, method, requestContentType, charSet, pluginObj,
                     signatureKeyField, customUrlField, resultCodeField,
                     wsReqSuffix,wsResSuffix,wsReqWrap,wsResWrap,wsWrapNs,wsSOAPAction,wsNs)
@@ -423,11 +424,11 @@ class HttpClientImpl(
         log.info("httpclient stopped")
     }
 
-    def parseHostPath(url:String):Tuple2[String,String] = {
-        var v = ("","")
+    def parseHostPath(url:String):Tuple3[Boolean,String,String] = {
+        var v = (false,"","")
         val p1 = url.indexOf("//");
-            if( p1 < 0 ) return v
-            val p2 = url.indexOf("/",p1+2);
+        if( p1 < 0 ) return v
+        val p2 = url.indexOf("/",p1+2);
         if( p2 < 0 ) return v
         var host = url.substring(p1+2,p2)
         val path = url.substring(p2)
@@ -435,7 +436,8 @@ class HttpClientImpl(
         if( url.startsWith("https://") && host.indexOf(":") < 0 )
             host = host+":443"
 
-        (host,path)
+        val ssl = url.startsWith("https://")
+        (ssl,host,path)
     }
 
     def findMsg(serviceId:Int,msgId:Int): HttpMsgDefine = {
@@ -844,20 +846,22 @@ class HttpClientImpl(
         outBody
     }
 
-    def generateHostPath(msg:HttpMsgDefine,reqBody:HashMapStringAny):Tuple2[String,String] = {
+    def generateHostPath(msg:HttpMsgDefine,reqBody:HashMapStringAny):Tuple3[Boolean,String,String] = {
+        var ssl = msg.ssl
         var host = msg.host
         var path = msg.path
 
         if( msg.customUrlField != null ) {
             val s = reqBody.s(msg.customUrlField,"")
             if( s != "" ) {
-                val (customhost,custompath) = parseHostPath(s)
+                val (customssl,customhost,custompath) = parseHostPath(s)
+                ssl = customssl
                 host = customhost
                 path = custompath
             }
         }
 
-        (host,path)
+        (ssl,host,path)
     }
 
     def send(req: Request, timeout: Int):Unit = {
@@ -869,7 +873,7 @@ class HttpClientImpl(
             return
         }
 
-        val (host,path) = generateHostPath(msg,req.body)
+        val (ssl,host,path) = generateHostPath(msg,req.body)
         if( host == "" || path == "") {
             val res = createErrorResponse(ResultCodes.TLV_ENCODE_ERROR,req)
             receiver_f(new RequestResponseInfo(req,res))
@@ -880,7 +884,7 @@ class HttpClientImpl(
 
         val sequence = generateSequence()
         dataMap.put(sequence,new HttpClientCacheData(req,timeout))
-        nettyHttpClient.send(sequence,host,httpReq,timeout)
+        nettyHttpClient.send(sequence,ssl,host,httpReq,timeout)
     }
 
     def send(req: SocRequest, timeout: Int):Unit = {
@@ -892,7 +896,7 @@ class HttpClientImpl(
             return
         }
 
-        val (host,path) = generateHostPath(msg,req.body)
+        val (ssl,host,path) = generateHostPath(msg,req.body)
         if( host == "" || path == "") {
             val res = createErrorResponse(ResultCodes.TLV_ENCODE_ERROR,req)
             receiver_f(new SocRequestResponseInfo(req,res))
@@ -903,7 +907,7 @@ class HttpClientImpl(
 
         val sequence = generateSequence()
         dataMap.put(sequence,new HttpClientCacheData(req,timeout))
-        nettyHttpClient.send(sequence,host,httpReq,timeout)
+        nettyHttpClient.send(sequence,ssl,host,httpReq,timeout)
     }
 
     def createErrorResponse(code:Int,req:Request):Response = {
