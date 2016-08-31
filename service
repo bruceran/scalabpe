@@ -17,6 +17,9 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:./lib/linux-jdk32
 chmod +x ./lib/linux-jdk32/*
 fi
 
+CLASSPATH=`find lib -type d ! -name linux-jdk* | sed -e 's/$/\/*'/ | tr '\n' ':'`
+CLASSPATH=${CLASSPATH}temp/classes:.
+
 check_running()
 {
 	if [ -z "$pid" ]; then
@@ -37,7 +40,7 @@ start_app()
 		if [ -f dev_mode ]; then
 			echo "---- dev mode, running in console, press CTRL+C to stop ----"
 			mkdir -p temp/classes
-			env JAVA_OPTS="-Xmx256M -Xms128M -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "lib/*:lib/hadoop/*:temp/classes:." jvmdbbroker.core.Main
+			env JAVA_OPTS="-Xmx256M -Xms128M -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "$CLASSPATH" jvmdbbroker.core.Main
 			exit 0
 		fi
 
@@ -55,7 +58,7 @@ start_app()
 
 		echo -n "starting scalabpe"
 
-		env JAVA_OPTS="-server -Xms1024m -Xmx1024m -XX:+UseConcMarkSweepGC -XX:NewSize=256m -XX:MaxNewSize=256m -XX:PermSize=96m -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "lib/*:lib/hadoop/*:temp/classes:." jvmdbbroker.core.Main 1>$consolelog 2>&1 &
+		env JAVA_OPTS="-server -Xms1024m -Xmx1024m -XX:+UseConcMarkSweepGC -XX:NewSize=256m -XX:MaxNewSize=256m -XX:PermSize=96m -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "$CLASSPATH" jvmdbbroker.core.Main 1>$consolelog 2>&1 &
 		parentpid=$!
 
 		echo -n " ."
@@ -181,7 +184,7 @@ case "$1" in
 		echo "scalabpe compile timestamp file removed"
 		;;
 	runtest)
-		env JAVA_OPTS="-Dfile.encoding=UTF-8 -Dapplication.name=${APPLICATION_NAME}test"  scala -cp "classes:lib/*:." jvmdbbroker.core.TestCaseRunner $2
+		env JAVA_OPTS="-Dfile.encoding=UTF-8 -Dapplication.name=${APPLICATION_NAME}test"  scala -cp "classes:lib/*:." jvmdbbroker.core.TestCaseRunner $2 $3 $4 $5 $6 $7
 		;;
 	runscala)
 		env JAVA_OPTS="-Dfile.encoding=UTF-8"  scala -cp "classes:temp/classes:lib/*:."

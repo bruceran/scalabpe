@@ -1367,7 +1367,7 @@ class MonitorHttpClient(
         var httpReq = generateRequest(host,path,body)
         val sequence = generateSequence()
         dataMap.put(sequence,new CacheData(url,body,sendTimes))
-        nettyHttpClient.send(sequence,host,httpReq,timeout)
+        nettyHttpClient.send(sequence,false,host,httpReq,timeout)
     }
 
     def retry(data: CacheData) {

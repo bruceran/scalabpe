@@ -46,11 +46,15 @@
 
 [HTTP Server插件配置](#httpserver)
 
+[Kafka消息队列producer配置](#kafkaproducer)
+
+[Kafka消息队列consumer配置](#kafkaconsumer)
+
 [邮件插件配置](#mail)
 
-[消息队列配置](#mq)
+[ActiveMQ消息队列producer配置](#mqproducer)
 
-[消息队列接受者配置](#mqreceiver)
+[ActiveMQ消息队列consumer配置](#mqreceiver)
 
 [连接密码加密](#pwd)
 
@@ -487,6 +491,17 @@
        参考 avenue_conf/internal/newmemcache_681.xml
        只允许修改服务名和服务号，不允许修改其它内容
 
+    原生版本支持的消息：
+
+        get 支持flags, cas
+        set 支持flags, cas
+        add 支持flags, cas
+        replace 支持flags, cas
+        delete
+        increment 支持init,step,cas
+        decrement 支持init,step,cas
+        mget 封装了多个get的调用
+        
 [返回](#toc)
 
 # <a name="redis">Redis服务配置</a>
@@ -585,6 +600,65 @@
 
        参考 avenue_conf/internal/newredis_680.xml
        只允许修改服务名和服务号，不允许修改其它内容
+
+    原生版本支持的消息：
+
+        ping
+        del
+        expire
+        expireat
+        exists
+        set
+        getset
+        incrby
+        decrby
+        get
+        mget
+        sadd
+        srem
+        spop
+        sdiffstore
+        sinterstore
+        sunionstore
+        smembers
+        scard
+        sismember
+        srandmember
+        sdiff
+        sinter
+        sunion
+        hset
+        hsetnx
+        hmset
+        hdel
+        hmdel
+        hincrby
+        hexists
+        hlen
+        hkeys
+        hvals
+        hget
+        hgetall
+        hmget
+        lpush
+        lpushm
+        lpushx
+        lpop
+        lrem
+        lset
+        ltrim
+        linsert
+        rpush
+        rpushm
+        rpushx
+        rpop
+        rpoplpush
+        blpop
+        brpop
+        brpoplpush
+        lrange
+        llen
+        lindex
 
 [返回](#toc)
 
@@ -1341,6 +1415,79 @@
 
 [返回](#toc)
 
+# <a name="kafkaproducer">Kafka消息队列producer配置</a>
+
+    此插件用来将消息发送给Kafka消息队列
+
+    <KafkaProducer batchSize="100" maxRetryTimes="12000" retryInterval="5000" retryConcurrentNum="200">
+        <ServiceId>660</ServiceId>
+        <BrokerUrl>192.168.52.128:9092,...</BrokerUrl>
+        <Config key="...">....</Config>
+    </KafkaProducer>
+
+    batchSize: 发送给kafka每个batch的大小
+    retryInterval: kafka消息发不通时，每次重试的间隔
+    maxRetryTimes: kafka消息发不通时，最大重试次数
+    retryConcurrentNum: kafka消息重试时，允许的最大并发消息数，达到此消息数后就需接收到响应后才会继续发
+    
+    BrokerUrl子节点: kafka集群的对外监听ip和端口, 多个用逗号分隔
+    Config子节点：定义内部kafka producer的配置参数，以key/value形式提供，如
+        <Config key="acks">1</Config>
+    可用的配置参数参考：http://kafka.apache.org/082/documentation.html#newproducerconfigs
+    其中 bootstrap.servers,batch.size不可使用Config配置
+
+    收到消息会立即写入本地queue文件，然后从本地queue文件取出发送给远程MQ, 所以不管远程网络是否可用总是立即返回成功;
+    本地queue文件中的消息不会丢失，重启后也继续存在，会一直重试直到发送成功;一般使用invokeWithReply发送消息到此服务就可以
+    本地队列对应的持久化文件默认在data/kafkaproducer目录下
+
+    服务描述文件格式要求：
+
+        消息名，消息号没有限制;
+        要求入参必须包含topic,value
+        入参中可以包含key, 用来确定分区, key可以为空
+        无返回参数
+
+    服务描述文件示例：avenue_conf/internal/kafkaproducer_660.xml
+
+[返回](#toc)
+
+# <a name="kafkaconsumer">Kafka消息队列consumer配置</a>
+
+    此插件用来接收Kafka消息并调用用户流程
+
+    <KafkaConsumer groupId="scalabpe">
+        <ZooKeeper>192.168.52.128:2181,...</ZooKeeper>
+        <Topic name="test" receiver="661.1" />
+        <Topic name="test2" receiver="661.2" />
+        <Config key="...">....</Config>
+    </KafkaConsumer>
+
+    groupId: 此consumer使用的groupId, 默认为scalabpe
+    retryInterval: 调用用户流程若返回非0时的重试间隔时间
+    
+    ZooKeeper子节点: zookeeper集群的对外监听ip和端口，多个用逗号隔开
+        注意：KafkaConsumer插件的连接地址和kafkaproducer不一样，不是kafka集群的对外监听ip和端口, 而是zookeeper集群的对外监听ip和端口
+    Topic子节点：定义每个topic对应的用户流程, 可以指定相同或不同的流程
+    Config子节点：定义内部kafka consumer的配置参数，以key/value形式提供，如
+        <Config key="auto.offset.reset">smallest</Config>
+    可用的配置参数参考：http://kafka.apache.org/082/documentation.html#consumerconfigs
+    其中zookeeper.connect,group.id,auto.commit.enable不可使用Config配置
+
+    从kafka收到消息会立即写入本地queue文件，写入本地队列后才会commit; 
+    每个topic对应一个本地队列，消息从本地队列读出后调用用户流程, 收到0认为成功则继续处理下一个消息，否则不断重试；
+    本地queue文件中的消息不会丢失，重启后也继续存在
+    本地队列对应的持久化文件默认在data/kafkaconsumer目录下
+
+    服务描述文件示例：avenue_conf/internal/kafkaconsumer_661.xml
+    
+    对用户流程的服务描述文件格式要求：
+
+        消息名，消息号没有限制, 通过配置中的Topic子节点进行配置
+        要求入参必须包含topic,key,value; key可能为null
+        返回错误码约定：0表示该消息处理完毕，其它表示出现错误
+
+[返回](#toc)
+
 # <a name="mail">邮件插件配置</a>
 
     邮件插件支持https, 不支持附件
@@ -1415,7 +1562,7 @@
 
 [返回](#toc)
 
-# <a name="mq">消息队列配置</a>
+# <a name="mqproducer">ActiveMQ消息队列producer配置</a>
 
     <MqCfg plugin="xxx">
         <ServiceId>991,992</ServiceId>
@@ -1433,11 +1580,8 @@
       messageTimestamp 时间
       messageType 消息号
 
-    收到消息会立即写入本地queue文件，然后从本地queue文件取出发送给远程MQ, 所以不管远程网络是否可用总是立即
-    返回成功;
-    本地queue文件中的消息不会丢失，重启后也继续存在，会一直重试直到发送成功
-    唯一可能失败就是出现本地 IO失败, 比如磁盘慢，有坏道等
-    一般使用invokeWithReply发送消息到此服务就可以
+    收到消息会立即写入本地queue文件，然后从本地queue文件取出发送给远程MQ, 所以不管远程网络是否可用总是立即返回成功;
+    本地queue文件中的消息不会丢失，重启后也继续存在，会一直重试直到发送成功,一般使用invokeWithReply发送消息到此服务就可以
 
     本地队列对应的持久化文件默认在data/mq目录下
 
@@ -1450,7 +1594,7 @@
 
 [返回](#toc)
 
-# <a name="mqreceiver">消息队列接受者配置</a>
+# <a name="mqreceiver">ActiveMQ消息队列Consumer配置</a>
 
     <MqReceiverCfg receiverServiceId="879" maxSendTimes="5" retryInterval="5000" plugin="xxx">
         <Connection>service=tcp://10.132.17.201:61616 username=test password=test</Connection>
@@ -1460,8 +1604,7 @@
         ...
     </MqReceiverCfg>
 
-    消息接收者插件和MQ队列插件配套使用， 接收到MQ服务器的数据，先写到本地队列中，再使用和本地队列一样的方式
-    调用receiverServiceId
+    消息接收者插件和MQ队列插件配套使用， 接收到MQ服务器的数据，先写到本地队列中，再使用和本地队列一样的方式调用receiverServiceId
 
     接受者一般对每个MQ服务器单独配置Connection,而不是放在一个Connection中，否则有些服务器上的消息队列会接收不到。
     Destination可配置多个，会认为每个Connection上都有对应的Destination存在；
@@ -1524,18 +1667,6 @@
         JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDesX(JNIEnv *env, jobject obj, jstring jstr);
 
         JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptRsa(JNIEnv *env, jobject obj, jstring jstr);
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptDes(JNIEnv *env, jobject obj, jstring jstr);
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptDesX(JNIEnv *env, jobject obj, jstring jstr);
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptRsa(JNIEnv *env, jobject obj, jstring jstr);
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptDes(JNIEnv *env, jobject obj, jstring jstr);
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptDesX(JNIEnv *env, jobject obj, jstring jstr);
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptRsa(JNIEnv *env, jobject obj, jstring jstr);
 
         #ifdef __cplusplus
         }
@@ -1605,48 +1736,6 @@
 
         JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptRsa
           (JNIEnv *env, jobject obj, jstring jstr) {
-            string s  = jstring2string(env,jstr);
-            string ns = decrypt_rsa(s);
-            return string2jstring(env,ns);
-        }
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptDes
-        (JNIEnv *env, jobject obj, jstring jstr) {
-            string s  = jstring2string(env,jstr);
-            string ns = decrypt_des(s);
-            return string2jstring(env,ns);
-        }
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptDesX
-        (JNIEnv *env, jobject obj, jstring jstr){
-            string s  = jstring2string(env,jstr);
-            string ns = decrypt_desx(s);
-            return string2jstring(env,ns);
-        }
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqClient_decryptRsa
-        (JNIEnv *env, jobject obj, jstring jstr) {
-            string s  = jstring2string(env,jstr);
-            string ns = decrypt_rsa(s);
-            return string2jstring(env,ns);
-        }
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptDes
-        (JNIEnv *env, jobject obj, jstring jstr) {
-            string s  = jstring2string(env,jstr);
-            string ns = decrypt_des(s);
-            return string2jstring(env,ns);
-        }
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptDesX
-        (JNIEnv *env, jobject obj, jstring jstr){
-            string s  = jstring2string(env,jstr);
-            string ns = decrypt_desx(s);
-            return string2jstring(env,ns);
-        }
-
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_MqReceiver_decryptRsa
-        (JNIEnv *env, jobject obj, jstring jstr) {
             string s  = jstring2string(env,jstr);
             string ns = decrypt_rsa(s);
             return string2jstring(env,ns);

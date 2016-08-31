@@ -520,7 +520,11 @@ class SocImpl(
         generator.getAndIncrement()
     }
 
-    def send(rawReq: RawRequest, timeout: Int):Unit = {
+    def send(rawReq: RawRequest, timeout: Int) = send(rawReq,timeout,0)
+    def send(req: Request, timeout: Int) = send(req,timeout,0)
+    def send(socReq: SocRequest, timeout: Int) = send(socReq,timeout,0)
+
+    def send(rawReq: RawRequest, timeout: Int, sendTimes:Int):Unit = {
 
         val req = rawReq.data
 
@@ -534,7 +538,7 @@ class SocImpl(
             req.encoding,
             req.code,
             req.xhead, req.body )
-        dataMap.put(sequence,new CacheData(rawReq,timeout))
+        dataMap.put(sequence,new CacheData(rawReq,timeout,sendTimes))
 
         val ret = send(data,timeout)
 
@@ -545,7 +549,7 @@ class SocImpl(
         }
     }
 
-    def send(req: Request, timeout: Int):Unit = {
+    def send(req: Request, timeout: Int, sendTimes:Int):Unit = {
 
         val tlvCodec = codecs.findTlvCodec(req.serviceId)
         if( tlvCodec == null ) {
@@ -574,7 +578,7 @@ class SocImpl(
             req.encoding,
             0,
             xhead, body )
-        dataMap.put(sequence,new CacheData(req,timeout))
+        dataMap.put(sequence,new CacheData(req,timeout,sendTimes))
 
         var ret = 0
         if( req.toAddr == null )
@@ -590,7 +594,7 @@ class SocImpl(
 
     }
 
-    def send(req: SocRequest, timeout: Int):Unit = {
+    def send(req: SocRequest, timeout: Int,sendTimes:Int):Unit = {
 
         val tlvCodec = codecs.findTlvCodec(req.serviceId)
         if( tlvCodec == null ) {
@@ -620,7 +624,7 @@ class SocImpl(
             req.encoding,
             0,
             xhead, body )
-        dataMap.put(sequence,new CacheData(req,timeout))
+        dataMap.put(sequence,new CacheData(req,timeout,sendTimes))
 
         if( "select_channel_first" == req.connId ) {
             req.connId = nettyClient.selectChannel()
@@ -808,11 +812,11 @@ class SocImpl(
 
                             saved.data match {
                                 case rawReq: RawRequest =>
-                                    send(rawReq,saved.timeout)
+                                    send(rawReq,saved.timeout,saved.sendTimes)
                                 case req: Request =>
-                                    send(req,saved.timeout)
+                                    send(req,saved.timeout,saved.sendTimes)
                                 case req: SocRequest =>
-                                    send(req,saved.timeout)
+                                    send(req,saved.timeout,saved.sendTimes)
                             }
 
                     }
@@ -918,9 +922,9 @@ class SocImpl(
     case class SosRequest(data:AvenueData,connId:String)
 
     class CacheData(val data:Any, val sendTime:Long, val timeout:Int, var sendTimes:Int) {
-        def this(rawReq: RawRequest,timeout:Int) { this(rawReq,System.currentTimeMillis,timeout,0) }
-        def this(req: Request,timeout:Int) { this(req,System.currentTimeMillis,timeout,0) }
-        def this(socReq: SocRequest,timeout:Int) { this(socReq,System.currentTimeMillis,timeout,0) }
+        def this(rawReq: RawRequest,timeout:Int, sendTimes:Int) { this(rawReq,System.currentTimeMillis,timeout,sendTimes) }
+        def this(req: Request,timeout:Int, sendTimes:Int) { this(req,System.currentTimeMillis,timeout,sendTimes) }
+        def this(socReq: SocRequest,timeout:Int, sendTimes:Int) { this(socReq,System.currentTimeMillis,timeout,sendTimes) }
     }
 
 }

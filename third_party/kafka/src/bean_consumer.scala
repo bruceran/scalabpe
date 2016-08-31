@@ -56,7 +56,7 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
         if( s == "" )
             throw new Exception("KafkaConsumerBean ZooKeeper not configed")
         zookeeper = s
-
+println(zookeeper)
         s = (cfgNode \ "@groupId").text
         if( s != "" )
             groupId = s
@@ -140,10 +140,10 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
                 } else {
                     var key = str.substring(0,p)
                     if( key == "_null_") key = null
-                    val message = str.substring(p+1)
+                    val value = str.substring(p+1)
                     var ok = false 
                     do {
-                        ok = sendData(topic,key,message)
+                        ok = sendData(topic,key,value)
                         if(!ok) {
                             Thread.sleep(retryInterval)
                         }
@@ -161,7 +161,7 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
         }
     }
 
-    def sendData(topic:String,key:String,message:String):Boolean = {
+    def sendData(topic:String,key:String,value:String):Boolean = {
     
         val (serviceId,msgId) = receiverMap.getOrElse(topic,new Tuple2(0,0))
         if( serviceId == 0 || msgId == 0 ) return true
@@ -169,7 +169,7 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
         val body = HashMapStringAny(
             "topic" -> topic,
             "key" -> key,
-            "message" -> message)
+            "value" -> value)
 
         var requestId = "KC"+RequestIdGenerator.nextId()
 
@@ -277,7 +277,7 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
                         return
                 case e:Throwable =>
                     try {
-                        log.error("waiting to connect to zookeeper, topic="+topic)
+                        log.error("waiting to connect to zookeeper, topic="+topic,e)
                         Thread.sleep(1000)
                         if( shutdown.get() )
                             return
@@ -304,12 +304,12 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
           val kafkaKey = messageAndMetadata.key();
           val key = if( kafkaKey == null ) "_null_" else new String(kafkaKey,"utf-8")
           val kafkaMessage = messageAndMetadata.message();
-          val message = new String(kafkaMessage,"utf-8")
+          val value = new String(kafkaMessage,"utf-8")
 
           var ok = false 
           do {
               try {
-                  queue.put(key+"\t"+message)
+                  queue.put(key+"\t"+value)
                   consumer.commitOffsets();
                   ok = true
                   hasIOException.set(false)

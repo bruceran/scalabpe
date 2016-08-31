@@ -207,7 +207,7 @@ __而内部使用的服务描述文件则放在子目录下__
 
 ## 必达消息说明
 
-    <message name="testbatchupdate" id="7" __isAck="true" retryInterval="30000" retryTimes="100"__>
+    <message name="testbatchupdate" id="7" isAck="true" retryInterval="30000" retryTimes="100">
 
       isAck (或者isack) 是否要将一个消息设置为必达消息，默认为false
       retryTimes 重试次数，默认为 3*24*60, 按一分钟一次，要尝试3天

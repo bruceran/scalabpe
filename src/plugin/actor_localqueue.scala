@@ -29,7 +29,6 @@ extends LocalQueueLike(router,cfgNode) {
 
     val queueNameMap = new HashMap[String,String]()   // serviceId:msgId -> queueNameKey
 
-
     init
 
     override def init() {

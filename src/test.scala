@@ -43,10 +43,33 @@ object TestCaseRunner {
         }
     }
 
+    def parseArg(args:Array[String],key:String):String = {
+        for(i <- 0 until args.size) {
+            if( args(i) == "--" + key && i + 1 < args.size ) {
+                return args(i+1)
+            }
+        }
+        ""
+    }
+
+    def parseFile(args:Array[String]):String = {
+        var i = 0
+        while(i < args.size) {
+            if( args(i).startsWith("--") ) i += 2
+            else if( args(i).startsWith("-") ) i += 1
+            else return args(i)
+        }
+        ""
+    }
     def main(args:Array[String]) {
 
+        var max = 2000000
+        var s = parseArg(args,"maxPackageSize")
+        if( s != "" ) max = s.toInt
+
         var file = "."+File.separator+"testcase"+File.separator+"default.txt"
-        if( args.size >= 1 ) file = args(0)
+        s = parseFile(args)
+        if( s != "" ) file = s
         println("running file:  " + file)
 
         val codecs = new TlvCodecs("."+File.separator+"avenue_conf")
@@ -56,10 +79,10 @@ object TestCaseRunner {
         val port = (cfgXml \ "SapPort").text.toInt
         val timeout = 15000
         var serverAddr = "127.0.0.1:"+port
-        var s = (cfgXml \ "TestServerAddr").text
+        s = (cfgXml \ "TestServerAddr").text
         if( s != "" ) serverAddr = s
 
-        soc = new SocImpl(serverAddr,codecs,callback,connSizePerAddr=1)
+        soc = new SocImpl(serverAddr,codecs,callback,connSizePerAddr=1,maxPackageSize=max)
 
         val lines = Source.fromFile(file,"UTF-8").getLines.toList.filter( _.trim != "").filter( !_.startsWith("#") )
 

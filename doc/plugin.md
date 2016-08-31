@@ -222,7 +222,6 @@
 	编译完成后做如下操作就可让框架启动时来加载该插件:
 
 		将lib/hadoop下所有文件复制到项目的lib/hadoop目录下
-        注意项目的service启动脚本要将lib/hadoop/*目录加到classpath里
 		参照avenue_conf/hbase_980编写新的服务描述文件
 		参照config.xml修改项目的config.xml
 

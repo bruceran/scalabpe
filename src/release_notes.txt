@@ -1,4 +1,11 @@
 
+1.1.4 (20160831)
+================
+
+* service runtest工具可配置maxPackageSize
+* 修改service启动脚本，自动将lib下所有子目录加入classpath, 以便将某些依赖较多的组件单独建子目录，如hadoop,kafka等
+* 异步日志依赖nettyhttpclient.scala, 将该文件移动会core包
+
 1.1.3 (20160817)
 ================
 
