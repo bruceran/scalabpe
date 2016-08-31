@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<parameters>
+
+    <MqCfg>
+        <ServiceId>991,992</ServiceId>
+			  <Connection>service=failover:(tcp://10.241.37.33:61616)?timeout=1000 username=sdouser password=password</Connection>
+			  <Destination serviceId="991" queueName="com.sdo.billing.test1" persistent="true"/>
+			  <Destination serviceId="992" queueName="com.sdo.billing.test2" persistent="true"/>
+    </MqCfg>
+
+    <MqReceiverCfg receiverServiceId="879" maxSendTimes="5" retryInterval="5000" >
+			  <Connection>service=failover:(tcp://10.241.37.33:61616)?timeout=1000 username=sdouser password=password</Connection>
+			  <Destination queueName="com.sdo.billing.test1" />
+			  <Destination queueName="com.sdo.billing.test2" />
+    </MqReceiverCfg>
+
+</parameters>
+

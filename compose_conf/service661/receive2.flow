@@ -1,0 +1,9 @@
+//$kafkaconsumer.receive2
+
+//#receive
+    
+    println(req.toString)
+
+    reply(0)
+  
+

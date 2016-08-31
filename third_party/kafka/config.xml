@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<parameters>
+
+    <KafkaProducer>
+        <ServiceId>660</ServiceId>
+    </KafkaProducer>
+
+    <KafkaCunsumer>
+        <Topic name="abc" receiver="661.1" />
+        <Topic name="abc" receiver="661.1" />
+    </KafkaCunsumer>
+
+</parameters>
+
