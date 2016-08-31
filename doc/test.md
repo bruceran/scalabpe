@@ -115,7 +115,7 @@
         AREAID  扩展包头的AREAID
         SOCID  客户端标识
         REQUESTID 请求ID
-        DUMMY 无意义
+        XHEAD_UNIQUE_ID 扩展包头的uniqueId, 若没有值则记录1
         SERVICEID  服务号
         MSGID  消息号
         SERVER_IP 服务端IP

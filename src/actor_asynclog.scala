@@ -632,6 +632,11 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         gsInfo
     }
 
+    def getXheadRequestId(req:Request):String = {
+        val s = req.xs("uniqueId","1")
+        s
+    }
+
     def onReceive(v:Any)  {
 
         v match {
@@ -704,7 +709,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                     val xareaid = info.req.xhead.getOrElse("areaId","-10087")
                     val xsocId = info.req.xhead.getOrElse("socId","")
                     buff.append(xappid).append(splitter).append(xareaid).append(splitter).append(xsocId).append(splitter)
-                    buff.append(info.req.requestId).append(splitter).append(1).append(splitter)
+                    buff.append(info.req.requestId).append(splitter).append(getXheadRequestId(info.req)).append(splitter)
                     buff.append(info.req.serviceId).append(splitter).append(info.req.msgId).append(splitter)
                     buff.append("").append(splitter)
                     val d = new Date(info.req.receivedTime)
@@ -772,7 +777,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                 val xareaid = req.xhead.getOrElse("areaId","-10087")
                 val xsocId = req.xhead.getOrElse("socId","")
                 buff.append(xappid).append(splitter).append(xareaid).append(splitter).append(xsocId).append(splitter)
-                buff.append(req.requestId).append(splitter).append(1).append(splitter)
+                buff.append(req.requestId).append(splitter).append(getXheadRequestId(req)).append(splitter)
                 buff.append(req.serviceId).append(splitter).append(req.msgId).append(splitter)
                 buff.append("").append(splitter)
                 val d = new Date(req.receivedTime)

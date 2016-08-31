@@ -201,20 +201,19 @@
 
 <!-- kafka producer配置 -->
 <!-- 
--->
     <KafkaProducer>
         <ServiceId>660</ServiceId>
         <BrokerUrl>192.168.52.128:9092</BrokerUrl>
     </KafkaProducer>
+-->
 
 <!-- kafka consumer配置 -->
 <!-- 
--->
     <KafkaConsumer>
         <ZooKeeper>192.168.52.128:2181</ZooKeeper>
-        <Topic name="test" receiver="661.1" />
-        <Topic name="test2" receiver="661.2" />
+        <Topic name="bslog" receiver="661.1" />
     </KafkaConsumer>
+-->
 
 </parameters>
 

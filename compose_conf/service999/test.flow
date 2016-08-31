@@ -1,16 +1,7 @@
-//$service999.test.withsyncedinvoke
+//$service999.test
 
 //#receive
     
-    var ret :InvokeResult = null
-
-    ret = syncedInvoke("kafkaproducer.write",3000,
-        "topic" -> "test",
-        //"key" -> "abc",
-        "value" -> ( "hello world : " + System.currentTimeMillis ) )
-
-    println(ret.toString)
-
     reply(0)
   
 
