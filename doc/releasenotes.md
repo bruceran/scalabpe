@@ -13,13 +13,13 @@
 
 # hadoop插件
 
-[release notes for hbase plugin](../thirty_party/hadoop/src/release_notes.txt)
+[release notes for hbase plugin](../third_party/hadoop/src/release_notes.txt)
 
 # kafka插件
 
-[release notes for kafka plugin](../thirty_party/kafka/src/release_notes.txt)
+[release notes for kafka plugin](../third_party/kafka/src/release_notes.txt)
 
 # activemq插件
 
-[release notes for activemq plugin](../thirty_party/activemq/src/release_notes.txt)
+[release notes for activemq plugin](../third_party/activemq/src/release_notes.txt)
 
