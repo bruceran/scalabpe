@@ -1564,11 +1564,11 @@
 
 # <a name="mqproducer">ActiveMQ消息队列producer配置</a>
 
-    <MqCfg plugin="xxx">
-        <ServiceId>991,992</ServiceId>
-        <Connection>service=tcp://10.132.17.201:61616 username=test password=test</Connection>
-        <Destination serviceId="991" queueName="com.sdo.billing.test1" persistent="true"/>
-        <Destination serviceId="992" queueName="com.sdo.billing.test2" persistent="true"/>
+    <MqCfg plugin="...">
+        <ServiceId>971,973</ServiceId>
+        <Connection>service=failover:(tcp://192.168.52.128:61616)?timeout=1000 username=test password=test</Connection>
+        <Destination serviceId="971" queueName="com.sdo.billing.test1" persistent="true"/>
+        <Destination serviceId="973" queueName="com.sdo.billing.test2" persistent="true"/>
     </MqCfg>
 
     将消息发送给远程ActiveMQ服务
@@ -1596,9 +1596,8 @@
 
 # <a name="mqreceiver">ActiveMQ消息队列Consumer配置</a>
 
-    <MqReceiverCfg receiverServiceId="879" maxSendTimes="5" retryInterval="5000" plugin="xxx">
-        <Connection>service=tcp://10.132.17.201:61616 username=test password=test</Connection>
-        <Connection>service=tcp://10.132.17.201:61616 username=test password=test</Connection>
+    <MqReceiverCfg receiverServiceId="972" maxSendTimes="5" retryInterval="5000" plugin="...">
+        <Connection>service=failover:(tcp://192.168.52.128:61616)?timeout=1000 username=test password=test</Connection>
         <Destination queueName="com.sdo.billing.test1" />
         <Destination queueName="com.sdo.billing.test2" />
         ...

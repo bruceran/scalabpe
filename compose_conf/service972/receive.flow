@@ -1,0 +1,9 @@
+//$activemqconsumer.receive
+
+//#receive
+    
+    println(req.toString)
+
+    reply(0)
+  
+

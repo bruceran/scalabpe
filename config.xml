@@ -215,5 +215,22 @@
     </KafkaConsumer>
 -->
 
+<!-- activemq producer配置 -->
+<!-- 
+    <MqCfg>
+        <ServiceId>971</ServiceId>
+        <Connection>service=failover:(tcp://192.168.52.128:61616)?timeout=1000 username=test password=test</Connection>
+        <Destination serviceId="971" queueName="com.sdo.billing.test1" persistent="true"/>
+    </MqCfg>
+-->
+
+<!-- activemq producer配置 -->
+<!-- 
+    <MqReceiverCfg receiverServiceId="972" maxSendTimes="5" retryInterval="5000" >
+        <Connection>service=failover:(tcp://192.168.52.128:61616)?timeout=1000 username=test password=test</Connection>
+        <Destination queueName="com.sdo.billing.test1" />
+    </MqReceiverCfg>
+-->
+
 </parameters>
 
