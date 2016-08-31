@@ -11,3 +11,15 @@
 
 此release notes文件会打包在每个 scalabpe-core jar文件中, 通过查看jar包内的release notes就可清楚了解当前版本信息
 
+# hadoop插件
+
+[release notes for hbase plugin](../thirty_party/hadoop/src/release_notes.txt)
+
+# kafka插件
+
+[release notes for kafka plugin](../thirty_party/kafka/src/release_notes.txt)
+
+# activemq插件
+
+[release notes for activemq plugin](../thirty_party/activemq/src/release_notes.txt)
+

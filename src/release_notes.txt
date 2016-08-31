@@ -4,8 +4,7 @@
 
 * service runtest工具可配置maxPackageSize
 * 修改service启动脚本，自动将lib下所有子目录加入classpath, 以便将某些依赖较多的组件单独建子目录，如hadoop,kafka等
-* 1.1.2版本调整有问题，异步日志依赖nettyhttpclient.scala, 将该文件移动会core包
-* 异步日志依赖nettyhttpclient.scala, 将该文件移动会core包, 1.1.2 和 1.1.3 的版本都有该错误
+* 1.1.2版本调整有问题，异步日志依赖nettyhttpclient.scala, 将该文件移动回core包
 * 异步日志模块：request_audit.log文件中记录扩展包头的uniqueId到现有的requestId后面，若扩展包头没有该值，记录1
 
 1.1.3 (20160817)
