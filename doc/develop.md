@@ -14,6 +14,10 @@
 
 [Json转换](#json)
 
+[本地存储](#localstorage)
+
+[自定义启动和关闭函数](#global)
+
 [Avenue协议](#avenue)
 
 [TLV编码规范](#tlv)
@@ -587,6 +591,55 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
         def mkString(a:ArrayBufferString): String // array转换成json串
         def mkString(a:ArrayBufferMap): String // array转换成json串
         def mkString(a:ArrayBufferAny): String // array转换成json串
+
+[返回](#toc)
+
+# <a name="localstorage">本地存储</a>
+
+    在流程中可以直接使用 LocalStorage类来保存和加载数据到本地文件系统中
+    LocalStorage常用方法：
+
+    def save(key:String,value:String) 
+    def save(key:String,o:HashMapStringAny) 
+    def save(key:String,a:ArrayBufferString) 
+    def save(key:String,a:ArrayBufferInt) 
+    def save(key:String,a:ArrayBufferMap)
+    def loadString(key:String):String  
+    def loadMap(key:String):HashMapStringAny 
+    def loadStringArray(key:String):ArrayBufferString 
+    def loadIntArray(key:String):ArrayBufferInt 
+    def loadMapArray(key:String):ArrayBufferMap 
+
+    LocalStorage按key将数据保存在data/localstorage/key的文件中
+    不建议用LocalStorage存储粒度太细的数据，否则文件太多，建议存储集合类的数据
+
+[返回](#toc)
+
+# <a name="global">自定义启动和关闭函数</a>
+
+    可以在compose_conf下自定义一个类以便在框架启动和关闭时执行某些操作，
+
+    用途：
+
+        1) 和Quartz插件的Init配置配合使用，加载数据库配置保存在本地，在数据库无法连接时也能启动，用来替代localcache，加载较复杂的配置数据
+        2) 使用框架编写数据汇总服务，在流程中对数据进行累加，每隔几分钟更新数据库，在框架关闭时保存到本地，启动时再恢复数据
+
+    用法：
+
+        package jvmdbbroker.flow
+
+        object Global {
+            def init() {
+                println("init called")
+            }
+            def close() {
+                println("close called")
+            }
+        }
+
+        要求类名： object jvmdbbroker.flow.Global
+        函数：init 启动时调用
+        函数：close 关闭时调用
 
 [返回](#toc)
 

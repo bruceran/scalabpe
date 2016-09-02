@@ -3,6 +3,15 @@ package jvmdbbroker.flow
 import jvmdbbroker.core._
 import java.util.Random
 
+object Global {
+    def init() {
+        println("init called")
+    }
+    def close() {
+        println("close called")
+    }
+}
+
 object FlowHelper { 
 
     val random = new Random()

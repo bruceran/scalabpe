@@ -12,9 +12,11 @@ import scala.collection.mutable.HashSet
 import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import scala.xml._
+import scala.reflect.runtime.universe
 
 object Router {
     val DO_NOT_REPLY:String = ""
+    var main:Router = null
 }
 
 object FlowTimoutType {
@@ -45,6 +47,7 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
 
     val qte = new QuickTimerEngine(timeout_function,25)
 
+    var globalCls = "jvmdbbroker.flow.Global"
     var codecs : TlvCodecs = _
     var cfgParameters = HashMapStringString()
     var cfgXml : Elem = _
@@ -57,6 +60,34 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
     val shutdown = new AtomicBoolean()
 
     init
+
+    def callGlobalInit() {
+        val runtimeMirror = universe.runtimeMirror(getClass.getClassLoader)
+
+        try {
+            val module = runtimeMirror.staticModule(globalCls)
+            val obj = runtimeMirror.reflectModule(module)
+            val method = obj.instance.getClass.getMethod("init")
+            method.invoke(obj.instance)
+        } catch {
+            case e: Throwable =>
+                log.warn(globalCls + ".init not found")
+        }
+    }
+
+    def callGlobalClose() {
+        val runtimeMirror = universe.runtimeMirror(getClass.getClassLoader)
+
+        try {
+            val module = runtimeMirror.staticModule(globalCls)
+            val obj = runtimeMirror.reflectModule(module)
+            val method = obj.instance.getClass.getMethod("close")
+            method.invoke(obj.instance)
+        } catch {
+            case e: Throwable =>
+                log.warn(globalCls + ".close not found")
+        }
+    }
 
     def init() {
 
@@ -135,6 +166,8 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
             sos = null
         }
 
+        callGlobalClose()
+
         log.info("router stopped")
     }
 
@@ -173,7 +206,7 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
     def loadParameterFile():HashMapStringString = {
 
         val pmap = HashMapStringString()
-        val pfile = "config_parameter.xml"
+        val pfile = "config_parameter/parameter.xml"
 
         if( new File(rootDir+"/"+pfile).exists() ) {
             val in = new InputStreamReader(new FileInputStream(rootDir+"/"+pfile),"UTF-8")
@@ -277,7 +310,6 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
     def initInternal() {
 
         val str = prepareConfigFile()
-
         val in = new StringReader(str)
         cfgXml = XML.load(in)
         in.close()
@@ -291,6 +323,9 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
             parameters.put(key,value)
         }
 
+        var s = getConfig("globalCls","")
+        if( s != "" ) globalCls = s
+
         // start sos
         val port = (cfgXml \ "SapPort").text.toInt
         if( port > 0 )
@@ -299,6 +334,11 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
             sos = new DummySos()
             log.info("SapPort is 0, use dummy sos")
         }
+
+        Router.main = this
+        Flow.router = this
+
+        callGlobalInit()
 
         getConfig("serviceIdsAllowed","0").split(",").map(_.toInt).foreach(a=>serviceIdsAllowed.add(a))
         getConfig("serviceIdsNotAllowed","0").split(",").map(_.toInt).foreach(a=>serviceIdsNotAllowed.add(a))

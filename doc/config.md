@@ -1758,14 +1758,14 @@
 
     参数文件用于集中管理敏感信息
 
-    用户可以将参数放入config_parameter.xml文件中，然后在config.xml中引用该文件中的变量。
+    用户可以将参数放入config_parameter/parameter.xml文件中，然后在config.xml中引用该文件中的变量。
     如果变量未定义，则不替换; 
 
     config.xml文件里的所有值都可以配置为变量参数;
 
-    config_parameter.xml必须和config.xml在同一个目录下
+    parameter.xml必须在项目的根目录的config_parameter子目录下
 
-    config_parameter.xml文件格式示例：
+    parameter.xml文件格式示例：
 
       <?xml version="1.0" encoding="UTF-8" ?>
       <parameters>
@@ -1779,3 +1779,4 @@
       <DefaultConn>service=@jdbcurl user=@user password=@pwd</DefaultConn>
 
 [返回](#toc)
+

@@ -10,6 +10,8 @@ import java.security._
 import java.util.Date
 import javax.crypto._
 import javax.crypto.spec._
+import java.io.File
+import org.apache.commons.io.FileUtils
 
 object IpUtils {
 
@@ -253,5 +255,75 @@ object CryptHelper {
         }
     }
 
+}
+
+object LocalStorage {
+
+    def save(key:String,value:String) {
+        val dir = Router.main.rootDir+File.separator+"data"+File.separator+"localstorage"
+        val fdir = new File(dir)
+        if( !fdir.exists() ) fdir.mkdirs()
+        val filename = dir+File.separator+key
+        val f = new File(filename)
+        FileUtils.writeStringToFile(f,if( value == null ) "" else value,"UTF-8")
+    }
+
+    def save(key:String,o:HashMapStringAny) {
+        save(key,JsonCodec.mkString(o))
+    }
+
+    def save(key:String,a:ArrayBufferString) {
+        save(key,JsonCodec.mkString(a))
+    }
+
+    def save(key:String,a:ArrayBufferInt) {
+        save(key,JsonCodec.mkString(a))
+    }
+
+    def save(key:String,a:ArrayBufferMap) {
+        save(key,JsonCodec.mkString(a))
+    }
+
+    def loadString(key:String):String = {
+        val filename = Router.main.rootDir+File.separator+"data"+File.separator+"localstorage"+File.separator+key
+        val f = new File(filename)
+        if( !f.exists() ) return ""
+        val s = FileUtils.readFileToString(f,"UTF-8")
+        s
+    }
+
+    def loadMap(key:String):HashMapStringAny = {
+        val s = loadString(key)
+        val o = JsonCodec.parseObject(s)
+        o
+    }
+
+    def loadStringArray(key:String):ArrayBufferString = {
+        val s = loadString(key)
+        val tt = JsonCodec.parseArray(s)
+        if( tt == null ) return null
+        val a = new ArrayBufferString()
+        for( t <- tt ) a += t.asInstanceOf[String]
+        a
+    }
+
+    def loadIntArray(key:String):ArrayBufferInt = {
+        val s = loadString(key)
+        val tt = JsonCodec.parseArray(s)
+        if( tt == null ) return null
+        val a = new ArrayBufferInt()
+        for( t <- tt ) a += t.asInstanceOf[Int]
+        a
+    }
+
+    def loadMapArray(key:String):ArrayBufferMap = {
+        val s = loadString(key)
+        val tt = JsonCodec.parseArray(s)
+        if( tt == null ) return null
+        val a = new ArrayBufferMap()
+        for( t <- tt ) a += t.asInstanceOf[HashMapStringAny]
+        a
+    }
+    
 }
 
