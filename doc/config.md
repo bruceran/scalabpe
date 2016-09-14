@@ -680,7 +680,7 @@
 
     receiverServiceId 接收服务号,必须定义
     maxSendTimes 最多发送次数，默认为60次
-    retryInterval 每次发送间隔,默认为5000
+    retryInterval 每次发送间隔,默认为5000, 单位：毫秒
     threadNum 接收回调的线程数，默认为1，一般为1就足够了
 
     Msg节点，可按消息配置不同的重发次数和重试间隔时间，若无配置，则取默认值

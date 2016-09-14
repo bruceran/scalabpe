@@ -2267,7 +2267,7 @@ image/x-icon ico
         val classex = fields.getOrElse(key,null)
         classex match {
             case "json" =>
-                JsonCodec.parseObject(value.toString)
+                JsonCodec.parseJson(value.toString)
             case "double" =>
                 value.toString.toDouble
             case "long" =>

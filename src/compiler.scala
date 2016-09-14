@@ -48,7 +48,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
 
     def checkLibJarChanged() : Boolean = {
 
-        val alllibfiles = new File(libDir).listFiles.map( _.getPath ).filter( name => name.endsWith(".jar") ).toList
+        val alllibfiles = listfiles(libDir,".jar")
         val libfiles = new ArrayBufferString()
         var changed = false
         for( f <- alllibfiles ) {
@@ -61,7 +61,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
             }
 
         }
-
+//println("changed="+changed)
         changed
     }
 
@@ -164,7 +164,11 @@ class FlowCompiler(val rootDir:String) extends Logging {
 
         val settings = new Settings(error)
 
-        settings.classpath.value = libDir+File.separator+"*"+File.pathSeparator+tempDir+File.separator+"classes"+File.pathSeparator+"."
+        var cp = new File(libDir).listFiles().filter(f => f.isDirectory).map(f => libDir+File.separator+f.getName+File.separator+"*").mkString(File.pathSeparator)
+        cp = libDir+File.separator+"*"+File.pathSeparator + cp 
+        cp = cp + tempDir+File.separator+"classes"+File.pathSeparator+"."
+        settings.classpath.value = cp
+//println("settings.classpath.value="+cp)
         settings.outdir.value = new File(tempDir+File.separator+"classes").getPath
         settings.deprecation.value = true
         settings.unchecked.value = true

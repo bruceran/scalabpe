@@ -1,4 +1,10 @@
 
+1.1.5 (20160906)
+================
+
+* 修改bug: http server输出json，使用classex，如果数据本身不是object而是数组时会报错误
+* httpclient插件，增加parseJsonNodeToString，对嵌套的json串，如配置的path节点非value节点时，可自动提取其对应json串
+
 1.1.4 (20160831)
 ================
 

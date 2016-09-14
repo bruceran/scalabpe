@@ -58,7 +58,7 @@ start_app()
 
 		echo -n "starting scalabpe"
 
-		env JAVA_OPTS="-server -Xms1024m -Xmx1024m -XX:+UseConcMarkSweepGC -XX:NewSize=256m -XX:MaxNewSize=256m -XX:PermSize=96m -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "$CLASSPATH" jvmdbbroker.core.Main 1>$consolelog 2>&1 &
+		env JAVA_OPTS=" -Dapplication.name=$APPLICATION_NAME -server -Xms1024m -Xmx1024m -XX:+UseConcMarkSweepGC -XX:NewSize=256m -XX:MaxNewSize=256m -XX:PermSize=96m -Dfile.encoding=UTF-8" scala -encoding UTF8 -classpath "$CLASSPATH" jvmdbbroker.core.Main 1>$consolelog 2>&1 &
 		parentpid=$!
 
 		echo -n " ."

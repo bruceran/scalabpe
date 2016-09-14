@@ -127,7 +127,7 @@
   </encoder>
 </appender>
 
-<logger name="jvmdbbroker" level="debug" additivity="false"><appender-ref ref="ALL" /></logger>
+<logger name="jvmdbbroker" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
 <logger name="jvmdbbroker.core.Main" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>
 <logger name="jvmdbbroker.core.NettyServer" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>
 <logger name="jvmdbbroker.core.FlowCompiler" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>

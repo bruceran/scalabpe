@@ -1042,6 +1042,10 @@ class HttpClientImpl(
         code
     }
 
+    def parseJsonNodeToString(node:JsonNode):String={
+        return if(node.isValueNode) node.asText() else node.toString();
+    }
+
     def parseJsonValue(valueTree: JsonNode, path:String , tlvType:TlvType ) : Any = {
 
         val ss = CachedSplitter.dotSplitter.strToArray(path)
@@ -1058,7 +1062,7 @@ class HttpClientImpl(
         if( next == null ) return null
 
         if( tlvType.cls == TlvCodec.CLS_STRING || tlvType.cls == TlvCodec.CLS_INT )
-            return next.asText()
+            return parseJsonNodeToString(next)
 
         if( tlvType.cls == TlvCodec.CLS_STRUCT) {
             if( !next.isInstanceOf[ObjectNode] ) return null
@@ -1069,7 +1073,7 @@ class HttpClientImpl(
                 if( node == null ) { 
                     map.put(key,null) 
                 } else {
-                    val s = node.asText()
+                    val s = parseJsonNodeToString(node)
                     map.put(key,s)
                 }
             }
@@ -1083,7 +1087,7 @@ class HttpClientImpl(
             val it = arrayNode.elements()
             while(it.hasNext()) {
                 val tt = it.next()
-                buff += tt.asText()
+                buff += parseJsonNodeToString(tt)
             }
             return buff
         }
@@ -1104,7 +1108,7 @@ class HttpClientImpl(
                     if( node == null ) { 
                         map.put(key,null)
                     } else {
-                        val s = node.asText()
+                        val s = parseJsonNodeToString(node)
                         map.put(key,s)
                     }
                 }
