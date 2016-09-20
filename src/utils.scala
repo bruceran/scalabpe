@@ -58,10 +58,19 @@ object IpUtils {
 
     def localIp() : String = {
 
-        if ( localips.size > 0  ) return localips(0) 
-        if ( netips.size > 0  ) return netips(0) 
+        val ip0 = localIp0()
 
-        localIp0
+        if ( localips.size > 0  ) {
+            if( localips.contains(ip0)) return ip0
+            return localips(0) 
+        }
+
+        if ( netips.size > 0  ) {
+            if( netips.contains(ip0)) return ip0
+            return netips(0) 
+        }
+
+        ip0
     }
 
     def serverId() : String = {

@@ -148,6 +148,7 @@ with BeforeClose  with Refreshable with AfterInit with HttpServer4Netty with Log
     var contentDataFieldName = "contentData"
     var maxContentLength = 5000000
     var sessionEncKey = CryptHelper.toHexString("9*cbd35w".getBytes());
+    var accessControlAllowOriginGlobal = ""
 
     val classexMap = new HashMap[String,HashMap[String,String]]()
     val urlMapping = new HashMap[String,Tuple4[Int,Int,String,ArrayBufferPattern]]
@@ -328,6 +329,9 @@ image/x-icon ico
         s = (cfgNode \ "@logUserAgent").text
         if( s != "" )  logUserAgent = isTrue(s)
 
+        s = (cfgNode \ "@accessControlAllowOrigin").text
+        if( s != "" )  accessControlAllowOriginGlobal = s
+
         if( devMode ) {
             cacheEnabled = false
             httpCacheSeconds = 0
@@ -383,6 +387,10 @@ image/x-icon ico
             s = ( item \ "@encodeRequest" ).text
             if( s != "" )
                 msgAttrs.put(serviceId+"-"+msgId+"-encodeRequest",s)
+
+            s = ( item \ "@accessControlAllowOrigin" ).text
+            if( s != "" )
+                msgAttrs.put(serviceId+"-"+msgId+"-accessControlAllowOrigin",s)
 
             s = ( item \ "@whiteIps" ).text
             if( s != "" ) {
@@ -1260,6 +1268,10 @@ image/x-icon ico
         val params = req.params
         val charset = msgAttrs.getOrElse(serviceId+"-"+msgId+"-charset","UTF-8")
         var contentType = msgAttrs.getOrElse(serviceId+"-"+msgId+"-responseContentType",MIMETYPE_JSON)
+        var accessControlAllowOrigin = msgAttrs.getOrElse(serviceId+"-"+msgId+"-accessControlAllowOrigin","")
+        if( accessControlAllowOrigin == "" && accessControlAllowOriginGlobal != "" ) {
+            accessControlAllowOrigin = accessControlAllowOriginGlobal
+        }
         val pluginParam = msgAttrs.getOrElse(serviceId+"-"+msgId+"-pluginParam",null)
         val bodyOnly = msgAttrs.getOrElse(serviceId+"-"+msgId+"-bodyOnly","0")
         val jsonpCallback = req.xhead.s(jsonpName,"")
@@ -1320,6 +1332,10 @@ image/x-icon ico
                 if( v != null && v != "") headers.put(headerName,v)
                 body.remove(fieldName)
             }
+        }
+
+        if( !headers.contains("Access-Control-Allow-Origin") && accessControlAllowOrigin != "" ) {
+            headers.put("Access-Control-Allow-Origin",accessControlAllowOrigin)
         }
 
         val redirectUrl302 = body.s(redirect302FieldName,"" )

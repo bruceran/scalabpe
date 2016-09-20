@@ -1152,6 +1152,7 @@
         logUserAgent="false"
         maxContentLength="5000000"
         jsonRpcUrl="/jsonrpc"
+        accessControlAllowOrigin=""
 
         cacheEnabled="true"
         cacheFileSize="25000"
@@ -1178,6 +1179,7 @@
                     whiteIps="ipgrp1,ipgrp2"
                     bodyOnly="0"
                     encodeRequest="1"
+                    accessControlAllowOrigin=""
                     plugin="">xxx/yyy,999,26</Item>
             ...
         </UrlMapping>
@@ -1224,6 +1226,7 @@
       httpCacheSeconds设置为0，
       skipMinFile设置为true，
       enableMock设置为true
+    accessControlAllowOrigin 输出Access-Control-Allow-Origin值控制跨域访问，默认不输出, 此配置为整个服务器的全局配置
 
 ## 签名校验
 
@@ -1266,6 +1269,8 @@
         bodyOnly 在输出json部分，只输出body部分的json，不输出hps的return_code, return_message
         encodeRequest 对接收到的入参不按照服务描述文件进行编码过滤，用来接收一些未知的参数，比如转发接口
 
+        accessControlAllowOrigin 输出Access-Control-Allow-Origin值控制跨域访问，默认不输出, 此配置为消息级别的全局配置，若未配置，则取全局配置
+
         plugin="plain|redirect|template|..."
         plugin中允许的值为预定义的值或者类名, 预定义的值有：
             1) plain 输出纯文本，从plainText参数中取值，若要调整参数名，可以用plugin="plain:参数名"形式
@@ -1297,7 +1302,6 @@
 
     接口入参中 <field name="a" type="a_type" headerName="xxx"/> 表示a的值从http header xxx中获取
     接口出参中 <field name="a" type="a_type" headerName="xxx"/> 表示把a输出到http header中
-
 
 ## 服务描述文件扩展：cookie支持
 

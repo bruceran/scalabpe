@@ -30,7 +30,7 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
     val pluginConfFile = "jvmdbbroker.plugins.conf"
     val EMPTY_BUFFER = ByteBuffer.allocate(0)
 
-    val pReg = """@[0-9a-zA-Z_-]+[ <]""".r // @xxx
+    val pReg = """@[0-9a-zA-Z_-]+[ <\]]""".r // allowed: @xxx< @xxx]]> @xxx[SPACE]
     val pRegName = """^(@[0-9a-zA-Z_-]+).*$""".r
 
     val actorMap = HashMap[String,Actor]()
@@ -71,7 +71,7 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
             method.invoke(obj.instance)
         } catch {
             case e: Throwable =>
-                log.warn(globalCls + ".init not found")
+                log.info(globalCls + ".init not found")
         }
     }
 
@@ -85,7 +85,7 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
             method.invoke(obj.instance)
         } catch {
             case e: Throwable =>
-                log.warn(globalCls + ".close not found")
+                log.info(globalCls + ".close not found")
         }
     }
 
@@ -310,6 +310,7 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
     def initInternal() {
 
         val str = prepareConfigFile()
+        //println(str)
         val in = new StringReader(str)
         cfgXml = XML.load(in)
         in.close()
