@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<parameters>
+
+    <Neo4jCfg threadNum="8">
+        <ServiceId>665</ServiceId>
+        <Connection conns="8">service=bolt://192.168.20.152 user=neo4j password=neo4j</Connection>
+    </Neo4jCfg>
+
+</parameters>
+

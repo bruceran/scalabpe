@@ -56,6 +56,8 @@
 
 [ActiveMQ消息队列consumer配置](#mqreceiver)
 
+[Neo4j图数据库插件配置](#neo4j)
+
 [连接密码加密](#pwd)
 
 [参数文件](#paramfile)
@@ -1628,6 +1630,64 @@
 
     如果队列的序列化是非标准格式，可以使用plugin属性指定插件类名，插件类需实现MqDeselialize接口, 自定义插件类
     不再支持默认的messageId,messageSourceIp,messageTimestamp,messageType4个值, 由插件类自行处理
+
+[返回](#toc)
+
+# <a name="neo4j">Neo4j图数据库插件配置</a>
+
+    此插件用来连接neo4j图数据库，使用方法类似Db插件, 仅有少量差异
+
+## 配置参数
+
+    线程和连接基本配置:
+
+        <Neo4jCfg threadNum="8" conns="8">
+            <ServiceId>665</ServiceId>
+            <Connection>service=bolt://192.168.52.128 user=neo4j password=neo4jadmin</Connection>
+        </Neo4jCfg>
+
+        threadNum 线程数，默认为8
+        conns 连接数,默认为8
+        Connection 配置连接串，用户名，密码 
+        service 必须为一个有效的neo4j bold协议连接串
+        user,password 连接用户名密码
+
+    支持事务的版本：
+
+        <SyncedNeo4jCfg conns="8">
+            <ServiceId>665</ServiceId>
+            <Connection>service=bolt://192.168.52.128 user=neo4j password=neo4jadmin</Connection>
+        </SyncedNeo4jCfg>
+
+    此插件不支持分库,master/slave等db插件的特性
+
+## 消息定义语法
+
+    消息配置语法基本同db插件的配置语法，差异点如下：
+    
+    1) sql里的定义的语句是neo4j的cypher语法, 而不是sql语法
+    2) cypher语法使用{abc}表示变量，而不是sql里的:abc
+    3) 一个消息里多条语句的时候使用空行来分割多条cypher语句，而不是sql的自动识别
+    4) cypher语法返回的node,relationship会转换成json字符串,path会转成一般的字符串
+    
+    示例:
+
+        <message name="queryMovie" id="1">
+            <sql><![CDATA[
+                match (n:Movie) where n.title = {title} 
+                return id(n) as id, n.title, n.released
+                limit 1
+            ]]></sql>
+            <requestParameter>
+                <field name="title"/>
+            </requestParameter>
+            <responseParameter>
+                <field name="rowcount"/>
+                <field name="id"/>
+                <field name="title"/>
+                <field name="released"/>
+            </responseParameter>
+        </message>
 
 [返回](#toc)
 

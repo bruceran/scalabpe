@@ -1,7 +1,61 @@
-//$service999.test
+//$service999.test.withsyncedinvoke
 
 //#receive
     
-    reply(0)
+   var ret = syncedInvoke("neo4jservice.queryMovie",33000,
+       "title"->"Cloud Atlas") 
+
+   println(ret.toString)
+   ret = syncedInvoke("neo4jservice.queryMovie7",3000,
+       "title"->"Cloud Atlas") 
+
+   println(ret.toString)
+
+   ret = syncedInvoke("neo4jservice.queryMovie2",3000,
+       "title"->"Cloud Atlas") 
+
+   println(ret.toString)
+
+   ret = syncedInvoke("neo4jservice.queryMovie3",3000,
+       "title"->"Cloud Atlas") 
+
+   println(ret.toString)
+
+   ret = syncedInvoke("neo4jservice.queryMovie11",3000,
+       "title"->"Cloud Atlas") 
+
+   println(ret.toString)
+
+/*
+   ret = syncedInvoke("neo4jservice.createDevice",3000,
+       "createTime"->"2019-01-01",
+       "platform"->"pc",
+       "deviceId"->"D089") 
+
+   println(ret.toString)
+   ret = syncedInvoke("neo4jservice.createDevice",3000,
+       "createTime"->"2019-01-01",
+       "platform"->"pc",
+       "deviceId"->"D089") 
+
+   println(ret.toString)
+*/
+/*
+   ret = syncedInvoke("neo4jservice.updateDevice",3000,
+       "createTime"->"2029-01-08",
+       "platform"->"pc2018",
+       "deviceId"->"D089") 
+
+   println(ret.toString)
+   ret = syncedInvoke("neo4jservice.deleteDevice",3000,
+       "deviceId"->"D089") 
+   println(ret.toString)
+
+   ret = syncedInvoke("neo4jservice.test200",3000,
+       "name"->"Jessica Thompson") 
+   println(ret.toString)
+
+*/
+   reply(ret.code)
   
 

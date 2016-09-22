@@ -231,6 +231,13 @@
         <Destination queueName="com.sdo.billing.test1" />
     </MqReceiverCfg>
 -->
+<!-- neo4j配置 -->
+<!-- 
+    <Neo4jCfg threadNum="8" conns="8">
+        <ServiceId>665</ServiceId>
+        <Connection>service=bolt://192.168.52.128 user=neo4j password=neo4jadmin</Connection>
+    </Neo4jCfg>
+-->
 
 </parameters>
 
