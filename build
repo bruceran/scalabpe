@@ -1,6 +1,6 @@
 
-version="1.1.6"
-pluginversion="1.1.6"
+version="1.1.7"
+pluginversion="1.1.7"
 
 show_help()
 {
