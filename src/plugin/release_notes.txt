@@ -1,4 +1,17 @@
 
+1.1.9 (20161008)
+================
+
+* ConcurrentLocalQueue插件并发数参数concurrentNum支持配置到消息一级别
+* 修改ConcurrentLocalQueue的一个bug：若concurrentNum>1, 则实际会没有并发上限
+* 修改ConcurrentLocalQueue读配置的一个bug: 无法读到Msg子节点的配置 
+* db插件支持将查询结果写入传入的一个本地文件里, 用于处理结果集很大的数据集
+
+1.1.8 (20161008)
+================
+
+* 无变动
+
 1.1.7 (20160927)
 ================
 

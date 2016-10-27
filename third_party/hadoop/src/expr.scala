@@ -6,6 +6,7 @@ import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
 import org.apache.hadoop.hbase.util._
 import org.apache.hadoop.hbase.filter._
+import java.util.regex._
 
 trait FilterExpr {
     def eval(cf:String,resInfos:ArrayBuffer[ColumnInfo]):Filter
@@ -74,13 +75,30 @@ class FilterExprSimple(val keys:String,val operator:String,val value:String) ext
                 CompareFilter.CompareOp.NOT_EQUAL
             case "=" | "==" =>
                 CompareFilter.CompareOp.EQUAL
+            case "~=" | "#=" =>
+                CompareFilter.CompareOp.EQUAL
+            case "!~" | "!#" =>
+                CompareFilter.CompareOp.NOT_EQUAL
             case _ =>
                 throw new Exception("unknown_operator")
                 
         }
-        val f = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(cn), compare, Bytes.toBytes(value)); 
-        f.setFilterIfMissing(true)
-        f
+        operator match {
+            case "~=" | "!~" =>
+                val reg = new RegexStringComparator(value)
+                val f = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(cn), compare, reg); 
+                f.setFilterIfMissing(true)
+                f
+            case "#=" | "!#"=>
+                val reg = new RegexStringComparator(value, Pattern.CASE_INSENSITIVE)
+                val f = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(cn), compare, reg); 
+                f.setFilterIfMissing(true)
+                f
+            case _ =>
+                val f = new SingleColumnValueFilter(Bytes.toBytes(cf), Bytes.toBytes(cn), compare, Bytes.toBytes(value)); 
+                f.setFilterIfMissing(true)
+                f
+        }
     }
 }
 /*
@@ -197,9 +215,9 @@ class FilterExprBuilder {
 
 object FilterExprParser extends Logging {
 
-    val reg1 = """^([a-zA-Z0-9,_]+)( +[a-zA-Z_]+ +) *(.+)$""".r
-    val reg2 = """^([a-zA-Z0-9,_]+)( *== *| *!= *| *<> *| *>= *| *<= *) *(.+)$""".r
-    val reg3 = """^([a-zA-Z0-9,_]+)( *= *| *< *| *> *) *(.+)$""".r
+    val reg1 = """^([a-zA-Z0-9._]+)( +[a-zA-Z_]+ +) *(.+)$""".r
+    val reg2 = """^([a-zA-Z0-9._]+)( *== *| *!= *| *<> *| *>= *| *<= *| *!~ *| *!# *| *~= *| *#= *) *(.+)$""".r
+    val reg3 = """^([a-zA-Z0-9._]+)( *= *| *< *| *> *) *(.+)$""".r
 
     def parse(s:String):FilterExpr = {
         val ns = s.replace("\n"," ").replace("\r"," ").replace("\t"," ")
@@ -314,7 +332,7 @@ object FilterExprParser extends Logging {
                 val o = operator.trim.toLowerCase
                 var v = value.trim
                 o match {
-                    case "!=" | "==" | ">=" | "<=" | "<>"=>
+                    case "!=" | "==" | ">=" | "<=" | "<>" | "!~" | "!#"  | "~=" | "#=" =>
                         v = removeQuota(v)
                         return new FilterExprSimple(keys,o,v)
                     case _ =>

@@ -1526,7 +1526,12 @@ class DbClient(
                 val keyTypes = msgDefine.sqls(0).keyTypes
                 var useSlave = msgDefine.useSlave
                 if( req.s("useSlave","") != "" ) { useSlave = isTrue(req.s("useSlave")) }
-                results = query_db(sql,params,keyTypes,masterList,slaveList,dbIdx,useSlave)
+                val saveToFile = req.ns("saveToFile")
+                val saveToFileSplitter = req.ns("saveToFileSplitter",",")
+                if( saveToFile == "")
+                    results = query_db(sql,params,keyTypes,masterList,slaveList,dbIdx,useSlave)
+                else
+                    results = query_db_to_file(sql,params,keyTypes,masterList,slaveList,dbIdx,useSlave,saveToFile,saveToFileSplitter)
 
             case MsgDefine.SQLTYPE_UPDATE =>
 

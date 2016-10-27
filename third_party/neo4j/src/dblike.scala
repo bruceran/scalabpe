@@ -6,8 +6,48 @@ import org.neo4j.driver.v1.exceptions._
 import org.neo4j.driver.internal.value._
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.ArrayBuffer
+import java.io._
 
 import jvmdbbroker.core._
+
+class LocalFile(val filename:String) { 
+
+    var writer:PrintWriter = null
+ 
+    open()
+
+    def open() {
+        try {
+            writer = new PrintWriter( new OutputStreamWriter(new FileOutputStream(filename,false),"utf-8") );
+        }
+        catch {
+            case e:Throwable =>
+                writer = null
+        }
+    }
+
+    def close() {
+        if( writer != null ) {
+            writer.close()
+            writer = null
+        }
+    }
+    
+    def writeLine(line:String):Unit = {
+        if( writer == null ) return 
+        try {
+            writer.println(line)
+        }
+        catch {
+            case e:Throwable =>
+                try { if( writer != null ) writer.close(); } catch { case e:Throwable => }
+                writer = null
+        }
+    }
+}
+trait QueryCallback {
+    def process(rowNum:Int, buff:ArrayBufferString):Boolean
+}
 
 object ColumnType {
 
@@ -309,6 +349,154 @@ class DbLike extends Logging  {
 
     }
     
+    def query_db_to_file(sql:String,params:ArrayBufferString,paramNames:ArrayBufferString,paramTypes:ArrayBuffer[Int],ds:Driver,saveToFile:String,splitter:String):DbResults = {
+
+        var conn : Session = null
+
+        val ts1 = System.currentTimeMillis
+
+        if( log.isDebugEnabled() ) {
+            var paramsstr = ""
+            if( params != null ) paramsstr = params.mkString(",")
+            log.debug("db query, sql=%s,value=%s".format(sql,paramsstr))
+        }
+
+        val localFile = new LocalFile(saveToFile)
+        var totalRowCount = 0
+
+        var hasException = false
+        try {
+
+            if( mode == DbLike.MODE_SYNC ) {
+                conn = tl.get()
+            }else {
+                conn = ds.session()
+            }
+
+            val rs = conn.run(sql,prepare(params,paramNames,paramTypes))
+
+            val columnCount = rs.keys().size()
+
+            while( rs.hasNext()) {
+
+                val record = rs.next()
+
+                val row = new ArrayBufferAny()
+                var i=0
+                while(i < columnCount) {
+                    var value = record.get(i)
+                    if( value == null )
+                        row += null
+                    else {
+                        row += valueToString(value)
+                    }
+                    i+=1
+                }
+
+                totalRowCount += 1
+                val line = row.mkString(splitter)
+                localFile.writeLine(line)
+            }
+
+            val results = new ArrayBuffer[ ArrayBufferAny ] ()
+            val ret = new DbResults(totalRowCount,results)
+            ret
+
+        } catch {
+            case e:Throwable =>
+                hasException = true
+                var paramsstr = ""
+                if( params != null ) paramsstr = params.mkString(",")
+                val sqlCode = ErrorCodeUtils.parseSqlCode(e)
+                log.error("db query exception, e=%s,sql=%s,value=%s,sqlCode=%s".format(e.getMessage,sql,paramsstr,sqlCode))
+                new DbResults(-1,sqlCode)
+        } finally {
+
+            if( localFile != null ) localFile.close()
+
+            val ts = System.currentTimeMillis - ts1
+            if( ts >= longTimeSql ) {
+                log.warn("long time sql, sql="+sql+", ts=["+ts+"]ms")
+            }
+
+            if( hasException ) {
+
+                if( mode == DbLike.MODE_SYNC ) {
+                    mustRollback()
+                }
+
+            }
+            if( mode != DbLike.MODE_SYNC ) {
+                closeConnection(conn)
+                conn = null
+            }
+        }
+
+    }
+    
+    def query_db(sql:String,ds:Driver,callback:QueryCallback):Int = {
+
+        var conn : Session = null
+
+        val ts1 = System.currentTimeMillis
+
+        if( log.isDebugEnabled() ) {
+            log.debug("db query, sql=%s".format(sql))
+        }
+
+        var totalRowCount = 0
+        var hasException = false
+        try {
+
+            conn = ds.session()
+
+            val rs = conn.run(sql)
+
+            val columnCount = rs.keys().size()
+
+            while( rs.hasNext()) {
+
+                val record = rs.next()
+
+                val row = new ArrayBufferString()
+                var i=0
+                while(i < columnCount) {
+                    var value = record.get(i)
+                    if( value == null )
+                        row += null
+                    else {
+                        row += valueToString(value)
+                    }
+                    i+=1
+                }
+                totalRowCount += 1
+
+                val continue = callback.process(totalRowCount,row)
+                if( !continue ) {
+                    return totalRowCount
+                }
+            }
+
+            totalRowCount
+
+        } catch {
+            case e:Throwable =>
+                hasException = true
+                log.error("db query exception, e=%s,sql=%s".format(e.getMessage,sql))
+                -1
+        } finally {
+
+            val ts = System.currentTimeMillis - ts1
+            if( ts >= longTimeSql ) {
+                log.warn("long time sql, sql="+sql+", ts=["+ts+"]ms")
+            }
+
+            closeConnection(conn)
+            conn = null
+        }
+
+    }
+    
     def valueToString(o:Object):String = {
         if( !o.isInstanceOf[Value] ) return o.toString
         val v = o.asInstanceOf[Value]
@@ -358,6 +546,7 @@ class DbLike extends Logging  {
             case i:IntegerValue => String.valueOf(i.asLong)
             case f:FloatValue => String.valueOf(f.asDouble)
             case b:BooleanValue => String.valueOf(b.asBoolean)
+            case s:StringValue => s.asString
             case _ => v.toString
         }
     }

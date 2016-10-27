@@ -1,4 +1,21 @@
 
+1.1.9 (20161027)
+================
+
+无变动
+
+1.1.8 (20161008)
+================
+
+* runtest测试工具： 支持在扩展包头插入标准头，在json中使用x_socId,x_spsId,x_appId,x_uniqueId来指定标准head
+* 类似.s()方法，增加了一组辅助方法：.ns(key,default), .l() .d() .bd() 方法从map里取值
+    .ns(key) 返回空串代替null
+    .ns(key,default) 如果返回时null或空串，返回default
+    .l(key) 返回Long类型数据
+    .d(key) 返回Double类型数据
+    .bd(key) 返回BigDecimal类型数据,用于避免金额计算时的误差
+* 扩展包头支持新的logId参数,code=13, 可用于存deviceId值
+
 1.1.7 (20160927)
 ================
 

@@ -1692,6 +1692,8 @@ object TlvCodec4Xhead extends Logging {
                         decodeString(buff,len,AvenueCodec.KEY_SPS_ID,map)
                     case AvenueCodec.CODE_HTTP_TYPE =>
                         decodeInt(buff,len,AvenueCodec.KEY_HTTP_TYPE,map)
+                    case AvenueCodec.CODE_LOG_ID =>
+                        decodeString(buff,len,AvenueCodec.KEY_LOG_ID,map)
                     case _ =>
                         var newposition = buff.position+aligned(len)-4
                         if( newposition > buff.limit) newposition = buff.limit
@@ -1771,6 +1773,7 @@ object TlvCodec4Xhead extends Logging {
         val endpointId = map.getOrElse(AvenueCodec.KEY_ENDPOINT_ID,null)
         val spsId = map.getOrElse(AvenueCodec.KEY_SPS_ID,null)
         val httpType = map.getOrElse(AvenueCodec.KEY_HTTP_TYPE,null)
+        val logId = map.getOrElse(AvenueCodec.KEY_LOG_ID,null)
         val isServiceId3 = ( serviceId == 3)
 
         if( isServiceId3 ) {
@@ -1823,6 +1826,8 @@ object TlvCodec4Xhead extends Logging {
             encodeString(buff,AvenueCodec.CODE_SPS_ID,spsId)
         if( httpType != null )
             encodeInt(buff,AvenueCodec.CODE_HTTP_TYPE,httpType)
+        if( logId != null )
+            encodeString(buff,AvenueCodec.CODE_LOG_ID,logId)
 
         buff.flip()
         buff

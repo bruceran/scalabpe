@@ -168,7 +168,6 @@ class FlowCompiler(val rootDir:String) extends Logging {
         cp = libDir+File.separator+"*"+File.pathSeparator + cp 
         cp = cp + File.pathSeparator + tempDir+File.separator+"classes"+File.pathSeparator+"."
         settings.classpath.value = cp
-println("settings.classpath.value="+cp)
 
         settings.outdir.value = new File(tempDir+File.separator+"classes").getPath
         settings.deprecation.value = true

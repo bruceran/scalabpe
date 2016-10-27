@@ -7,6 +7,7 @@ import scala.collection.mutable.LinkedHashMap
 import scala.collection.mutable.ArrayBuffer
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import scala.math.BigDecimal;
 
 class ArrayBufferString extends ArrayBuffer[String]
 class ArrayBufferInt extends ArrayBuffer[Int]
@@ -17,8 +18,14 @@ class HashMapStringAny extends HashMap[String,Any] {
 
     def s(name:String) : String = TypeSafe.s(name,this)
     def s(name:String,defaultValue:String) : String = TypeSafe.s(name,this,defaultValue)
+    def ns(name:String) : String = TypeSafe.ns(name,this)
+    def ns(name:String,defaultValue:String) : String = TypeSafe.ns(name,this,defaultValue)
     def i(name:String) : Int = TypeSafe.i(name,this)
     def i(name:String,defaultValue:Int) : Int = TypeSafe.i(name,this,defaultValue)
+    def l(name:String) : Long = TypeSafe.l(name,this)
+    def d(name:String) : Double = TypeSafe.d(name,this)
+    def bd(name:String) : BigDecimal = TypeSafe.bd(name,this)
+
     def m(name:String) : HashMapStringAny = TypeSafe.m(name,this)
     def ls(name:String) : ArrayBufferString = TypeSafe.ls(name,this)
     def li(name:String) : ArrayBufferInt = TypeSafe.li(name,this)
@@ -232,9 +239,14 @@ class Request (
 
     def s(name:String) : String = body.s(name)
     def s(name:String,defaultValue:String) : String = body.s(name,defaultValue)
-
+    def ns(name:String) : String = body.ns(name)
+    def ns(name:String,defaultValue:String) : String = body.ns(name,defaultValue)
     def i(name:String) : Int = body.i(name)
     def i(name:String,defaultValue:Int) : Int = body.i(name,defaultValue)
+    def l(name:String) : Long = body.l(name)
+    def d(name:String) : Double = body.d(name)
+    def bd(name:String) : BigDecimal = body.bd(name)
+
     def m(name:String) : HashMapStringAny = body.m(name)
     def ls(name:String) : ArrayBufferString = body.ls(name)
     def li(name:String) : ArrayBufferInt = body.li(name)
@@ -319,8 +331,14 @@ class InvokeResult(val requestId:String, val code:Int, val res:HashMapStringAny)
 
     def s(name:String) : String = res.s(name)
     def s(name:String,defaultValue:String) : String = res.s(name,defaultValue)
-
+    def ns(name:String) : String = res.ns(name)
+    def ns(name:String,defaultValue:String) : String = res.ns(name,defaultValue)
     def i(name:String) : Int = res.i(name)
+    def i(name:String,defaultValue:Int) : Int = res.i(name,defaultValue)
+    def l(name:String) : Long = res.l(name)
+    def d(name:String) : Double = res.d(name)
+    def bd(name:String) : BigDecimal = res.bd(name)
+
     def m(name:String) : HashMapStringAny = res.m(name)
     def ls(name:String) : ArrayBufferString = res.ls(name)
     def li(name:String) : ArrayBufferInt = res.li(name)
@@ -444,8 +462,21 @@ object TypeSafe {
 
     def s(name:String,body:HashMapStringAny,defaultValue:String) : String = {
         val value = s(name,body)
-        if( value == null ) return defaultValue
-        else return value
+        if( value == null ) defaultValue
+        else value
+    }
+
+    def ns(name:String,body:HashMapStringAny) : String = {
+        val value = body.getOrElse(name,null)
+        val v = anyToString(value)
+        if( v == null ) ""
+        else v
+    }
+
+    def ns(name:String,body:HashMapStringAny,defaultValue:String) : String = {
+        val value = ns(name,body)
+        if( value == "" ) defaultValue
+        else value
     }
 
     def i(name:String,body:HashMapStringAny) : Int = {
@@ -457,6 +488,21 @@ object TypeSafe {
         val value = body.getOrElse(name,null)
         if( value == null ) return defaultValue
         anyToInt(value)
+    }
+
+    def l(name:String,body:HashMapStringAny) : Long = {
+        val value = body.getOrElse(name,null)
+        anyToLong(value)
+    }
+
+    def d(name:String,body:HashMapStringAny) : Double = {
+        val value = body.getOrElse(name,null)
+        anyToDouble(value)
+    }
+
+    def bd(name:String,body:HashMapStringAny) : BigDecimal = {
+        val value = body.getOrElse(name,null)
+        anyToBigDecimal(value)
     }
 
     def m(name:String,body:HashMapStringAny) : HashMapStringAny = {
@@ -527,12 +573,102 @@ object TypeSafe {
                         case _ : Throwable => 0
                     }
                 }
-                        case _ =>
-                            try {
-                                value.toString.toInt
-                            } catch {
-                                case _ : Throwable => 0
-                            }
+            case _ =>
+                try {
+                    value.toString.toInt
+                } catch {
+                    case _ : Throwable => 0
+                }
+        }
+    }
+
+    def anyToLong(value:Any):Long = {
+
+        if( value == null ) return 0
+
+        value match {
+            case i: Int => i
+            case l: Long => l
+            case s: Short => s
+            case b: Byte => b
+            case bl: Boolean => if( bl ) 1 else 0
+            case str: String =>
+
+                if( str == "" ) {
+                    0
+                } else {
+                    try {
+                        str.toLong
+                    } catch {
+                        case _ : Throwable => 0
+                    }
+                }
+            case _ =>
+                try {
+                    value.toString.toLong
+                } catch {
+                    case _ : Throwable => 0
+                }
+        }
+    }
+
+    def anyToDouble(value:Any):Double = {
+
+        if( value == null ) return 0.0
+
+        value match {
+            case i: Int => i
+            case l: Long => l
+            case s: Short => s
+            case b: Byte => b
+            case bl: Boolean => if( bl ) 1 else 0
+            case str: String =>
+
+                if( str == "" ) {
+                    0
+                } else {
+                    try {
+                        str.toDouble
+                    } catch {
+                        case _ : Throwable => 0
+                    }
+                }
+            case _ =>
+                try {
+                    value.toString.toDouble
+                } catch {
+                    case _ : Throwable => 0
+                }
+        }
+    }
+
+    def anyToBigDecimal(value:Any):BigDecimal = {
+
+        if( value == null ) return 0.0
+
+        value match {
+            case i: Int => BigDecimal(i)
+            case l: Long => BigDecimal(l)
+            case s: Short => BigDecimal(s)
+            case b: Byte => BigDecimal(b)
+            case bl: Boolean => if( bl ) BigDecimal(1) else BigDecimal(0)
+            case str: String =>
+
+                if( str == "" ) {
+                    BigDecimal(0)
+                } else {
+                    try {
+                        BigDecimal(str)
+                    } catch {
+                        case _ : Throwable => BigDecimal(0)
+                    }
+                }
+            case _ =>
+                try {
+                    BigDecimal(value.toString)
+                } catch {
+                    case _ : Throwable => BigDecimal(0)
+                }
         }
     }
 

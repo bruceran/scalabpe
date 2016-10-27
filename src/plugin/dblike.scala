@@ -2,6 +2,7 @@ package jvmdbbroker.plugin
 
 import java.sql._;
 import javax.sql.DataSource
+import java.io._
 
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.ArrayBuffer
@@ -10,6 +11,41 @@ import org.apache.commons.dbcp.BasicDataSource
 
 import jvmdbbroker.core._
 
+class LocalFile(val filename:String) { 
+
+    var writer:PrintWriter = null
+ 
+    open()
+
+    def open() {
+        try {
+            writer = new PrintWriter( new OutputStreamWriter(new FileOutputStream(filename,false),"utf-8") );
+        }
+        catch {
+            case e:Throwable =>
+                writer = null
+        }
+    }
+
+    def close() {
+        if( writer != null ) {
+            writer.close()
+            writer = null
+        }
+    }
+    
+    def writeLine(line:String):Unit = {
+        if( writer == null ) return 
+        try {
+            writer.println(line)
+        }
+        catch {
+            case e:Throwable =>
+                try { if( writer != null ) writer.close(); } catch { case e:Throwable => }
+                writer = null
+        }
+    }
+}
 object ColumnType {
 
     val COLUMNTYPE_STRING = 1
@@ -428,6 +464,133 @@ class DbLike extends Logging  {
             log.error("db query exception, e=%s,sql=%s,value=%s,sqlCode=%d".format(e.getMessage,sql,paramsstr,sqlCode))
             new DbResults(-1,sqlCode)
         } finally {
+            closeResultSet(rs)
+            rs = null
+            closeStatement(ps)
+            ps = null
+
+            val ts = System.currentTimeMillis - ts1
+            if( ts >= longTimeSql ) {
+                log.warn("long time sql, sql="+sql+", ts=["+ts+"]ms")
+            }
+
+            if( hasException ) {
+
+                if( mode == DbLike.MODE_SYNC ) {
+                    mustRollback()
+                }
+
+            }
+            if( mode != DbLike.MODE_SYNC ) {
+                closeConnection(conn)
+                conn = null
+            }
+        }
+
+    }
+
+    def query_db_to_file(sql:String, params:ArrayBufferString, keyTypes:ArrayBuffer[Int], masterList: ArrayBuffer[DataSource], slaveList: ArrayBuffer[DataSource], dbIdx:Int,useSlave:Boolean = false ,saveToFile:String,splitter:String):DbResults = {
+        if( useSlave && slaveList != null && slaveList.size > 0 ) {
+            var ds = slaveList(dbIdx)
+
+            val result = query_db_to_file(sql,params,keyTypes,ds,saveToFile,splitter)
+            if( result.rowCount != -1 )
+                return result
+        }
+
+        var ds = masterList(dbIdx)
+        val result = query_db_to_file(sql,params,keyTypes,ds,saveToFile,splitter)
+        return result
+    }
+
+    def query_db_to_file(sql:String,params:ArrayBufferString,keyTypes:ArrayBuffer[Int], ds: DataSource,saveToFile:String,splitter:String):DbResults = {
+
+        var conn : java.sql.Connection = null
+        var ps : PreparedStatement = null
+        var rs : ResultSet = null
+
+        val ts1 = System.currentTimeMillis
+
+        if( log.isDebugEnabled() ) {
+            var paramsstr = ""
+            if( params != null ) paramsstr = params.mkString(",")
+            log.debug("db query, sql=%s,value=%s".format(sql,paramsstr))
+        }
+
+        val localFile = new LocalFile(saveToFile)
+        var totalRowCount = 0
+
+        var hasException = false
+        try {
+
+            if( mode == DbLike.MODE_SYNC ) {
+                conn = tl.get()
+            }else {
+                conn = ds.getConnection()
+            }
+
+            ps = conn.prepareStatement(sql)
+
+            prepare(ps,params,keyTypes)
+
+            rs = ps.executeQuery()
+
+            val metaData = rs.getMetaData()
+            val columnCount = metaData.getColumnCount()
+
+            var fdt : java.text.SimpleDateFormat = null
+
+            while( rs.next()) {
+                val row = new ArrayBufferAny()
+                var i=1
+                while(i <= columnCount) {
+                    val colType = metaData.getColumnType(i)
+
+                    var value : Any = null
+                    var tmpValue : Any = null
+
+                    colType match {
+                        case Types.DATE =>
+                            if( fdt == null ) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                            tmpValue = rs.getTimestamp(i)
+                        if( tmpValue != null ) {
+                            value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
+                        }
+                        case Types.TIMESTAMP =>
+                            if( fdt == null ) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                            tmpValue = rs.getTimestamp(i)
+                        if( tmpValue != null )
+                            value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
+                        case _ =>
+                            value = rs.getString(i)
+                    }
+
+                    row += value
+                    i+=1
+                }
+
+                totalRowCount += 1
+                val line = row.mkString(splitter)
+                localFile.writeLine(line)
+            }
+
+
+            val results = new ArrayBuffer[ ArrayBufferAny ] ()
+            val ret = new DbResults(totalRowCount,results)
+            ret
+
+        } catch {
+            case e:Throwable =>
+                hasException = true
+                var paramsstr = ""
+                if( params != null ) paramsstr = params.mkString(",")
+                val sqlCode = ErrorCodeUtils.parseSqlCode(e)
+            log.error("db query exception, e=%s,sql=%s,value=%s,sqlCode=%d".format(e.getMessage,sql,paramsstr,sqlCode))
+            new DbResults(-1,sqlCode)
+        } finally {
+
+            if( localFile != null ) localFile.close()
+
             closeResultSet(rs)
             rs = null
             closeStatement(ps)

@@ -27,12 +27,17 @@ extends LocalQueueActor(router,cfgNode) {
         log.info("concurrentNum="+concurrentNum)
     }
 
-    override def onReceiveResponse(res:InvokeResult)  {
-
-        if( concurrentNum <= 1 ) { 
-            super.onReceiveResponse(res)
-            return
+    def getConcurrentNum(msgId: Int):Int ={
+        val tempvalue = msgIdCfgMap.getOrElse(msgId.toString, null)
+        if (tempvalue != null){
+            val c = if( tempvalue.concurrentNum <= 0 ) concurrentNum else tempvalue.concurrentNum
+            return c
+        }else{
+            return concurrentNum 
         }
+    } 
+    
+    override def onReceiveResponse(res:InvokeResult)  {
 
         // 相比LocalQueue, 这里会将concurrentNum减1再继续后续处理
 
@@ -50,6 +55,7 @@ extends LocalQueueActor(router,cfgNode) {
 
         val maxSendTimes = getMaxSendTimes(msgId)
         val retryInterval = getRetryInterval(msgId)
+        val msgConcurrentNum = getConcurrentNum(msgId)
 
         if( res.code == 0 || sendingdata.sendCount >= maxSendTimes ) {
 
@@ -109,9 +115,17 @@ extends LocalQueueActor(router,cfgNode) {
     }
 
     override def send(sendingdata:LocalQueueSendingData,generatedRequestId:String=null):Boolean = {
-        if( concurrentNum <= 1 ) {
-            return super.send(sendingdata)
+
+        val body = jsonToBody(sendingdata.json)
+        if (body == null) return false
+
+        val msgId = body.i("X-MSGID")
+        if (msgId <= 0) {
+            log.error("X-MSGID not found or not valid in json " + sendingdata.json)
+            return false
         }
+
+        val msgConcurrentNum = getConcurrentNum(msgId)
 
         var ai = queueConnNumMap.get(sendingdata.queueName)
         if( ai == null ) {
@@ -119,11 +133,11 @@ extends LocalQueueActor(router,cfgNode) {
             queueConnNumMap.put(sendingdata.queueName,ai)
         }
         val connNum = ai.incrementAndGet()
-
         val d = new LocalQueueSendingData(sendingdata.queueName,sendingdata.requestId,sendingdata.idx,sendingdata.json,sendingdata.sendCount)
         d.createTime = sendingdata.createTime
         d.requestId = "LQ"+RequestIdGenerator.nextId()
         requestIdMap.put(d.requestId,d)
+        sendingdata.requestId = d.requestId
 
         val ok = super.send(d,d.requestId)
         if(!ok) {
@@ -132,7 +146,7 @@ extends LocalQueueActor(router,cfgNode) {
             return false
         }
 
-        if( connNum < concurrentNum ) {
+        if( connNum < msgConcurrentNum ) {
             sendingdata.reset()
         }
 

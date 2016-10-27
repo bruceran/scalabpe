@@ -325,7 +325,7 @@ class ResultDefine(
         this(key,fieldType,row,col,List[String]())
     }
     override def toString() = {
-        "fieldType=%d,row=%d,col=%d,rowNames=%s".format(fieldType,row,col,rowNames.mkString(","))
+        "key=%s,fieldType=%d,row=%d,col=%d,rowNames=%s".format(key,fieldType,row,col,rowNames.mkString(","))
     }
 }
 
@@ -506,7 +506,11 @@ class DbClient(
                             hasArrayReqFields = true
 
                         val defaultValue = map.getOrElse("req-"+f+"-default",null)
-                        val columnType = map.getOrElse("req-"+f+"-columnType","string")
+                        var columnType = map.getOrElse("req-"+f+"-columnType","string")
+                        if( columnType == "string" ) {
+                            if( tlvType.cls == TlvCodec.CLS_INT || tlvType.cls == TlvCodec.CLS_INTARRAY )
+                                columnType = "number"
+                        }
                         val toValue = map.getOrElse("req-"+f+"-to",null)
                         if(toValue != null ) {
 
@@ -800,7 +804,7 @@ class DbClient(
         s = s.substring(p1+8)
         var p2 = s.indexOf(" order by ")
         if( p2 >= 0 ) {
-            s = s.substring(-1,p2)
+            s = s.substring(0,p2)
         } else {
             p2 = s.indexOf(" skip ")
             if( p2 >= 0 ) { 
@@ -810,6 +814,7 @@ class DbClient(
                 if( p2 >= 0 ) s = s.substring(0,p2)
             }
         }
+
         var ss = s.split(",")
         if( s.indexOf("(") >= 0 ) { // include function
             ss = splitFieldWithFunction(s)
@@ -818,6 +823,7 @@ class DbClient(
         for( m <- ss ) {
             fields += parseFieldName(m)
         }
+
         sqlSelectFieldsMap.put(sql,fields)
     }
 
@@ -1140,7 +1146,13 @@ class DbClient(
                 val (sql,params) = replaceSql(msgDefine.sqls(0),req)
                 val paramNames = msgDefine.sqls(0).paramNames
                 val paramTypes = msgDefine.sqls(0).paramTypes
-                results = query_db(sql,params,paramNames,paramTypes,driver)
+                
+                val saveToFile = req.ns("saveToFile")
+                val saveToFileSplitter = req.ns("saveToFileSplitter",",")
+                if( saveToFile == "")
+                    results = query_db(sql,params,paramNames,paramTypes,driver)
+                else
+                    results = query_db_to_file(sql,params,paramNames,paramTypes,driver,saveToFile,saveToFileSplitter)
 
             case MsgDefine.SQLTYPE_UPDATE =>
 

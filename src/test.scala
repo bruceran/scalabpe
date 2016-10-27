@@ -11,7 +11,7 @@ import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.node._
 
-class TestCase(val serviceId:Int,val msgId:Int,val body:HashMapStringAny,val repeat:Int = 1)
+class TestCase(val serviceId:Int,val msgId:Int,val body:HashMapStringAny,val repeat:Int = 1,val xhead:HashMapStringAny = new HashMapStringAny() )
 
 object TestCaseRunner {
 
@@ -101,7 +101,7 @@ object TestCaseRunner {
             for( j <- 1 to t.repeat ) {
 
                 seq += 1
-                val req = new SocRequest(seq.toString,t.serviceId,t.msgId,t.body)
+                val req = new SocRequest(seq.toString,t.serviceId,t.msgId,t.body,AvenueCodec.ENCODING_UTF8,t.xhead)
                 println("req="+req)
                 soc.send(req,timeout)
             }
@@ -145,7 +145,17 @@ object TestCaseRunner {
         var repeat = body.i("x_repeat")
         if( repeat == 0 ) repeat = 1
 
-        val tc = new TestCase(serviceId,msgId,body,repeat)
+        val xhead = HashMapStringAny()
+        val socId = body.s("x_socId","")
+        if( socId != "") xhead.put("socId",socId)
+        val spsId = body.s("x_spsId","")
+        if( spsId != "") xhead.put("spsId",spsId)
+        val uniqueId = body.s("x_uniqueId","")
+        if( uniqueId != "") xhead.put("uniqueId",uniqueId)
+        val appId = body.s("x_appId","")
+        if( appId != "") xhead.put("appId",appId)
+
+        val tc = new TestCase(serviceId,msgId,body,repeat,xhead)
         tc
     }
 

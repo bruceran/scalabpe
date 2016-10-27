@@ -41,10 +41,11 @@ object AvenueCodec {
     val KEY_GROUP_ID = "groupId"
     val KEY_HOST_ID = "hostId"
     val KEY_SP_ID = "spId"
-    val KEY_ENDPOINT_ID = "endpointId"
-    val KEY_UNIQUE_ID = "uniqueId"
+    val KEY_ENDPOINT_ID = "endpointId" // c++ endpointType
+    val KEY_UNIQUE_ID = "uniqueId" // c++ guid
     val KEY_SPS_ID = "spsId"
     val KEY_HTTP_TYPE = "httpType"
+    val KEY_LOG_ID = "logId"
 
     val CODE_SOC_ID = 1
     val CODE_GS_INFO = 2
@@ -57,6 +58,7 @@ object AvenueCodec {
     val CODE_UNIQUE_ID = 9
     val CODE_SPS_ID = 11
     val CODE_HTTP_TYPE = 12
+    val CODE_LOG_ID = 13
 
     var encrypt_f: (ByteBuffer,String)=>ByteBuffer = null
     var decrypt_f: (ByteBuffer,String)=>ByteBuffer = null

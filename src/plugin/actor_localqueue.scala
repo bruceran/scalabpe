@@ -22,7 +22,7 @@ object LocalQueueActor {
     val localDirs = new HashSet[String]()
 }
 
-class MsgPaCfg(val maxSendTimes: Int ,val retryInterval: Int)
+class MsgPaCfg(val maxSendTimes: Int ,val retryInterval: Int, val concurrentNum:Int = 0 )
 
 class LocalQueueActor(override val router:Router,override val cfgNode: Node)
 extends LocalQueueLike(router,cfgNode) {
@@ -36,15 +36,18 @@ extends LocalQueueLike(router,cfgNode) {
         serviceIds = (cfgNode \ "ServiceId").text
 
         var infos = cfgNode \ "Msg"
-        if (infos.text != "") {
             for (inf <- infos) {
                 var msgId = (inf \ "@msgId").text
-                var retryIntervalCfg = (inf \ "@retryInterval").toString().toInt
-                var maxSendTimesCfg = (inf \ "@maxSendTimes").toString().toInt
-                msgIdCfgMap.put(msgId, new MsgPaCfg(maxSendTimesCfg,retryIntervalCfg))
+                var s = (inf \ "@retryInterval").toString()
+                var retryIntervalCfg = s.toInt
+                s = (inf \ "@maxSendTimes").toString()
+                var maxSendTimesCfg = s.toInt
+                s = (inf \ "@concurrentNum").toString()
+                var concurrentNum = if( s != "" ) s.toInt else 0
+
+                msgIdCfgMap.put(msgId, new MsgPaCfg(maxSendTimesCfg,retryIntervalCfg,concurrentNum))
 
             }
-        }
 
         super.init
 
@@ -391,6 +394,7 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
             return maxSendTimes
         }
     }
+
     def getRetryInterval(msgId: Int):Int ={
         val tempvalue = msgIdCfgMap.getOrElse(msgId.toString, null)
         if (tempvalue != null){
@@ -412,7 +416,6 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
         }
         val maxSendTimes = getMaxSendTimes(msgId)
         val retryInterval = getRetryInterval(msgId)
-
 
         if( sendingdata == null ) return
         if( res.code == 0 || sendingdata.sendCount >= maxSendTimes ) {
@@ -613,6 +616,7 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
     def send(sendingdata:LocalQueueSendingData,generatedRequestId:String=null):Boolean = {
 
+//println("send called,idx="+sendingdata.idx)
         if( beforeCloseFlag.get() ) {
             return true
         }

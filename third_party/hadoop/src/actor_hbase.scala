@@ -134,8 +134,13 @@ object HbaseClient {
     val ACTION_PUT = 2
     val ACTION_DELETE = 3
     val ACTION_SCAN = 4
+    val ACTION_GETDYNAMIC = 5
+    val ACTION_PUTDYNAMIC = 6
+    val ACTION_SCANDYNAMIC = 7
 
     val ROW_KEY = "rowKey"
+    val TABLE_NAME = "tableName"
+    val ROW_COUNT = "rowCount"
 
     val EMPTY_STRINGMAP = new HashMapStringString()
 
@@ -149,9 +154,12 @@ object HbaseClient {
 
         s.toLowerCase match {
             case "get" => return ACTION_GET 
+            case "getdynamic" => return ACTION_GETDYNAMIC
             case "put" => return ACTION_PUT
+            case "putdynamic" => return ACTION_PUTDYNAMIC
             case "delete" => return ACTION_DELETE
             case "scan" => return ACTION_SCAN
+            case "scandynamic" => return ACTION_SCANDYNAMIC
             case _ => return ACTION_UNKNOWN
         }
     }
@@ -283,7 +291,7 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
                 val reqFields = codec.msgKeyToTypeMapForReq.getOrElse(msgId,EMPTY_STRINGMAP).keys.toList
                 val resFields = codec.msgKeyToTypeMapForRes.getOrElse(msgId,EMPTY_STRINGMAP).keys.toList
 
-                if( action !=  ACTION_SCAN && !reqFields.contains(ROW_KEY) ) {
+                if( action !=  ACTION_SCAN && action !=  ACTION_SCANDYNAMIC && !reqFields.contains(ROW_KEY) ) {
                     throw new RuntimeException(ROW_KEY+" not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
                 }
 
@@ -292,7 +300,7 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
 
                 action match {
                     case ACTION_PUT =>
-                        for(f<-reqFields if f != ROW_KEY ) {
+                        for(f<-reqFields if f != ROW_KEY && f != TABLE_NAME ) {
                           val (cf,cn) = genColumnInfo(columnFamily,f)
                           val isDynamic = map.getOrElse("req-"+f+"-isDynamic","0").toLowerCase
                           val b = ( isDynamic == "1" || isDynamic == "t" || isDynamic == "y" || isDynamic == "true" || isDynamic == "yes" )
@@ -304,7 +312,7 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
                             throw new RuntimeException("value not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
                         }
                     case ACTION_GET =>
-                        for(f<-resFields ) {
+                        for(f<-resFields if f != ROW_COUNT ) {
                           val (cf,cn) = genColumnInfo(columnFamily,f)
                           val ci = new ColumnInfo(f,cf,cn)
                           resInfos += ci
@@ -313,7 +321,7 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
                             throw new RuntimeException("value not defined for serviceId=%d,msgId=%d".format(serviceId,msgId))
                         }
                     case ACTION_SCAN =>
-                        for(f<-resFields ) {
+                        for(f<-resFields if f != ROW_KEY && f != ROW_COUNT ) {
                           val (cf,cn) = genColumnInfo(columnFamily,f)
                           val ci = new ColumnInfo(f,cf,cn)
                           resInfos += ci
@@ -362,12 +370,18 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
         msg.action match {
             case ACTION_GET =>
                 get(msg,req)
-            case ACTION_SCAN =>
-                scan(msg,req)
+            case ACTION_GETDYNAMIC =>
+                getDynamic(msg,req)
             case ACTION_PUT =>
                 put(msg,req)
+            case ACTION_PUTDYNAMIC =>
+                putDynamic(msg,req)
             case ACTION_DELETE =>
                 delete(msg,req)
+            case ACTION_SCAN =>
+                scan(msg,req)
+            case ACTION_SCANDYNAMIC =>
+                scanDynamic(msg,req)
             case _ =>
                 reply(req,HBASE_ERROR)
         }
@@ -392,7 +406,65 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
                 i += 1    
             }
 
-            table = getTable(msg.tableName)
+            val tableName = if ( req.s("tableName","") != "" ) req.s("tableName")  else msg.tableName
+            table = getTable(tableName)
+            result = table.get(g)
+        } catch {
+            case e :Throwable =>
+                log.error("hbase get error, e="+e.getMessage+",req="+req.toString)
+                throw e
+        } finally {
+            closeTable(table)
+        }
+
+        println("result.isEmpty="+result.isEmpty())
+
+        val map = new HashMapStringAny()
+        if( result.isEmpty ) {
+            map.put("rowCount",0)
+        } else {
+            map.put("rowCount",1)
+            var i = 0
+            while(i< msg.resInfos.size) {
+                val ci = msg.resInfos(i)
+                var value =  Bytes.toString(result.getValue(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn)))
+                map.put(ci.fn,value)
+                i += 1    
+            }
+        }
+
+        reply(req,0,map)
+    }
+
+    def getDynamic(msg:HbaseMsg,req:Request) {
+        val rowKey = req.s(ROW_KEY,"")
+        if( rowKey == "" ) {
+          reply(req,HBASE_ERROR)
+          return
+        }
+        
+        val fields = req.s("fields")
+        if( fields == null || fields == "" ) {
+          reply(req,HBASE_ERROR)
+          return
+        }
+        var ss = fields.split(",")
+
+        var table:Table = null
+        var result:Result = null
+        try{
+
+            val g = new Get(Bytes.toBytes(rowKey))
+            var i = 0
+            while(i< ss.size) {
+                val field = ss(i)
+                val (cf,cn) = genColumnInfo(msg.columnFamily,field)
+                g.addColumn(Bytes.toBytes(cf),Bytes.toBytes(cn))
+                i += 1    
+            }
+
+            val tableName = if ( req.s("tableName","") != "" ) req.s("tableName")  else msg.tableName
+            table = getTable(tableName)
             result = table.get(g)
         } catch {
             case e :Throwable =>
@@ -403,84 +475,22 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
         }
 
         val map = new HashMapStringAny()
-        var i = 0
-        while(i< msg.resInfos.size) {
-            val ci = msg.resInfos(i)
-            var value =  Bytes.toString(result.getValue(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn)))
-            map.put(ci.fn,value)
-            i += 1    
-        }
-
-        reply(req,0,map)
-    }
-
-    def scan(msg:HbaseMsg,req:Request) {
-        val startRow = req.s("startRow","")
-        val stopRow = req.s("stopRow","")
-
-        val maxResultSize = req.i("maxResultSize",10)
-        val caching = req.i("caching",10)
-
-        var table:Table = null
-        var results:ResultScanner = null
-        val map = new HashMapStringAny()
-        
-        try{
-
-            val s = new Scan()
-            if( startRow != "" ) 
-                s.setStartRow(Bytes.toBytes(startRow))
-            if( stopRow != "" ) 
-                s.setStopRow(Bytes.toBytes(stopRow))
-            s.setMaxResultSize(maxResultSize)
-            s.setCaching(caching)
+        if( result.isEmpty ) {
+            map.put("rowCount",0)
+        } else {
+            map.put("rowCount",1)
+            val rm = HashMapStringAny()
             var i = 0
-            while(i< msg.resInfos.size) {
-                val ci = msg.resInfos(i)
-                s.addColumn(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn))
+            while(i< ss.size) {
+                val field = ss(i)
+                val (cf,cn) = genColumnInfo(msg.columnFamily,field)
+                var value =  Bytes.toString(result.getValue(Bytes.toBytes(cf),Bytes.toBytes(cn)))
+                rm.put(field,value)
                 i += 1    
             }
-
-            val filter = req.s("filter","")
-            if( filter != "" ) {
-                val f = toFilter(msg.columnFamily,msg.resInfos,filter)
-                if( f != null )
-                    s.setFilter(f)
-            }
-
-            table = getTable(msg.tableName)
-            results = table.getScanner(s)
-
-            i = 0
-            while(i< msg.resInfos.size) {
-                val ci = msg.resInfos(i)
-                map.put(ci.fn,ArrayBufferString())
-                i += 1    
-            }
-            var result = results.next()
-            var cnt = 0
-            while( result != null && cnt < maxResultSize ) {
-                var i = 0
-                while(i< msg.resInfos.size) {
-                    val ci = msg.resInfos(i)
-                    var value =  Bytes.toString(result.getValue(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn)))
-                    val arr = map.ls(ci.fn)
-                    arr += value
-                    i += 1    
-                }
-                cnt += 1
-                if( cnt < maxResultSize )
-                    result = results.next()
-            }
-            
-        } catch {
-            case e :Throwable =>
-                log.error("hbase get error, e="+e.getMessage+",req="+req.toString)
-                throw e
-        } finally {
-            closeResults(results)
-            closeTable(table)
+            map.put("values",JsonCodec.mkString(rm))
         }
+
         reply(req,0,map)
     }
 
@@ -507,7 +517,46 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
                 i += 1    
             }
             
-            table = getTable(msg.tableName)
+            val tableName = if ( req.s("tableName","") != "" ) req.s("tableName")  else msg.tableName
+            table = getTable(tableName)
+            table.put(p)
+        } catch {
+            case e :Throwable =>
+                log.error("hbase put error, e="+e.getMessage+",req="+req.toString)
+                throw e
+        } finally {
+            closeTable(table)
+        }
+
+        reply(req,0)
+    }
+
+    def putDynamic(msg:HbaseMsg,req:Request) {
+        val rowKey = req.s(ROW_KEY,"")
+        if( rowKey == "" ) {
+          reply(req,HBASE_ERROR)
+          return
+        }
+
+        val fieldValues = req.s("values")
+        if( fieldValues == null || fieldValues == "" ) {
+          reply(req,HBASE_ERROR)
+          return
+        }
+
+        var table:Table = null
+        try{
+
+            val p = new Put(Bytes.toBytes(rowKey))
+            val m = JsonCodec.parseObject(fieldValues)
+            for( (field,v) <- m ) {
+                val value = TypeSafe.anyToString(v)
+                val (cf,cn) = genColumnInfo(msg.columnFamily,field)
+                p.addColumn(Bytes.toBytes(cf),Bytes.toBytes(cn),if( value != null ) Bytes.toBytes(value) else null ) 
+            }
+            
+            val tableName = if ( req.s("tableName","") != "" ) req.s("tableName")  else msg.tableName
+            table = getTable(tableName)
             table.put(p)
         } catch {
             case e :Throwable =>
@@ -531,7 +580,8 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
         try{
 
             val d = new Delete(Bytes.toBytes(rowKey))
-            table = getTable(msg.tableName)
+            val tableName = if ( req.s("tableName","") != "" ) req.s("tableName")  else msg.tableName
+            table = getTable(tableName)
             table.delete(d)
         } catch {
             case e :Throwable =>
@@ -542,6 +592,170 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
         }
 
         reply(req,0)
+    }
+
+    def scan(msg:HbaseMsg,req:Request) {
+        val startRow = req.s("startRow","")
+        val stopRow = req.s("stopRow","")
+        val reverse = req.i("reverse")
+
+        val maxResultSize = req.i("maxResultSize",10)
+        val caching = req.i("caching",10)
+
+        var table:Table = null
+        var results:ResultScanner = null
+        val map = new HashMapStringAny()
+        
+        try{
+
+            val s = new Scan()
+            if( startRow != "" ) 
+                s.setStartRow(Bytes.toBytes(startRow))
+            if( stopRow != "" ) 
+                s.setStopRow(Bytes.toBytes(stopRow))
+            s.setMaxResultSize(maxResultSize)
+            s.setCaching(caching)
+            if( reverse == 1 ) s.setReversed(true)
+            var i = 0
+            while(i< msg.resInfos.size) {
+                val ci = msg.resInfos(i)
+                s.addColumn(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn))
+                i += 1    
+            }
+
+            val filter = req.s("filter","")
+            if( filter != "" ) {
+                val f = toFilter(msg.columnFamily,msg.resInfos,filter)
+                if( f != null )
+                    s.setFilter(f)
+            }
+
+            val tableName = if ( req.s("tableName","") != "" ) req.s("tableName")  else msg.tableName
+            table = getTable(tableName)
+            results = table.getScanner(s)
+
+            i = 0
+            while(i< msg.resInfos.size) {
+                val ci = msg.resInfos(i)
+                map.put(ci.fn,ArrayBufferString())
+                i += 1    
+            }
+            val rowKeys = ArrayBufferString()
+            map.put(ROW_KEY,rowKeys)
+
+            var result = results.next()
+            var cnt = 0
+            while( result != null && cnt < maxResultSize ) {
+                var i = 0
+                while(i< msg.resInfos.size) {
+                    val ci = msg.resInfos(i)
+                    var value =  Bytes.toString(result.getValue(Bytes.toBytes(ci.cf),Bytes.toBytes(ci.cn)))
+                    val arr = map.ls(ci.fn)
+                    arr += value
+                    i += 1    
+                }
+                val rowKey = Bytes.toString(result.getRow())
+                rowKeys += rowKey
+
+                cnt += 1
+                if( cnt < maxResultSize )
+                    result = results.next()
+            }
+            map.put(ROW_COUNT,cnt)
+            
+        } catch {
+            case e :Throwable =>
+                log.error("hbase get error, e="+e.getMessage+",req="+req.toString)
+                throw e
+        } finally {
+            closeResults(results)
+            closeTable(table)
+        }
+        reply(req,0,map)
+    }
+
+    def scanDynamic(msg:HbaseMsg,req:Request) {
+        val startRow = req.s("startRow","")
+        val stopRow = req.s("stopRow","")
+        val reverse = req.i("reverse")
+
+        val maxResultSize = req.i("maxResultSize",10)
+        val caching = req.i("caching",10)
+
+        val fields = req.s("fields")
+        if( fields == null || fields == "" ) {
+          reply(req,HBASE_ERROR)
+          return
+        }
+        var ss = fields.split(",")
+
+        var table:Table = null
+        var results:ResultScanner = null
+        val map = new HashMapStringAny()
+        
+        try{
+
+            val s = new Scan()
+            if( startRow != "" ) 
+                s.setStartRow(Bytes.toBytes(startRow))
+            if( stopRow != "" ) 
+                s.setStopRow(Bytes.toBytes(stopRow))
+            s.setMaxResultSize(maxResultSize)
+            s.setCaching(caching)
+            if( reverse == 1 ) s.setReversed(true)
+            var i = 0
+            while(i< ss.size) {
+                val field = ss(i)
+                val (cf,cn) = genColumnInfo(msg.columnFamily,field)
+                s.addColumn(Bytes.toBytes(cf),Bytes.toBytes(cn))
+                i += 1    
+            }
+
+            val filter = req.s("filter","")
+            if( filter != "" ) {
+                val f = toFilter(msg.columnFamily,msg.resInfos,filter)
+                if( f != null )
+                    s.setFilter(f)
+            }
+
+            val tableName = if ( req.s("tableName","") != "" ) req.s("tableName")  else msg.tableName
+            table = getTable(tableName)
+            results = table.getScanner(s)
+
+            val fieldValuesArray = ArrayBufferString()
+
+            var result = results.next()
+            var cnt = 0
+            while( result != null && cnt < maxResultSize ) {
+                val kvs = HashMapStringAny()
+                var i = 0
+                while(i< ss.size) {
+                    val field = ss(i)
+                    val (cf,cn) = genColumnInfo(msg.columnFamily,field)
+                    var value =  Bytes.toString(result.getValue(Bytes.toBytes(cf),Bytes.toBytes(cn)))
+                    kvs.put(field,value)
+                    i += 1    
+                }
+                val rowKey = Bytes.toString(result.getRow())
+                kvs.put("rowKey",rowKey)
+                fieldValuesArray += JsonCodec.mkString(kvs)
+
+                cnt += 1
+                if( cnt < maxResultSize )
+                    result = results.next()
+            }
+            map.put(ROW_COUNT,cnt)
+            map.put("rows",fieldValuesArray)
+            
+        } catch {
+            case e :Throwable =>
+                log.error("hbase get error, e="+e.getMessage+",req="+req.toString)
+                throw e
+        } finally {
+            closeResults(results)
+            closeTable(table)
+        }
+        reply(req,0,map)
     }
 
     def reply(req:Request, code:Int) :Unit ={
