@@ -27,6 +27,7 @@ class HashMapStringAny extends HashMap[String,Any] {
     def bd(name:String) : BigDecimal = TypeSafe.bd(name,this)
 
     def m(name:String) : HashMapStringAny = TypeSafe.m(name,this)
+    def nm(name:String) : HashMapStringAny = TypeSafe.nm(name,this)
     def ls(name:String) : ArrayBufferString = TypeSafe.ls(name,this)
     def li(name:String) : ArrayBufferInt = TypeSafe.li(name,this)
     def lm(name:String) : ArrayBufferMap  = TypeSafe.lm(name,this)
@@ -248,6 +249,7 @@ class Request (
     def bd(name:String) : BigDecimal = body.bd(name)
 
     def m(name:String) : HashMapStringAny = body.m(name)
+    def nm(name:String) : HashMapStringAny = body.nm(name)
     def ls(name:String) : ArrayBufferString = body.ls(name)
     def li(name:String) : ArrayBufferInt = body.li(name)
     def lm(name:String) : ArrayBufferMap  = body.lm(name)
@@ -340,6 +342,7 @@ class InvokeResult(val requestId:String, val code:Int, val res:HashMapStringAny)
     def bd(name:String) : BigDecimal = res.bd(name)
 
     def m(name:String) : HashMapStringAny = res.m(name)
+    def nm(name:String) : HashMapStringAny = res.nm(name)
     def ls(name:String) : ArrayBufferString = res.ls(name)
     def li(name:String) : ArrayBufferInt = res.li(name)
     def lm(name:String) : ArrayBufferMap  = res.lm(name)
@@ -511,6 +514,11 @@ object TypeSafe {
         if( value == null ) return null
         if( value.isInstanceOf[ HashMapStringAny ] ) return value.asInstanceOf[ HashMapStringAny  ]
         throw new RuntimeException("wrong data type, name="+name)
+    }
+    def nm(name:String,body:HashMapStringAny) : HashMapStringAny = {
+        val r = m(name,body)
+        if( r == null ) return HashMapStringAny()
+        r
     }
     def ls(name:String,body:HashMapStringAny) : ArrayBufferString = {
         val value = body.getOrElse(name,null)

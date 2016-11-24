@@ -417,7 +417,7 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
             closeTable(table)
         }
 
-        println("result.isEmpty="+result.isEmpty())
+        //println("result.isEmpty="+result.isEmpty())
 
         val map = new HashMapStringAny()
         if( result.isEmpty ) {

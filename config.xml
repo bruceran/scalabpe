@@ -6,6 +6,9 @@
     <SapPort>6210</SapPort>
     <CohPort>7210</CohPort>
 
+    <assign>@user2=testabc</assign>
+    <assign>@user=222testabc</assign>
+
 <!-- 以下是常用插件的最简配置示例，更多配置参数参考配置指南 -->
 
 
@@ -238,6 +241,13 @@
         <Connection>service=bolt://192.168.52.128 user=neo4j password=neo4jadmin</Connection>
     </Neo4jCfg>
 -->
+
+    <StateMachines>
+        <StateMachine id="setpwd">
+            <Transfer state="init_status" event="e2_no_pwd" nextState="ddd" desc="xxxx"/>
+            <Transfer state="init_status" event="e2_no_pwd" nextState="ddd" desc="xxx"/>
+        </StateMachine>
+    </StateMachines>
 
 </parameters>
 

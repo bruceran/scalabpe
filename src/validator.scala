@@ -551,7 +551,10 @@ class TlvFieldInfo(val defaultValue:String,
     val encoderCls:String, val encoderParam:String) {
         val validator = Validator.getValidator(validatorCls,validatorParam,validatorReturnCode)
         val encoder = Encoder.getEncoder(encoderCls,encoderParam) 
+    override def toString():String = {
+        "defaultValue=%s,validatorCls=%s,encoderCls=%s".format(defaultValue,validatorCls,encoderCls)
     }
+}
 
 object TlvFieldInfo extends Logging {
 
@@ -561,7 +564,7 @@ object TlvFieldInfo extends Logging {
         validatorCls:String, validatorParam:String, validatorReturnCode:String,
         encoderCls:String, encoderParam:String  ):TlvFieldInfo =  {
 
-            if( defaultValue == "" && validatorCls == null && encoderCls == null ) return null
+            if( defaultValue == null && validatorCls == null && encoderCls == null ) return null
 
             val key = "defaultValue="+defaultValue+",validatorCls="+validatorCls+",validatorParam="+validatorParam+",validatorReturnCode="+validatorReturnCode+",encoderCls="+encoderCls+",encoderParam="+encoderParam 
             var v = cache.getOrElse(key,null)

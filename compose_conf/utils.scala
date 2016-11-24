@@ -16,6 +16,8 @@ object FlowHelper {
 
     val random = new Random()
 	
+    val jobStatusCache = new java.util.concurrent.ConcurrentHashMap[String,String]()
+
     def getConfig(s:String,defaultValue:String="") = Flow.router.getConfig(s,defaultValue)
 
     def isEmpty(req:Request,name:String):Boolean={

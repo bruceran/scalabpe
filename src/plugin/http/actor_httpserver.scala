@@ -138,15 +138,20 @@ with BeforeClose  with Refreshable with AfterInit with HttpServer4Netty with Log
     var sessionMode = 1 // 1=auto 2=manual
     var sessionIpBind = false
     var sessionHttpOnly = true
+    var sessionPath = ""
     var jsonRpcUrl = "/jsonrpc"
     var jsonpName = "jsonp"
     var logUserAgent = false
     var redirect302FieldName = "redirectUrl302"
     var requestUriFieldName = "requestUri"
+    var domainNameFieldName = "domainName"
     var queryStringFieldName = "queryString"
     var contentTypeFieldName = "contentType"
     var contentDataFieldName = "contentData"
     var maxContentLength = 5000000
+    var maxInitialLineLength = 16000
+    var maxHeaderSize = 16000
+    var maxChunkSize = 16000
     var sessionEncKey = CryptHelper.toHexString("9*cbd35w".getBytes());
     var accessControlAllowOriginGlobal = ""
 
@@ -267,6 +272,9 @@ image/x-icon ico
         s = (cfgNode \ "@sessionHttpOnly").text
         if( s != "" ) sessionHttpOnly = isTrue(s)
 
+        s = (cfgNode \ "@sessionPath").text
+        if( s != "" ) sessionPath = s
+
         s = (cfgNode \ "@sessionEncKey").text
         if( s != "" ) sessionEncKey = CryptHelper.toHexString(s.getBytes());
 
@@ -275,6 +283,12 @@ image/x-icon ico
 
         s = (cfgNode \ "@maxContentLength").text
         if( s != "" ) maxContentLength = s.toInt
+        s = (cfgNode \ "@maxInitialLineLength").text
+        if( s != "" ) maxInitialLineLength = s.toInt
+        s = (cfgNode \ "@maxHeaderSize").text
+        if( s != "" ) maxHeaderSize = s.toInt
+        s = (cfgNode \ "@maxChunkSize").text
+        if( s != "" ) maxChunkSize = s.toInt
 
         val mimeItemlist = (cfgNode \ "MimeTypes" \ "Item").toList
         for( item <- mimeItemlist ) {
@@ -498,6 +512,8 @@ image/x-icon ico
 
                 if( keyMap1.contains(requestUriFieldName) )
                     msgAttrs.put(serviceId+"-"+msgId+"-"+requestUriFieldName,"1")
+                if( keyMap1.contains(domainNameFieldName) )
+                    msgAttrs.put(serviceId+"-"+msgId+"-"+domainNameFieldName,"1")
                 if( keyMap1.contains(queryStringFieldName) )
                     msgAttrs.put(serviceId+"-"+msgId+"-"+queryStringFieldName,"1")
                 if( keyMap1.contains(contentTypeFieldName) )
@@ -545,7 +561,7 @@ image/x-icon ico
 
         }
 
-        nettyHttpServer = new NettyHttpServer(this, port, host, idleTimeout, maxContentLength)
+        nettyHttpServer = new NettyHttpServer(this, port, host, idleTimeout, maxContentLength,maxInitialLineLength,maxHeaderSize,maxChunkSize)
 
         threadFactory = new NamedThreadFactory("httpserver")
         pool = new ThreadPoolExecutor(threadNum, threadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
@@ -917,8 +933,8 @@ image/x-icon ico
         }
 
 
-        val xhead = parseXhead(httpReq,connId)
         val requestId = uuid()
+        val xhead = parseXhead(httpReq,connId,requestId)
 
         var uri = httpReq.getUri()
         if( uri == jsonRpcUrl || uri.startsWith(jsonRpcUrl+"?") ) {
@@ -1296,6 +1312,7 @@ image/x-icon ico
             if( sessionIdSupport == "1" && req.xhead.s("sessionIdChanged","true") == "true" ) {
                 val c = new DefaultCookie(sessionCookieName,req.xhead.s("sessionId",""))
                 c.setHttpOnly(sessionHttpOnly)
+                if( sessionPath != "" ) c.setPath(sessionPath)
                 cookies.put(sessionCookieName,c)
             }
         }
@@ -1306,6 +1323,7 @@ image/x-icon ico
                 if( sessionId != "") {
                     val c = new DefaultCookie(sessionCookieName,sessionId)
                     c.setHttpOnly(sessionHttpOnly)
+                    if( sessionPath != "" ) c.setPath(sessionPath)
                     cookies.put(sessionCookieName,c)
                 }
                 body.remove(sessionFieldName)
@@ -1355,7 +1373,7 @@ image/x-icon ico
         if( pluginObj != null && pluginObj.isInstanceOf[HttpServerOutputPlugin]) {
 
             val domainName = getDomainName(req.xhead.s("host",""))
-            if( !body.contains("domainName") ) body.put("domainName",domainName)
+            if( !body.contains(domainNameFieldName) ) body.put(domainNameFieldName,domainName)
             val contextPath = getContextPath(params)
             if( contextPath != "" && !body.contains("contextPath") ) body.put("contextPath",contextPath)
             if( urlArgs != "" && !body.contains("urlArgs") ) body.put("urlArgs",urlArgs)
@@ -1599,9 +1617,50 @@ image/x-icon ico
 
         val contentType = msgAttrs.getOrElse(serviceId+"-"+msgId+"-requestContentType",MIMETYPE_FORM)
         val charset = msgAttrs.getOrElse(serviceId+"-"+msgId+"-charset","UTF-8")
+        val method = httpReq.getMethod()
 
         val map = HashMapStringAny()
         var sessionIdChanged = false
+
+        if( isRpc) {
+
+            map ++= bodyParams
+
+        } else {
+
+            val uri = httpReq.getUri()
+            if( uri.indexOf("?") >= 0) {
+                val s = uri.substring(uri.indexOf("?")+1)
+                parseFormContent(charset,s,map)
+            }
+
+            val pluginObj = msgPlugins.getOrElse(serviceId+"-"+msgId,null)
+            if( method == HttpMethod.POST && contentType == MIMETYPE_MULTIPART ) {
+
+                if( log.isDebugEnabled) {
+                    log.debug("http file upload, headers: "+toHeaders(httpReq))
+                }
+                // upload file 
+                // upload file to temp dir and put filename to body
+                val content = httpReq.getContent()
+                //println("content="+content.toString(Charset.forName(charset)))
+                parseFileUploadContent(charset,content,map)
+
+            } else if( method == HttpMethod.POST ) {
+                val content = httpReq.getContent()
+                val contentStr = content.toString(Charset.forName(charset))
+                if( log.isDebugEnabled) {
+                    log.debug("http post content: " + contentStr+", headers: "+toHeaders(httpReq))
+                }
+                if( contentType == MIMETYPE_FORM ) {
+                    parseFormContent(charset,contentStr,map)
+                } else {
+                    if( pluginObj != null && pluginObj.isInstanceOf[HttpServerRequestParsePlugin])
+                        pluginObj.asInstanceOf[HttpServerRequestParsePlugin].parseContent(serviceId,msgId,charset,contentType,contentStr,map)
+                }
+            }
+
+        }
 
         val headerBuff = headerMap.getOrElse(serviceId+"-"+msgId+"-req",null)
         if( headerBuff != null && headerBuff.size > 0 ) {
@@ -1665,6 +1724,13 @@ image/x-icon ico
             map.put(requestUriFieldName,httpReq.getUri())
         }
 
+        val domainNameSupport = msgAttrs.getOrElse(serviceId+"-"+msgId+"-"+domainNameFieldName,"1")
+        if( domainNameSupport == "1" ) {		
+            val s = httpReq.getHeader("host")
+            val domainName = getDomainName(s)
+            map.put(domainNameFieldName,domainName)
+        }
+
         val queryStringSupport = msgAttrs.getOrElse(serviceId+"-"+msgId+"-"+queryStringFieldName,"0")
         if( queryStringSupport == "1" ) {		
             val uri = httpReq.getUri()
@@ -1676,7 +1742,6 @@ image/x-icon ico
             }
         }
 
-        val method = httpReq.getMethod()
         val contentTypeSupport = msgAttrs.getOrElse(serviceId+"-"+msgId+"-"+contentTypeFieldName,"0")
         if( contentTypeSupport == "1" && method == HttpMethod.POST ) {		
             map.put(contentTypeFieldName,contentType)
@@ -1687,46 +1752,6 @@ image/x-icon ico
             val content = httpReq.getContent()
             val contentStr = content.toString(Charset.forName(charset))
             map.put(contentDataFieldName,contentStr)
-        }
-
-        if( isRpc) {
-
-            map ++= bodyParams
-
-        } else {
-
-            val uri = httpReq.getUri()
-            if( uri.indexOf("?") >= 0) {
-                val s = uri.substring(uri.indexOf("?")+1)
-                parseFormContent(charset,s,map)
-            }
-
-            val pluginObj = msgPlugins.getOrElse(serviceId+"-"+msgId,null)
-            if( method == HttpMethod.POST && contentType == MIMETYPE_MULTIPART ) {
-
-                if( log.isDebugEnabled) {
-                    log.debug("http file upload, headers: "+toHeaders(httpReq))
-                }
-                // upload file 
-                // upload file to temp dir and put filename to body
-                val content = httpReq.getContent()
-                //println("content="+content.toString(Charset.forName(charset)))
-                parseFileUploadContent(charset,content,map)
-
-            } else if( method == HttpMethod.POST ) {
-                val content = httpReq.getContent()
-                val contentStr = content.toString(Charset.forName(charset))
-                if( log.isDebugEnabled) {
-                    log.debug("http post content: " + contentStr+", headers: "+toHeaders(httpReq))
-                }
-                if( contentType == MIMETYPE_FORM ) {
-                    parseFormContent(charset,contentStr,map)
-                } else {
-                    if( pluginObj != null && pluginObj.isInstanceOf[HttpServerRequestParsePlugin])
-                        pluginObj.asInstanceOf[HttpServerRequestParsePlugin].parseContent(serviceId,msgId,charset,contentType,contentStr,map)
-                }
-            }
-
         }
 
         (map,sessionIdChanged)
@@ -2087,12 +2112,13 @@ image/x-icon ico
         s
     }
 
-    def parseXhead(httpReq:HttpRequest,connId:String):HashMapStringAny = {
+    def parseXhead(httpReq:HttpRequest,connId:String,requestId:String):HashMapStringAny = {
         var clientIp = parseClientIp(httpReq,connId)
         val map = HashMapStringAny()
         map.put(AvenueCodec.KEY_GS_INFOS,ArrayBufferString(clientIp))
         map.put(AvenueCodec.KEY_GS_INFO_FIRST,clientIp)
         map.put(AvenueCodec.KEY_GS_INFO_LAST,clientIp)
+        map.put(AvenueCodec.KEY_UNIQUE_ID,requestId)
 
         val httpType = parseHttpType(httpReq)
         if( httpType != null ) {

@@ -56,7 +56,7 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
         if( s == "" )
             throw new Exception("KafkaConsumerBean ZooKeeper not configed")
         zookeeper = s
-println(zookeeper)
+
         s = (cfgNode \ "@groupId").text
         if( s != "" )
             groupId = s

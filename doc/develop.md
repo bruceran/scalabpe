@@ -351,12 +351,19 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     Request对象有如下方法可以使用来简化参数获取:
 
     .s(name)  从body中获取一个字符串, 会自动进行类型转换
+    .ns(name)  返回非null的string
     .s(name,defaultValue) 带默认值的 .s
+    .ns(name,defaultValue) 带默认值的 .ns
 
     .i(name)  从body中获取一个int, 会自动进行类型转换
     .i(name,defaultValue) 带默认值的 .i
 
+    .l(name)  从body中获取一个long, 会自动进行类型转换
+    .d(name)  从body中获取一个double, 会自动进行类型转换
+    .bd(name)  从body中获取一个BigDecimal, 会自动进行类型转换
+
     .m(name)  从body中获取一个HashMapStringAny, 对应服务描述文件里的struct
+    .nm(name)  返回非null的map
 
     .ls(name)  从body中获取一个字符串数组, 对应服务描述文件里的string array
     .li(name)  从body中获取一个int数组, 对应服务描述文件里的int array
@@ -517,6 +524,22 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
     invokeWithNoReply方法不用指定回调函数和超时时间
 
+## invokeAutoReply系列方法
+
+    如果只想关注正常流程，对出错的情况希望直接结束流程，可以通过invokeAutoReply简化流程编写
+
+    invokeAutoReply(...)
+    invoke2AutoReply(...)
+    invoke3AutoReply(...)
+    invoke4AutoReply(...)
+    invoke5AutoReply(...)
+    invokeMulyiAutoReply(...)
+
+    调用参数完全同invoke系列方法，处理逻辑：
+        如果有任意一个invoke的错误码非0，则直接结束流程；
+        默认的错误码为invokeResult里的code,可以通过在动态入参中传递一个errorCode来指定要返回的错误码
+        对多个invoke并行调用，使用传入的最后一个errorCode动态入参
+
 ## 调用有状态的服务器
 
     如果一个服务器连接多个远程服务器，需要将消息按一定规则分发给指定服务器而不是随机分发
@@ -586,6 +609,16 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
                                     // HashMapStringAny或ArrayBufferAny，需自己转换类型
         def parseObject(s:String):HashMapStringAny // 解析嵌套对象
         def parseArray(s:String):ArrayBufferAny // 解析嵌套数组
+        def parseArrayInt(s:String):ArrayBufferInt // 解析嵌套数组
+        def parseArrayString(s:String):ArrayBufferString // 解析嵌套数组
+        def parseArrayMap(s:String):ArrayBufferMap // 解析嵌套数组
+
+        def parseObjectNotNull(s:String):HashMapStringAny // 解析嵌套对象
+        def parseArrayNotNull(s:String):ArrayBufferAny // 解析嵌套数组
+        def parseArrayIntNotNull(s:String):ArrayBufferInt // 解析嵌套数组
+        def parseArrayStringNotNull(s:String):ArrayBufferString // 解析嵌套数组
+        def parseArrayMapNotNull(s:String):ArrayBufferMap // 解析嵌套数组
+
         def mkString(m:HashMapStringAny): String // map转换成json串
         def mkString(a:ArrayBufferInt): String // array转换成json串
         def mkString(a:ArrayBufferString): String // array转换成json串

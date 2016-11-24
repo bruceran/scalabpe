@@ -121,7 +121,7 @@
         SERVER_IP 服务端IP
         RECEIVE_TIME 收到请求的的时间
         ELAPSE_TIME, 耗时，等于 TIMESTAMP - RECEIVE_TIME
-        DUMMY 无意义
+        DUMMY 无意义 XHEAD_LOG_ID 
         DUMMY 无意义
         IDX1  索引字段1
         IDX2  索引字段2
@@ -200,9 +200,9 @@
         HTTP_URI 路径
         SERVICEID  服务号
         MSGID  消息号
+        DUMMY 无意义  
         DUMMY 无意义        
-        DUMMY 无意义        
-        DUMMY 无意义        
+        DUMMY 无意义
         DUMMY 无意义        
         DUMMY 无意义        
         REQUEST_BODY 请求参数

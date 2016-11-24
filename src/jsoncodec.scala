@@ -47,6 +47,13 @@ object JsonCodec {
             case _:Throwable => return null
         }
     }
+
+    def parseObjectNotNull(s:String):HashMapStringAny = {
+        val m = parseObjectNotNull(s)
+        if( m == null ) return HashMapStringAny()
+        m
+    }
+
     def parseArray(s:String):ArrayBufferAny = {
         if( s == null || s == "" ) return null
         try {
@@ -58,6 +65,56 @@ object JsonCodec {
             case _:Throwable => return null
         }
     }
+    def parseArrayNotNull(s:String):ArrayBufferAny = {
+        val l = parseArray(s)
+        if( l == null ) return ArrayBufferAny()
+        l
+    }
+
+    def parseArrayObject(s:String):ArrayBufferMap = {
+        val a = parseArray(s)
+        if( a == null ) return null
+        val am = new ArrayBufferMap()
+        for( i <- a ) {
+            am += i.asInstanceOf[HashMapStringAny]
+        }
+        am
+    }
+    def parseArrayObjectNotNull(s:String):ArrayBufferMap = {
+        val l = parseArrayObject(s)
+        if( l == null ) return ArrayBufferMap()
+        l
+    }
+
+    def parseArrayString(s:String):ArrayBufferString = {
+        val a = parseArray(s)
+        if( a == null ) return null
+        val as = new ArrayBufferString()
+        for( i <- a ) {
+            as += i.asInstanceOf[String]
+        }
+        as
+    }
+    def parseArrayStringNotNull(s:String):ArrayBufferString = {
+        val l = parseArrayString(s)
+        if( l == null ) return ArrayBufferString()
+        l
+    }
+    def parseArrayInt(s:String):ArrayBufferInt= {
+        val a = parseArray(s)
+        if( a == null ) return null
+        val ai = new ArrayBufferInt()
+        for( i <- a ) {
+            ai += i.asInstanceOf[Int]
+        }
+        ai
+    }
+    def parseArrayIntNotNull(s:String):ArrayBufferInt = {
+        val l = parseArrayInt(s)
+        if( l == null ) return ArrayBufferInt()
+        l
+    }
+
     def parseObject(node:JsonNode):HashMapStringAny = {
         val names = node.fieldNames
         val body = new HashMapStringAny()

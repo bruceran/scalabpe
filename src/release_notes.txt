@@ -1,4 +1,14 @@
 
+1.1.10 (20161124)
+================
+
+* 日志中增加对logId的输出
+* HashMapStringAny,Request,InvokeResult 增加.nm()方法，如果取到的map为null, 则返回一个空的map
+* JsonCodec新增 parseArrayInt parseArrayString parseArrayMap paseObjectNotNull  parseArrayIntNotNull parseArrayStringNotNull parseArrayMapNotNull
+* 新增 invokeXxxAutoReply系列方法，当出错的时候直接reply错误码然后结束流程，不调用callback函数，可以使流程编写者只写正常流程；可通过入参errorCode指定返回的错误码
+* config.xml文件中也可通过<assign>...</assign>来设置变量
+* struct的field支持default属性
+
 1.1.9 (20161027)
 ================
 

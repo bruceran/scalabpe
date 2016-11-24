@@ -278,6 +278,8 @@ abstract class Flow extends Logging {
     protected[core] private val idxmap = new HashMap[Int,Int]()
     protected[core] val lock = new ReentrantLock(false)
     protected[core] val allResultsReceived = lock.newCondition();
+    protected[core] var replyOnError = false
+    protected[core] var replyOnErrorCode = 0
 
     def baseReceive() : Unit = { // for subclass 
         receive()
@@ -410,8 +412,9 @@ abstract class Flow extends Logging {
                 lastf = null
 
                 flowFinished = true
-
-                t()
+                if( !doReplyOnError() ) {
+                    t()
+                }
 
                 if( flowFinished ) {
                     endFlow()
@@ -467,6 +470,13 @@ abstract class Flow extends Logging {
         val info = new InvokeInfo(service,timeout,body)
         invokeMulti(f,ArrayBuffer[InvokeInfo](info))
     }
+    def invokeAutoReply(f:()=>Unit,service:String,timeout:Int,params:Tuple2[String,Any]*):Unit = {
+        val buff = new ArrayBuffer[ Tuple2[String,Any] ]()
+        for( t <- params ) buff += t
+        val body = paramsToBody(buff)
+        val info = new InvokeInfo(service,timeout,body)
+        invokeMultiAutoReply(f,ArrayBuffer[InvokeInfo](info))
+    }
     def invokeWithToAddr(f:()=>Unit,service:String,timeout:Int,toAddr:String,params:Tuple2[String,Any]*):Unit = {
         val buff = new ArrayBuffer[ Tuple2[String,Any] ]()
         for( t <- params ) buff += t
@@ -479,23 +489,43 @@ abstract class Flow extends Logging {
         val infos = ArrayBuffer[InvokeInfo](info1,info2)
         invokeMulti(f,infos)
     }
+    def invoke2AutoReply(f:()=>Unit,info1:InvokeInfo,info2:InvokeInfo):Unit= {
+        val infos = ArrayBuffer[InvokeInfo](info1,info2)
+        invokeMultiAutoReply(f,infos)
+    }
     def invoke3(f:()=>Unit,info1:InvokeInfo,info2:InvokeInfo,info3:InvokeInfo):Unit= {
         val infos = ArrayBuffer[InvokeInfo](info1,info2,info3)
         invokeMulti(f,infos)
+    }
+    def invoke3AutoReply(f:()=>Unit,info1:InvokeInfo,info2:InvokeInfo,info3:InvokeInfo):Unit= {
+        val infos = ArrayBuffer[InvokeInfo](info1,info2,info3)
+        invokeMultiAutoReply(f,infos)
     }
     def invoke4(f:()=>Unit,info1:InvokeInfo,info2:InvokeInfo,info3:InvokeInfo,info4:InvokeInfo):Unit= {
         val infos = ArrayBuffer[InvokeInfo](info1,info2,info3,info4)
         invokeMulti(f,infos)
     }
+    def invoke4AutoReply(f:()=>Unit,info1:InvokeInfo,info2:InvokeInfo,info3:InvokeInfo,info4:InvokeInfo):Unit= {
+        val infos = ArrayBuffer[InvokeInfo](info1,info2,info3,info4)
+        invokeMultiAutoReply(f,infos)
+    }
     def invoke5(f:()=>Unit,info1:InvokeInfo,info2:InvokeInfo,info3:InvokeInfo,info4:InvokeInfo,info5:InvokeInfo):Unit= {
         val infos = ArrayBuffer[InvokeInfo](info1,info2,info3,info4,info5)
         invokeMulti(f,infos)
     }
-
+    def invoke5AutoReply(f:()=>Unit,info1:InvokeInfo,info2:InvokeInfo,info3:InvokeInfo,info4:InvokeInfo,info5:InvokeInfo):Unit= {
+        val infos = ArrayBuffer[InvokeInfo](info1,info2,info3,info4,info5)
+        invokeMultiAutoReply(f,infos)
+    }
     def invoke(f:()=>Unit,infos:List[InvokeInfo]):Unit = {
         val buff = new ArrayBuffer[InvokeInfo]()
         infos.foreach( info => buff += info )
         invokeMulti(f,buff)
+    }
+    def invokeAutoReply(f:()=>Unit,infos:List[InvokeInfo]):Unit = {
+        val buff = new ArrayBuffer[InvokeInfo]()
+        infos.foreach( info => buff += info )
+        invokeMultiAutoReply(f,buff)
     }
 
     def invokeMulti(f:()=>Unit,infos:ArrayBuffer[InvokeInfo]):Unit = {
@@ -509,6 +539,7 @@ abstract class Flow extends Logging {
         }
 
         lastf = f
+        replyOnError = false
 
         Flow.isSyncedInvoke.set(false)
         val finished = send(infos)
@@ -519,7 +550,53 @@ abstract class Flow extends Logging {
             flowFinished = false
         }
     }
+    def invokeMultiAutoReply(f:()=>Unit,infos:ArrayBuffer[InvokeInfo]):Unit = {
 
+        if(f == null ) {
+            throw new IllegalArgumentException("invoke callback cannot be empty")
+        }
+
+        if(lastf != null ) {
+            throw new RuntimeException("only one callback function can be used")
+        }
+
+        lastf = f
+        replyOnError = true
+        replyOnErrorCode = 0
+        for( info <- infos ) {
+            val t = info.params.i("errorCode")
+            if( t != 0 )
+                replyOnErrorCode = t // use the last errorCode
+        }
+
+        Flow.isSyncedInvoke.set(false)
+        val finished = send(infos)
+        if( finished ) {
+            lastf = null
+            if( !doReplyOnError() ) {
+                f()
+            }
+
+        } else {
+            flowFinished = false
+        }
+    }
+
+    def doReplyOnError():Boolean = {
+        if( !replyOnError ) return false
+        replyOnError = false
+        var i = 0
+        while( i < lastresultarray.size ) {
+            val ret = lastresultarray(i)
+            if( ret.code != 0 ) {
+                if( replyOnErrorCode != 0 ) reply(replyOnErrorCode)
+                else reply(ret.code)
+                return true
+            }
+            i += 1
+        }
+        false
+    }
     def sleep(f:()=>Unit,timeout:Int):Unit = {
 
         if(f == null ) {
@@ -531,6 +608,7 @@ abstract class Flow extends Logging {
         }
 
         lastf = f
+        replyOnError = false
         flowFinished = false
 
         Flow.isSyncedInvoke.set(false)

@@ -175,8 +175,16 @@ class NettyHttpServer(val sos: HttpServer4Netty,
     val port:Int,
     val host:String = "*",
     val idleTimeoutMillis: Int = 45000,
-    val maxContentLength: Int = 5000000
+    val maxContentLength: Int = 5000000,
+    val maxInitialLineLength:Int = 16000,
+    val maxHeaderSize:Int = 16000,
+    val maxChunkSize:Int = 16000
     ) extends Logging with Dumpable {
+
+    /*
+    Creates a new instance with the default maxInitialLineLength (4096}, maxHeaderSize (8192), and maxChunkSize (8192).
+    HttpRequestDecoder(int maxInitialLineLength, int maxHeaderSize, int maxChunkSize)
+    */
 
     var nettyHttpServerHandler : NettyHttpServerHandler = _
     var allChannels:ChannelGroup= _
@@ -288,7 +296,7 @@ class NettyHttpServer(val sos: HttpServer4Netty,
         def getPipeline() : ChannelPipeline =  {
             val pipeline = Channels.pipeline()
             pipeline.addLast("timeout", new IdleStateHandler(timer, 0, 0, idleTimeoutMillis / 1000))
-            pipeline.addLast("decoder", new HttpRequestDecoder())
+            pipeline.addLast("decoder", new HttpRequestDecoder(maxInitialLineLength,maxHeaderSize,maxChunkSize))
             pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength))
             pipeline.addLast("encoder", new HttpResponseEncoder())
             pipeline.addLast("chunkedWriter", new ChunkedWriteHandler())

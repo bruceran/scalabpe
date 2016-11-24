@@ -48,6 +48,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
     var passwordFieldsSet : HashSet[String] = _
     var asyncLogWithFieldName = true
     var asyncLogArray = 1
+    var asyncLogLogId = 1
     var asyncLogMaxParamsLen = 500
     var asyncLogMaxContentLen = 500
     val dispatchMap = new HashMap[String,Tuple2[Int,Int]]()
@@ -397,6 +398,11 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
             if( asyncLogArray < 1 ) asyncLogArray = 1
         }
 
+        s = ( router.cfgXml \ "AsyncLogLogId" ).text
+        if( s != "" ) {
+            asyncLogLogId = s.toInt
+        }
+
         s = ( router.cfgXml \ "AsyncLogMaxParamsLen" ).text
         if( s != "" ) {
             asyncLogMaxParamsLen = s.toInt
@@ -714,6 +720,10 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                     buff.append("").append(splitter)
                     val d = new Date(info.req.receivedTime)
                     buff.append(f_tl.get().format(d)).append(splitter).append(ts).append(splitter)
+                    if( asyncLogLogId == 1) {
+                        val logId = info.req.xhead.getOrElse("logId","")
+                        buff.append(logId)
+                    }
                     buff.append(splitter)
                     buff.append(splitter)
 
@@ -783,6 +793,10 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                 val d = new Date(req.receivedTime)
 
                 buff.append(f_tl.get().format(d)).append(splitter).append(ts).append(splitter)
+                if( asyncLogLogId == 1) {
+                    val logId = req.xhead.getOrElse("logId","")
+                    buff.append(logId)
+                }
                 buff.append(splitter)
                 buff.append(splitter)
 

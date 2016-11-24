@@ -1,4 +1,12 @@
 
+1.1.10 (20161109)
+================
+
+* db插件，解析$xxx.yyy中会解析成整个xxx.yyy为placeholder
+* httpserver插件增加3个配置参数maxInitialLineLength,maxHeaderSize,maxChunkSize，可配置允许的最大包长
+* httpserver插件对session cookie增加新的配置参数 sessionPath, 默认为""，表示不设置路径
+* httpserver插件可自动给请求中加入domainName,值为http header的host值
+
 1.1.9 (20161008)
 ================
 

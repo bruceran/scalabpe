@@ -206,8 +206,16 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
     def loadParameterFile():HashMapStringString = {
 
         val pmap = HashMapStringString()
-        val pfile = "config_parameter/parameter.xml"
+        val configfile = "config.xml"
+        if( new File(rootDir+"/"+configfile).exists() ) {
+            val in = new InputStreamReader(new FileInputStream(rootDir+"/"+configfile),"UTF-8")
+            val pxml = XML.load(in)
+            in.close()
 
+            loadParameter(pxml,pmap,"assign")
+            loadParameter(pxml,pmap,"Assign")
+        }
+        val pfile = "config_parameter/parameter.xml"
         if( new File(rootDir+"/"+pfile).exists() ) {
             val in = new InputStreamReader(new FileInputStream(rootDir+"/"+pfile),"UTF-8")
             val pxml = XML.load(in)

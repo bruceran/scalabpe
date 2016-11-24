@@ -553,7 +553,7 @@ object DbClient {
     val sqlReg24 = """:[0-9a-zA-Z_]+$""".r    // ends with :placeholder
     val sqlReg3 = """^:([0-9a-zA-Z_]+).*$""".r  // :placeholder
 
-    val sqlReg2Overwrite = """\$[0-9a-zA-Z_]+[ ,)]|\$[0-9a-zA-Z_]+$""".r
+    val sqlReg2Overwrite = """\$[0-9a-zA-Z_]+[ .,)]|\$[0-9a-zA-Z_]+$""".r
     val sqlReg3Overwrite = """^\$([0-9a-zA-Z_]+).*$""".r
 
     val EMPTY_STRINGMAP = new HashMapStringString()
