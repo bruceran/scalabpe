@@ -11,6 +11,8 @@ object Main extends Logging with SignalHandler {
     var mainThread : Thread = _
     var shutdown = false
     var selfCheckServer : SelfCheckServer = _
+    var mockMode = false
+    var stopFile = ""
 
     def handle(signal:Signal) {
         if(shutdown) return
@@ -29,7 +31,7 @@ object Main extends Logging with SignalHandler {
 
         val rootDir = "."
 
-        val stopFile = rootDir+File.separator+"cmd_stop"
+        stopFile = rootDir+File.separator+"cmd_stop"
 
         val t1 = System.currentTimeMillis
 
@@ -60,6 +62,10 @@ object Main extends Logging with SignalHandler {
         val t2 = System.currentTimeMillis
         log.info("scalabpe started, ts=%s[ms]".format(t2-t1))
 
+        if( mockMode ) {
+            return
+        }
+
         new File(stopFile).delete()
 
         while( !shutdown ) {
@@ -78,6 +84,11 @@ object Main extends Logging with SignalHandler {
             }
         }
 
+        close()
+    }
+
+    def close() {
+    
         if( selfCheckServer != null )
             selfCheckServer.close()
 
@@ -85,6 +96,5 @@ object Main extends Logging with SignalHandler {
 
         log.asInstanceOf[ch.qos.logback.classic.Logger].getLoggerContext().stop
     }
-
 }
 

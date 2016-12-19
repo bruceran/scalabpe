@@ -1,3 +1,20 @@
 
-#999,104,{}
-3450013,4,{}
+# 这是注释
+
+global:
+    mock:service999.mock1 req:a=1 b=2 c=3 mmm d=[1,2,3] e="sd a=sd dd" dd={"a":1,"b":"222"} ff=s:{} res:d=1 e=2 f=3 
+    mock:service999.mock2 req:a=1 b=2 c=3 mmm d=[1,2,3] e="sd a=sd dd" dd={"a":1,"b":"222"} ff=s:{} res:d=1 e=2 f=3 
+    setup:service999.setup1 req: a=1 b=2
+    setup:service999.setup2 req: a=1 b=2
+    teardown:service999.teardown1 req: a=1 b=2
+    teardown:service999.teardown2 req:  a=1 b=2
+
+testcase:test1
+    mock:...
+    setup:...
+    teardown:...
+    assert:service999.test  req: a=1 b=2 c=3 res: $code=-777 
+
+testcase:test2
+    assert:service999.test  req: a=1 b=2 c=3 res: $code=-777 
+

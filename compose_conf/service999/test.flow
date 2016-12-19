@@ -1,13 +1,7 @@
 //$service999.test
 
-
 //#receive
 
-    invokeAutoReply(callback,"service999.jobtest1",3000,"errorCode"->(-10111))
-
-//#callback
-println("abc")
-    val ret = lastresult()
-    reply(ret.code)
+    reply(0)
   
 

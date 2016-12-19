@@ -29,14 +29,23 @@ class HashMapStringAny extends HashMap[String,Any] {
     def m(name:String) : HashMapStringAny = TypeSafe.m(name,this)
     def nm(name:String) : HashMapStringAny = TypeSafe.nm(name,this)
     def ls(name:String) : ArrayBufferString = TypeSafe.ls(name,this)
+    def nls(name:String) : ArrayBufferString = TypeSafe.nls(name,this)
     def li(name:String) : ArrayBufferInt = TypeSafe.li(name,this)
+    def nli(name:String) : ArrayBufferInt = TypeSafe.nli(name,this)
     def lm(name:String) : ArrayBufferMap  = TypeSafe.lm(name,this)
+    def nlm(name:String) : ArrayBufferMap  = TypeSafe.nlm(name,this)
 
     def exists(names:String) : Boolean = TypeSafe.exists(names,this)
 }
 class ArrayBufferMap extends ArrayBuffer[HashMapStringAny]
 
-class LinkedHashMapStringAny extends LinkedHashMap[String,Any] {}
+class LinkedHashMapStringAny extends LinkedHashMap[String,Any] {
+    def toHashMapStringAny():HashMapStringAny = {
+        val m = HashMapStringAny()
+        m ++= this
+        m
+    }
+}
 
 object HashMapStringString {
     def apply(elems: Tuple2[String, String]*): HashMapStringString = {
@@ -251,8 +260,11 @@ class Request (
     def m(name:String) : HashMapStringAny = body.m(name)
     def nm(name:String) : HashMapStringAny = body.nm(name)
     def ls(name:String) : ArrayBufferString = body.ls(name)
+    def nls(name:String) : ArrayBufferString = body.nls(name)
     def li(name:String) : ArrayBufferInt = body.li(name)
+    def nli(name:String) : ArrayBufferInt = body.nli(name)
     def lm(name:String) : ArrayBufferMap  = body.lm(name)
+    def nlm(name:String) : ArrayBufferMap  = body.nlm(name)
 
     def exists(names:String) : Boolean = TypeSafe.exists(names,body)
 
@@ -344,8 +356,11 @@ class InvokeResult(val requestId:String, val code:Int, val res:HashMapStringAny)
     def m(name:String) : HashMapStringAny = res.m(name)
     def nm(name:String) : HashMapStringAny = res.nm(name)
     def ls(name:String) : ArrayBufferString = res.ls(name)
+    def nls(name:String) : ArrayBufferString = res.nls(name)
     def li(name:String) : ArrayBufferInt = res.li(name)
+    def nli(name:String) : ArrayBufferInt = res.nli(name)
     def lm(name:String) : ArrayBufferMap  = res.lm(name)
+    def nlm(name:String) : ArrayBufferMap  = res.nlm(name)
 
     def exists(names:String) : Boolean = TypeSafe.exists(names,res)
 
@@ -533,6 +548,11 @@ object TypeSafe {
         }    
         throw new RuntimeException("wrong data type, name="+name)
     }
+    def nls(name:String,body:HashMapStringAny) : ArrayBufferString = {
+        val l = ls(name,body)
+        if( l == null ) return ArrayBufferString()
+        l
+    }
     def li(name:String,body:HashMapStringAny) : ArrayBufferInt = {
         val value = body.getOrElse(name,null)
 
@@ -546,6 +566,11 @@ object TypeSafe {
         }    
         throw new RuntimeException("wrong data type, name="+name)
     }
+    def nli(name:String,body:HashMapStringAny) : ArrayBufferInt = {
+        val l = li(name,body)
+        if( l == null ) return ArrayBufferInt()
+        l
+    }
     def lm(name:String,body:HashMapStringAny) : ArrayBufferMap = {
         val value = body.getOrElse(name,null)
 
@@ -558,6 +583,11 @@ object TypeSafe {
             return am
         }
         throw new RuntimeException("wrong data type, name="+name)
+    }
+    def nlm(name:String,body:HashMapStringAny) : ArrayBufferMap = {
+        val l = lm(name,body)
+        if( l == null ) return ArrayBufferMap()
+        l
     }
 
     def anyToInt(value:Any):Int = {

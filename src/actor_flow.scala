@@ -589,8 +589,10 @@ abstract class Flow extends Logging {
         while( i < lastresultarray.size ) {
             val ret = lastresultarray(i)
             if( ret.code != 0 ) {
-                if( replyOnErrorCode != 0 ) reply(replyOnErrorCode)
-                else reply(ret.code)
+                if( !replied ) {
+                    if( replyOnErrorCode != 0 ) reply(replyOnErrorCode)
+                    else reply(ret.code)
+                }
                 return true
             }
             i += 1

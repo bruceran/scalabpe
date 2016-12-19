@@ -49,7 +49,7 @@ object JsonCodec {
     }
 
     def parseObjectNotNull(s:String):HashMapStringAny = {
-        val m = parseObjectNotNull(s)
+        val m = parseObject(s)
         if( m == null ) return HashMapStringAny()
         m
     }

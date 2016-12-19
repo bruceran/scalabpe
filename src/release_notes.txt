@@ -1,4 +1,13 @@
 
+1.1.11 (20161219)
+================
+
+* HashMapStringAny,Request,InvokeResult 增加.nls() .nli() .nlm()方法，如果取到的值为null, 则返回一个空的buff
+* 修改JsonCodec的parseObjectNotNull的bug
+* invokeAutoReply在已经调用过reply的情况不再调用reply方法
+* 修改runtest工具 简单版本，调用方式改为串行调用，一个调用完毕后再调用下一个接口
+* 修改runtest工具 集成测试版本，增加新的集成测试方法， 支持 mock, setup, teardown, assert, 使用方法参考 测试指南
+
 1.1.10 (20161124)
 ================
 

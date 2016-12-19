@@ -351,8 +351,8 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     Request对象有如下方法可以使用来简化参数获取:
 
     .s(name)  从body中获取一个字符串, 会自动进行类型转换
-    .ns(name)  返回非null的string
     .s(name,defaultValue) 带默认值的 .s
+    .ns(name)  返回非null的string
     .ns(name,defaultValue) 带默认值的 .ns
 
     .i(name)  从body中获取一个int, 会自动进行类型转换
@@ -366,8 +366,13 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     .nm(name)  返回非null的map
 
     .ls(name)  从body中获取一个字符串数组, 对应服务描述文件里的string array
+    .nls(name)  返回非null的array
+
     .li(name)  从body中获取一个int数组, 对应服务描述文件里的int array
+    .nli(name)  返回非null的array
+
     .lm(name)  从body中获取一个对象数组, 对应服务描述文件里的struct array
+    .nlm(name)  返回非null的array
 
     .xs(name)  从xhead中获取一个字符串, 会自动进行类型转换
     .xs(name,defaultValue) 带默认值的 .xs

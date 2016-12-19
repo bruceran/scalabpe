@@ -24,21 +24,78 @@
     scala>Thread.sleep(50)
     scala>jvmdbbroker.flow.Utils.checkInclude(s,"123") 测试自己写的辅助类object Utils里的checkInclude方法
 
-## 使用service runtest
+## 使用service runtest测试工具，简单版本
+
+    runtest工具会自动判断格式，若文件中包含 global: testcase:, 则认为是集成测试工具版本, 否则是简单版本
+
+    以下是简单版本的使用说明：
 
     输入./service runtest testcasefile 可自动将 testcasefile 文件中定义的test case发给scalabpe
-    testcasefile 不传则默认为 testcase/default.txt文件
+        testcasefile 不传则默认为 testcase/default.txt文件
 
     runtest 工具默认将请求发给本机，端口取自 config.xml中的<SapPort>节点;
 	如config.xml中配置了<TestServerAddr>host:port</TestServerAddr>, runtest工具会读此配置并发送到该地址
 
     testcasefile 文件格式定义:
 
-        * 一个文件里可保存所有测试用例
+        * 一个文件里可保存多个测试用例
         * 每行一个test case, 空行忽略
         * #开头的行为注释，忽略
-        * serviceId,msgId,json串   json串对应该消息的参数
+        * 每行格式为：serviceId,msgId,json串   json串对应该消息的参数
         * json串中，如果包含 x_repeat 属性，可用来指定该请求要重复发多少次，不指定则为1
+        * 所有testcase串行执行
+
+## 使用service runtest测试工具，集成测试版本
+
+    runtest工具会自动判断格式，若文件中包含 global: testcase:, 则认为是集成测试工具版本, 否则是简单版本
+
+    以下是集成测试版本的使用说明：
+
+    输入./service runtest -d testcasefile 
+        -d 参数表示输出解析后的文本到标准输出，可不传
+        testcasefile 不传则默认为 testcase/default.txt文件
+
+    新的集成测试工具不需要单独先启动待测试的服务，测试工具本身会启动服务，完成测试，再关闭服务
+
+    testcasefile 文件格式定义:
+
+        * 所有缩进和行最后的空格忽略
+        * #开头的行为注释，忽略
+        * 每行最后的"空格#"开始的文本忽略, 注意，如果调用参数中有空格#, 需在行最后加一个#以免被当成注释
+        * 所有空行忽略
+        * 所有非 global: testcase: mock: setup: teardown: assert: 开头的行自动合并到前一行
+        * global 表示testcase的公共部分, 一个文件中只允许有一个global，global下mock,setup,teardown
+        * testcase 表示定义一个testcase, 一个文件中允许多个testcase, 每个testcase下有mock,setup,teardown,assert
+        * mock表示定义一个接口的mock, 格式为：mock:服务名.消息名 req: 参数列表  res: 参数列表
+        * 允许对同一个服务名消息名有多个mock, 这种情况req入参用于条件匹配，先匹配的优先，若无参数则匹配所有请求，若无匹配，则返回错误码
+        * setup表示定义testcase启动前要调用的接口，一般用于初始化数据, 格式为：setup:服务名.消息名 req: 参数列表  res: 参数列表, 要求返回码为0才能继续
+        * teardown表示定义testcase完成后要调用的接口，一般用于清理数据, 格式为：teardown:服务名.消息名 req: 参数列表  res: 参数列表，忽略返回码
+        * assert表示测试指令, , 格式为：assert:服务名.消息名 req: 参数列表  res: 参数列表, res来的参数用于结果匹配, 只有完全匹配才算成功
+        * mock,setup,teardown,assert指令里都有参数列表，参数列表的格式为 name1=value1 name2=value2 以空格隔开
+        * $code 是res参数列表中一个特殊key，表示返回码
+        * 参数列表里的值若未{},[]则会解析为结构体和数组再返回，主要用于res结果列表, 若要返回原始json串，需加一个s:前缀 
+        * 参数值中若有空格，需使用双引号包起来
+        * 入参中可以$now,$uuid来生成当前时间和uuid
+
+        * 示例：
+
+            global:
+                mock:service999.mock1 req:a=1 b=2 c=3 mmm d=[1,2,3] e="sd a=sd dd" dd={"a":1,"b":"222"} ff=s:{} res:d=1 e=2 f=3 
+                mock:service999.mock2 req:a=1 b=2 c=3 mmm d=[1,2,3] e="sd a=sd dd" dd={"a":1,"b":"222"} ff=s:{} res:d=1 e=2 f=3 
+                setup:service999.setup1 req: a=1 b=2
+                setup:service999.setup2 req: a=1 b=2
+                teardown:service999.teardown1 req: a=1 b=2
+                teardown:service999.teardown2 req:  a=1 b=2
+
+            testcase:test1
+                mock:...
+                setup:...
+                teardown:...
+                assert:service999.test  req: a=1 b=2 c=3 res: $code=0
+
+            testcase:test2
+                assert:service999.test  req: a=22 res: $code=-777 
+
 
 ## 对于使用了http server插件的服务
 
