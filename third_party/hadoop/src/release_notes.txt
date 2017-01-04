@@ -1,0 +1,30 @@
+
+
+1.0.1 (20150816)
+================
+
+* hbase插件第二版
+
+    * 运行此插件需要jdk 1.7或以上版本
+    * 在 hadoop 2.6.4版本, hbase 1.2.2版本下测试通过 
+    * 通过消息的action 属性来指定做什么操作，目前支持 get, update, delete, scan
+    * 通过消息的tableName 属性指定表名, columnFamily属性指定默认的列族, 也可在每个参数中直接指定列族
+    * 消息里的rowKey对应主键
+    * 消息里的其它字段对应表的字段名，字段名若带.号，则认为.号前的是列族，否则认为使用默认列族
+    * update类接口可以为每个field指定isDynamic="true"属性，如果指定，则当参数值为 null 的时候，不会对db的列进行更新；
+      否则update的时候总是会对该列进行更新；通过设置此属性可用一个接口更新不同的字段，不需要分开定义多个接口；
+    * scan类消息startRow,stopRow可为空, 
+      maxResultSize 可为空，默认为10，
+      caching为性能调优参数，控制每次从服务器返回数量, 若数据不多，可设为maxResultSize相同值
+      filter为筛选条件，条件中出现的字段必须在response中出现，否则该条件为否
+          筛选条件基本形式 字段名 比较符号 值 
+          比较符号可以是 = == > >= < <=
+          多个筛选条件可以用 && || 连接， && 表示and, ||表示or
+          筛选条件中可以使用 ( )来改变优先级
+    * config.xml 配置参数
+        <ZooKeeperServerAddr>192.168.52.128</ZooKeeperServerAddr> 多个地址用逗号分隔
+        <ZooKeeperServerPort>2181</ZooKeeperServerPort>
+    * 服务描述文件示例
+       avenue_conf/hbase_980.xml 
+    * bin/目录用于windows下运行，缺少winutils.exe也不影响启动
+    * hadoop目录下的netty4由于和scalabpe用的netty3包名不一样，不会冲突
