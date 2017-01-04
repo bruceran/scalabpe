@@ -8,6 +8,14 @@
 
     <assign>@user2=testabc</assign>
     <assign>@user=222testabc</assign>
+    <DbSosList threadNum="8">
+        <ServiceId>635</ServiceId>
+        <MasterDb conns="8">
+			<defaultconn>jdbc:mysql://127.0.0.1:13306/chat?useUnicode=true&amp;characterEncoding=utf8&amp;zeroDateTimeBehavior=convertToNull&amp;autoReconnect=true user=vip password=vip</defaultconn>
+        </MasterDb>
+    </DbSosList>
+    <!--
+    -->
 
 <!-- 以下是常用插件的最简配置示例，更多配置参数参考配置指南 -->
 

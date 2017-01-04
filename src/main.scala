@@ -51,11 +51,11 @@ object Main extends Logging with SignalHandler {
             }
         }
 
-        router = new Router(rootDir)
+        router = new Router(rootDir,mockMode)
 
         val selfCheckPort = (cfgXml \ "CohPort").text.toInt
 
-        if( selfCheckPort > 0 ) {
+        if( selfCheckPort > 0 && !mockMode ) {
             selfCheckServer = new SelfCheckServer(selfCheckPort,router)
         }
 

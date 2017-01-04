@@ -300,7 +300,7 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
 
                 action match {
                     case ACTION_PUT =>
-                        for(f<-reqFields if f != ROW_KEY && f != TABLE_NAME ) {
+                        for(f<-reqFields if f != ROW_KEY && f != TABLE_NAME && f != "values" ) {
                           val (cf,cn) = genColumnInfo(columnFamily,f)
                           val isDynamic = map.getOrElse("req-"+f+"-isDynamic","0").toLowerCase
                           val b = ( isDynamic == "1" || isDynamic == "t" || isDynamic == "y" || isDynamic == "true" || isDynamic == "yes" )
@@ -501,6 +501,8 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
           return
         }
 
+        val fieldValues = req.s("values","")
+
         var table:Table = null
         try{
 
@@ -517,6 +519,17 @@ class HbaseClient(val serviceIds:String, val cfgNode: Node, val router:Router, v
                 i += 1    
             }
             
+            if( fieldValues != "" ) {
+                val m = JsonCodec.parseObject(fieldValues)
+                if( m != null ) {
+                    for( (field,v) <- m ) {
+                        val value = TypeSafe.anyToString(v)
+                        val (cf,cn) = genColumnInfo(msg.columnFamily,field)
+                        p.addColumn(Bytes.toBytes(cf),Bytes.toBytes(cn),if( value != null ) Bytes.toBytes(value) else null ) 
+                    }
+                }
+            }
+
             val tableName = if ( req.s("tableName","") != "" ) req.s("tableName")  else msg.tableName
             table = getTable(tableName)
             table.put(p)

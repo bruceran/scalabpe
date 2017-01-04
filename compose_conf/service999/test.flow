@@ -2,6 +2,14 @@
 
 //#receive
 
-    reply(0)
+    invoke(callback,"chatdb.insert",3000,
+        "id"->123,
+        "name"->"test",
+        "names"->ArrayBufferString("t1","t2"),
+        "nickName"->"nickaname 111")
+//#callback
+    val ret = lastresult()
+println(ret.toString)
+    reply(ret.code)
   
 

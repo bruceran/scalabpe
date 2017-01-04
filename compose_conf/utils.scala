@@ -78,6 +78,7 @@ object FlowHelper {
         "%08d".format(Math.abs(random.nextInt())%100000000)
     }
  
+    def contact(a:String,b:String):String = a + b
 }
 
 

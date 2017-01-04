@@ -184,7 +184,7 @@ case "$1" in
 		echo "scalabpe compile timestamp file removed"
 		;;
 	runtest)
-		env JAVA_OPTS="-Dfile.encoding=UTF-8 -Dapplication.name=${APPLICATION_NAME}test"  scala -cp "classes:lib/*:." jvmdbbroker.core.TestCaseRunner $2 $3 $4 $5 $6 $7
+		env JAVA_OPTS="-Dfile.encoding=UTF-8 -Dapplication.name=${APPLICATION_NAME}test"  scala -cp "$CLASSPATH" jvmdbbroker.core.TestCaseRunner $2 $3 $4 $5 $6 $7
 		;;
 	runscala)
 		env JAVA_OPTS="-Dfile.encoding=UTF-8"  scala -cp "classes:temp/classes:lib/*:."

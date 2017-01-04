@@ -30,16 +30,6 @@ set JAVA_OPTS="-Dapplication.name=%APPLICATION_NAME%test"
 scala -encoding UTF-8 -cp "lib\*;classes;temp\classes;." jvmdbbroker.core.TestCaseRunner %2 %3 %4 %5 %6 %7 
 goto end
 
-:runidl
-set JAVA_OPTS="-Dapplication.name=%APPLICATION_NAME%test" 
-scala -encoding UTF-8 -cp "lib\*;classes;temp\classes;." jvmdbbroker.core.IdlConverter %2 %3 %4 %5 %6 %7 
-goto end
-
-:runidlr
-set JAVA_OPTS="-Dapplication.name=%APPLICATION_NAME%test" 
-scala -encoding UTF-8 -cp "lib\*;classes;temp\classes;." jvmdbbroker.core.IdlReverseConverter %2 %3 %4 %5 %6 %7 
-goto end
-
 :runscala
 scala -encoding UTF-8 -cp ".\lib\*;.\classes;.\temp\classes;."
 goto end

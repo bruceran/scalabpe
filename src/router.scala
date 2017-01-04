@@ -26,7 +26,7 @@ object FlowTimoutType {
 
 class MockCfg(val serviceidmsgid:String,val req:HashMapStringAny,val res:HashMapStringAny)
 
-class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
+class Router(val rootDir:String,var mockMode:Boolean = false)  extends Logging with Closable with Dumpable {
 
     val avenueConfDir = rootDir+File.separator+"avenue_conf"
     val pluginConfFile = "jvmdbbroker.plugins.conf"
@@ -45,7 +45,6 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
     val serviceIdsNotAllowed = HashSet[Int]() // to control the visibility of flow serviceids, default is open
     val reverseServiceIds = HashSet[Int]() // 3 or other service for jvmdbbroker clients
 
-    var mockMode = false
     val mocks = HashMap[String,ArrayBuffer[MockCfg]]()
     var mockActor:Actor = null
 
@@ -343,7 +342,7 @@ class Router(val rootDir:String)  extends Logging with Closable with Dumpable {
 
         // start sos
         val port = (cfgXml \ "SapPort").text.toInt
-        if( port > 0 )
+        if( port > 0 && !mockMode )
             sos = new Sos(this,port)
         else {
             sos = new DummySos()

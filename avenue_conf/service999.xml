@@ -7,6 +7,7 @@
  	<type name="intro_type" class="string" code="4"/>
  	<type name="hobby_type" class="string" code="5"/>
 	<type name="hobby_array_type" class="array" itemType="hobby_type"/>
+ 	<type name="msg_type" class="string" code="6"/>
 
 	<type name="shippingto_type" class="struct" code="7">
 		<field name="province" type="systemstring"/>
@@ -62,10 +63,30 @@
 		</responseParameter>
 	</message>
 
-	<message name="test" id="104">
+	<message name="test1" id="104">
 		<requestParameter>
+			<field name="name" type="name_type"/>
 		</requestParameter>
 		<responseParameter>
+			<field name="msg" type="msg_type"/>
+		</responseParameter>
+	</message>
+
+	<message name="test2" id="105">
+		<requestParameter>
+			<field name="name" type="name_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="msg" type="msg_type"/>
+		</responseParameter>
+	</message>
+
+	<message name="echo" id="106">
+		<requestParameter>
+			<field name="name" type="name_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="msg" type="msg_type"/>
 		</responseParameter>
 	</message>
 

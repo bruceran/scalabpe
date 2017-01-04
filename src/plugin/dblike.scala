@@ -75,6 +75,8 @@ class DbResults (
     val results:ArrayBuffer[ ArrayBufferAny ],
     val sqlCode:Int = 0 ) {
 
+    var insert_ids:ArrayBufferString = null
+
     def this(rowCount:Int) {
         this(rowCount,DbResults.emptyResults,0)
     }
@@ -702,7 +704,7 @@ class DbLike extends Logging  {
 
     }
 
-    def update_db(sql:String,params:ArrayBufferString,keyTypes:ArrayBuffer[Int],dslist:ArrayBuffer[DataSource],dbIdx:Int):DbResults = {
+    def update_db(sql:String,params:ArrayBufferString,keyTypes:ArrayBuffer[Int],dslist:ArrayBuffer[DataSource],dbIdx:Int,insert_id:Boolean = false):DbResults = {
 
         var conn : java.sql.Connection = null
         var ps : PreparedStatement = null
@@ -729,13 +731,24 @@ class DbLike extends Logging  {
                 conn.setAutoCommit(true)
             }
 
-            ps = conn.prepareStatement(sql)
+            if( insert_id )
+                ps = conn.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS)
+            else
+                ps = conn.prepareStatement(sql)
 
             prepare(ps,params,keyTypes)
 
             val rows = ps.executeUpdate()
 
-            new DbResults(rows)
+            val ret = new DbResults(rows)
+            if( insert_id ) {
+                ret.insert_ids = ArrayBufferString()
+                val rs = ps.getGeneratedKeys()
+                if(rs.next()){
+                    ret.insert_ids += String.valueOf(rs.getLong(1))
+                }
+            }
+            ret
 
         } catch {
             case e:Throwable =>
@@ -771,7 +784,7 @@ class DbLike extends Logging  {
 
     def update_db_multi(sqls_buff:ArrayBuffer[String],params_buff:ArrayBuffer[ArrayBufferString],
         keytypes_buff:ArrayBuffer[ArrayBuffer[Int]],
-        dslist:ArrayBuffer[DataSource],dbIdx:Int):DbResults = {
+        dslist:ArrayBuffer[DataSource],dbIdx:Int,insert_id:Boolean = false):DbResults = {
 
             var conn : java.sql.Connection = null
             var ps_buff = new ArrayBuffer[PreparedStatement]()
@@ -806,9 +819,14 @@ class DbLike extends Logging  {
 
                 var sqlii = 0
 
+                val insert_ids = ArrayBufferString()
                 while( sqlii < sqls_buff.size ) {
 
-                    val ps = conn.prepareStatement(sqls_buff(sqlii))
+                    var ps : PreparedStatement = null
+                    if( insert_id )
+                        ps = conn.prepareStatement(sqls_buff(sqlii),Statement.RETURN_GENERATED_KEYS)
+                    else
+                        ps = conn.prepareStatement(sqls_buff(sqlii))
 
                     val params = params_buff(sqlii)
                     val keytypes = keytypes_buff(sqlii)
@@ -817,11 +835,19 @@ class DbLike extends Logging  {
                     ps_buff += ps
                     val rows = ps.executeUpdate()
 
+                    if( insert_id ) {
+                        val rs = ps.getGeneratedKeys()
+                        while(rs.next()){
+                            insert_ids += String.valueOf(rs.getLong(1))
+                        }
+                    }
+
                     totalrows += rows
                     sqlii += 1
                 }
 
                 val results = new DbResults(totalrows)
+                results.insert_ids = insert_ids
 
                 if( mode != DbLike.MODE_SYNC ) {
                     conn.commit()
@@ -872,7 +898,7 @@ class DbLike extends Logging  {
 
     def update_db_batch(sql:String,params_buff:ArrayBuffer[ArrayBufferString],
         keytypes: ArrayBuffer[Int] ,
-        dslist:ArrayBuffer[DataSource],dbIdx:Int):DbResults = {
+        dslist:ArrayBuffer[DataSource],dbIdx:Int,insert_id:Boolean = false):DbResults = {
 
             var conn : java.sql.Connection = null
             var ps : PreparedStatement = null
@@ -895,7 +921,10 @@ class DbLike extends Logging  {
                     conn.setAutoCommit(false)
                 }
 
-                ps = conn.prepareStatement(sql)
+                if( insert_id )
+                    ps = conn.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS)
+                else
+                    ps = conn.prepareStatement(sql)
 
                 var i = 0
                 while( i < params_buff.size ) {
@@ -918,6 +947,13 @@ class DbLike extends Logging  {
                 }
 
                 val results = new DbResults(totalrows)
+                if( insert_id ) {
+                    results.insert_ids = ArrayBufferString()
+                    val rs = ps.getGeneratedKeys()
+                    while(rs.next()){
+                        results.insert_ids += String.valueOf(rs.getLong(1))
+                    }
+                }
 
                 if( mode != DbLike.MODE_SYNC ) {
                     conn.commit()

@@ -64,6 +64,8 @@ object MsgDefine{
     val RESULTTYPE_ALL = 4
     val RESULTTYPE_SQLCODE = 5
     val RESULTTYPE_COLUMNLIST = 6
+    val RESULTTYPE_INSERT_ID = 7
+    val RESULTTYPE_INSERT_IDS = 8
 
     val SPLITTABLE_NODEFINE = 0
     val SPLITTABLE_ASSIGN = 1
@@ -543,6 +545,8 @@ object DbClient {
     val reg3 = """^\$result\[([0-9]+)\]$""".r  // $result[n]
     val reg4 = """^\$result$""".r  // $result
     val reg5 = """^\$SQLCODE$""".r  // $SQLCODE
+    val reg6 = """^\$insert_id$""".r  // $insert_id
+    val reg7 = """^\$insert_ids$""".r  // $insert_ids
 
     // used to parse sql, replace :xxx to ?
 
@@ -791,6 +795,12 @@ class DbClient(
                                 case "sql_code" =>
                                     fromValue = "$SQLCODE"
 
+                                case "insert_id" =>
+                                    fromValue = "$insert_id"
+
+                                case "insert_ids" =>
+                                    fromValue = "$insert_ids"
+
                                 case _ =>
 
                                     val tlvTypeName = codec.msgKeyToTypeMapForRes.getOrElse(msgId,EMPTY_STRINGMAP).getOrElse(f,null)
@@ -857,6 +867,12 @@ class DbClient(
                                     resdefs += resdef
                                 case reg5() =>
                                     val resdef = new ResultDefine(f,MsgDefine.RESULTTYPE_SQLCODE)
+                                    resdefs += resdef
+                                case reg6() =>
+                                    val resdef = new ResultDefine(f,MsgDefine.RESULTTYPE_INSERT_ID)
+                                    resdefs += resdef
+                                case reg7() =>
+                                    val resdef = new ResultDefine(f,MsgDefine.RESULTTYPE_INSERT_IDS)
                                     resdefs += resdef
                                 case reg2(row,col) =>
                                     val resdef = new ResultDefine(f,MsgDefine.RESULTTYPE_COLUMN,row.toInt,col.toInt)
@@ -1538,7 +1554,9 @@ class DbClient(
                 val (sql,params) = replaceSql(msgDefine.sqls(0),req,splitTableType)
                 val keyTypes = msgDefine.sqls(0).keyTypes
 
-                results = update_db(sql,params,keyTypes,masterList,dbIdx)
+                var insert_id_flag = false
+                for( resdef <- msgDefine.resdefs if resdef.fieldType == MsgDefine.RESULTTYPE_INSERT_ID || resdef.fieldType == MsgDefine.RESULTTYPE_INSERT_IDS ) { insert_id_flag = true }
+                results = update_db(sql,params,keyTypes,masterList,dbIdx,insert_id_flag)
 
             case MsgDefine.SQLTYPE_MULTIUPDATE =>
 
@@ -1553,14 +1571,18 @@ class DbClient(
                     keytypes_buff += msgSql.keyTypes
                 }
 
-                results = update_db_multi(sql_buff,params_buff,keytypes_buff,masterList,dbIdx)
+                var insert_id_flag = false
+                for( resdef <- msgDefine.resdefs if resdef.fieldType == MsgDefine.RESULTTYPE_INSERT_ID || resdef.fieldType == MsgDefine.RESULTTYPE_INSERT_IDS ) { insert_id_flag = true }
+                results = update_db_multi(sql_buff,params_buff,keytypes_buff,masterList,dbIdx,insert_id_flag)
 
             case MsgDefine.SQLTYPE_BATCHUPDATE =>
 
                 val (sql,batchparams) = replaceSqlBatch(msgDefine.sqls(0),req,splitTableType)
                 val keyTypes = msgDefine.sqls(0).keyTypes
 
-                results = update_db_batch(sql,batchparams,keyTypes,masterList,dbIdx)
+                var insert_id_flag = false
+                for( resdef <- msgDefine.resdefs if resdef.fieldType == MsgDefine.RESULTTYPE_INSERT_ID || resdef.fieldType == MsgDefine.RESULTTYPE_INSERT_IDS ) { insert_id_flag = true }
+                results = update_db_batch(sql,batchparams,keyTypes,masterList,dbIdx,insert_id_flag)
 
             case _ =>
                 val body = new HashMapStringAny()
@@ -1588,6 +1610,16 @@ class DbClient(
                 case MsgDefine.RESULTTYPE_ROWCOUNT =>
 
                     body.put(resdef.key,results.rowCount)
+
+                case MsgDefine.RESULTTYPE_INSERT_ID =>
+
+                    if( results.insert_ids != null && results.insert_ids.length >0 )
+                        body.put(resdef.key,results.insert_ids(0))
+
+                case MsgDefine.RESULTTYPE_INSERT_IDS =>
+
+                    if( results.insert_ids != null )
+                        body.put(resdef.key,results.insert_ids)
 
                 case MsgDefine.RESULTTYPE_COLUMN =>
 
