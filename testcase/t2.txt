@@ -1,0 +1,92 @@
+
+global:
+    define: $year=1998 $colors=["red","black","green"] map={"a":1,"b":2,"c":"3"}
+    setup:service999.echo  id:$inv1 req:   name=mike res: $code=0  msg=mike
+    setup:service999.echo  id:$inv2 req: name=mary res: $code=0 msg=mary 
+
+testcase:echo enabled:0
+
+    assert:service999.echo  req:  name=123  
+        res: $year.length()=4  msg.length()=3 
+    assert:service999.echo  req:   name=$inv1.res.msg $inv2.res.msg  
+        res: msg=mike mary
+    assert:service999.echo  req:   name=$inv1.res.msg a\= $inv2.res.msg 
+        res: msg=mike a\= mary
+    assert:service999.echo  req:   name="$inv1.res.msg a= ${inv2.res.msg}" 
+        res: msg="mike a= mary"
+    assert:service999.echo  req:   name=abc${inv1.res.msg}def $inv2.res.msg
+        res: msg=abcmikedef mary
+
+    assert:service999.echo  req:   name=${contact(abc, def)} # 需要在FlowHelper.scala定义一个函数： def contact(a:String,b:String) = a + b 
+        res: msg=abcdef
+    assert:service999.echo  req:   name=$contact($inv1.res.msg,$inv2.res.msg)  
+        res: msg=mikemary 
+    assert:service999.echo  req:   name=>>> $contact($inv1.res.msg,$inv2.res.msg) <<< 
+        res: msg=>>> mikemary <<<
+
+    assert:service999.echo  req:   name=abcd () . , {"a":"${inv1.res.msg}","${inv2.res.msg}":"${year}"}  
+    assert:service999.echo  req:   name=s:{"${inv1.res.msg}":"1996","${inv2.res.msg}":"${year}"}  
+    assert:service999.echo  req:   name={"${inv1.res.msg}":1996,"${inv2.res.msg}":"${year}"}  
+
+    assert:service999.echo  req:   name=${contact($inv1.res.msg,$inv2.res.msg)}  
+        res: msg=mikemary
+    assert:service999.echo  req:   name=${contact(${inv1.res.msg},${inv2.res.msg})} 
+        res: msg=mikemary
+    assert:service999.echo  req:   name=${contact("${inv1.res.msg}","${inv2.res.msg}")} 
+        res: msg="mike""mary"
+
+    assert:service999.echo  req:   name=["${inv1.res.msg}","${inv2.res.msg}","${year}"] 
+
+    assert:service999.echo  req:   name=${contact( $inv1.res.msg  ,  $inv2.res.msg ) }  
+        res: msg=mikemary
+    assert:service999.echo  req:   name=${contact( ${inv1.res.msg}  ,  ${inv2.res.msg} )} 
+        res: msg=mikemary
+    assert:service999.echo  req:   name=${contact( "${inv1.res.msg.length()}" , "${inv2.res.msg}")} 
+        res: msg="4""mary"
+
+    assert:service999.echo  req:   name=$contact( ${inv1.res.msg} , ${inv2.res.msg} )  
+        res: msg=mikemary 
+    assert:service999.echo  req:   name=>>> $contact( ${inv1.res.msg} , ${inv2.res.msg} ) <<< 
+        res: msg=>>> mikemary <<<
+    assert:service999.echo  req:   name=$contact( $inv1.res.msg , $inv2.res.msg )  
+        res: msg=mikemary 
+    assert:service999.echo  req:   name=>>> $contact( $inv1.res.msg , $inv2.res.msg ) <<< 
+        res: msg=>>> mikemary <<<
+    assert:service999.echo  req:   name=$contact( $inv1.res.msg, $inv2.res.msg)  
+        res: msg=mikemary 
+    assert:service999.echo  req:   name=>>> $contact( $inv1.res.msg, $inv2.res.msg) <<< 
+        res: msg=>>> mikemary <<<
+
+    assert:service999.echo  req:   name=" $contact( $inv1.res.msg, $inv2.res.msg) " 
+        res: msg=" mikemary "
+    assert:service999.echo  req:   name= $contact( "${inv1.res.msg}", "$inv2.res.msg ") $year 
+        res: msg="mike""mary " 1998
+    assert:service999.echo  req:   name= $contact( "${inv1.res.msg}", abc def )
+        res: msg="mike"abc def
+
+testcase:echo2
+
+    assert:service999.echo  id:inv3 req:   name= $contact( ${inv1.res.msg}, abc def )
+        res: $year.length()=4 
+            msg.left(4)=mike  
+            $inv3.res.msg.indexOf(ike)=1
+            $inv3.res.msg.contains(mike)=true
+            $inv3.res.msg.contains(abc)=true
+            $inv3.res.msg.contains(def)=true
+            $inv3.res.msg.right(3)=def
+            $inv3.res.msg.matches(mike.*)=true
+            $inv3.res.msg.matches(.*abc.*)=true
+            $inv3.res.msg.matches(.*def$)=true
+            $contact(abc,def)=abcdef
+            $contact($year,def)=1998def
+            $inv3.res.msg.contact(mmm).matches(.*mmm$)=true
+
+    assert:echo id:inv4  req: m=$colors.toJson() $map.toJson()
+        res: $colors.size()=3
+             $colors[0]=red
+             $colors[1]=black
+             $colors.contains(green)=true
+             $map.size()=3
+             $map.contains(a)=true
+             $map.toJson().contains("a")=true
+

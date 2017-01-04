@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="chatdb" id="635" IsTreeStruct ="false">
+
+	<type name="rowcount_type" class="int" code="1"/>
+	<type name="userId_type" class="string" code="2"/>
+	<type name="name_type" class="string" code="3"/>
+	<type name="names_type" class="array" itemType="name_type"/>
+	<type name="nickName_type" class="string" code="4"/>
+	<type name="createTime_type" class="string" code="5"/>
+	<type name="updateTime_type" class="string" code="6"/>
+	<type name="id_type" class="string" code="7"/>
+	<type name="insert_id_type" class="string" code="8"/>
+	<type name="insert_ids_type" class="array" itemType="insert_id_type"/>
+	
+	<message name="insert" id="2">
+		<sql><![CDATA[
+			update tb_user set name = :name, nickname = :nickname where id = 1
+			insert into tb_user(name,nickname,createtime,updatetime) values(:name, :nickname, now(), now())
+			update tb_user set name = :name, nickname = :nickname where id = 1
+			update tb_user set name = :name, nickname = :nickname where id = 1
+		]]></sql>
+		<requestParameter>
+			<field name="name" type="name_type"/>
+			<field name="nickName" type="nickName_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="rowcount" type="rowcount_type"/>
+            <field name="insert_ids" type="insert_ids_type"/>
+		</responseParameter>
+	</message>
+		
+	<message name="insert2" id="22">
+		<sql><![CDATA[
+			insert into tb_user(id,name,nickname,createtime,updatetime) 
+			values(:id, :name, :nickname, now(), now())
+		]]></sql>
+		<requestParameter>
+			<field name="id" type="id_type"/>
+			<field name="name" type="name_type"/>
+			<field name="nickName" type="nickName_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="rowcount" type="rowcount_type"/>
+			<field name="insert_id" type="insert_id_type"/>
+		</responseParameter>
+	</message>
+
+	<message name="update" id="3">
+		<sql><![CDATA[
+			update tb_user set name = :name,
+			nickname = :nickname,
+			updatetime = sysdate
+			where id = :userid
+		]]></sql>
+		<requestParameter>
+			<field name="userId" type="userId_type"/>
+			<field name="name" type="name_type"/>
+			<field name="nickName" type="nickName_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="rowcount" type="rowcount_type"/>
+		</responseParameter>
+	</message>
+	
+</service>
+

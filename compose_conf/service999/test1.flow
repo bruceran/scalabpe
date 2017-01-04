@@ -1,0 +1,7 @@
+//$service999.test1
+
+//#receive
+
+    reply(0,"msg"->(req.ns("name")))
+  
+
