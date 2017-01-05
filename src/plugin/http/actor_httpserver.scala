@@ -2150,14 +2150,15 @@ image/x-icon ico
         val tlvCodec = router.findTlvCodec(serviceId)
         if( tlvCodec == null )  return null
 
+        val newbody = HashMapStringAny()
         for( (key,value) <- body if value != null) {
-            body.put(key.toLowerCase,value)
+            newbody.put(key.toLowerCase,value)
         }
 
         val map = new HashMapStringAny()
         val keyMap = tlvCodec.msgKeyToTypeMapForReq.getOrElse(msgId,TlvCodec.EMPTY_STRINGMAP)
         for( (key,value) <- keyMap ) {
-            val v = body.s(key.toLowerCase,null)
+            val v = newbody.s(key.toLowerCase,null)
             if( v != null )
                 map.put(key,v)
         }

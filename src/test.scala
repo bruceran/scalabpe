@@ -37,7 +37,6 @@ object ValueParser {
 
     def parse(s:String,localCtx:HashMapStringAny,glbCtx:HashMapStringAny,returnNull:Boolean):Any = {
         if( s.indexOf("$") >= 0 ) {
-
             if( showEscape )
                 println("***"+s)            
             var ns = escape3(escape4(s))
@@ -46,16 +45,23 @@ object ValueParser {
             ns = r1.replaceAllIn(ns,(m)=>parseInternalPart1(m.group(1),localCtx,glbCtx).replace("$","\\$"))
             if( showEscape )
                 println("@@@"+ns)            
+            if( ns == null ) return null
             ns = r2.replaceAllIn(ns,(m)=>parseInternalPart2(m.group(1),localCtx,glbCtx).replace("$","\\$"))
             if( showEscape )
                 println("%%%"+ns)            
-            return ns
+            if( ns == null ) return null
+            return unescape(ns)
         }
 
         val v = parseInternal(s,localCtx,glbCtx)
         if( v == null && returnNull ) return null
         if( v == null && !returnNull ) return s
-        v
+        v match {
+            case s:String =>
+                unescape(s)
+            case _ =>
+                v
+        }
     }
 
     def parseInternalPart1(s:String,localCtx:HashMapStringAny,glbCtx:HashMapStringAny):String = {
@@ -75,8 +81,7 @@ object ValueParser {
 
     def parseInternal(s:String,localCtx:HashMapStringAny,glbCtx:HashMapStringAny):Any = {
         val fields = parseFields(s)
-        if( showEscape )
-            println("fields="+fields)            
+        // println("fields="+fields)            
         if( fields == null ) return null
 
         if( localCtx != null ) {
@@ -487,18 +492,6 @@ object ValueParser {
         var brackets = 0
         var ts = ""
         for(c <- s) {
-            /*if( c == '.' && brackets > 0 ) {
-                ts = ts + sep1
-            } else if( c == '(' )  { 
-                brackets += 1
-                ts = ts + "("
-            } else if( c == ')' ) { 
-                brackets -= 1
-                if( brackets < 0 ) brackets = 0
-                ts = ts + ")"
-            } else {
-                ts = ts + c
-            }*/
 
             if( brackets > 0 ) {
                 c match {
@@ -566,6 +559,13 @@ object ValueParser {
     }
 
     def unescape(s:String):String = {
+        var found = false
+        for( i <- 0 until s.length ) {
+            val ch = s.charAt(i)
+            if( ch >= sep1 && ch <= sep10 ) found = true
+        }
+        if( !found ) return s
+
         var ts = ""
         for(ch <- s) {
             ch match {
@@ -598,7 +598,6 @@ object ValueParser {
 
     def unescapeAndRemoveQuota(s:String):String = {
         val t = unescape( s.trim() )
-        //if( t.length >= 2 && t.startsWith("\"") &&  t.endsWith("\"") ) return t.substring(1,t.length-1)
         t
     }
 
@@ -617,7 +616,7 @@ object ValueParser {
     def parseSingleField(s:String):Field = {
         val p01 = s.indexOf("(")
         val p02 = s.indexOf("[")
-        (p01,p02) match {
+        val f = (p01,p02) match {
             case (-1,-1) =>
                 new Field(unescapeAndRemoveQuota(s),"v")
             case (p1,-1) =>
@@ -631,6 +630,10 @@ object ValueParser {
             case _ =>
                 null
         }
+        if( f == null )
+            new Field(unescapeAndRemoveQuota(s),"v")
+        else
+            f
     }
 
     def parseArrayField(s:String):Field = {

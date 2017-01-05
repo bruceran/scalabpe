@@ -1,3 +1,8 @@
+1.1.13 (20170105)
+================
+
+* 修改http server 的一个bug: 在url mapping设置了参数大小写不敏感时可能触发此bug导致部分参数未解析到
+            <Item plugin="template" caseInsensitive="true">ticketpay/indexpage,266,2</Item>
 
 1.1.12 (20161223)
 ================

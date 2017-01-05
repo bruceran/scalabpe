@@ -4,7 +4,7 @@ global:
     setup:service999.echo  id:$inv1 req:   name=mike res: $code=0  msg=mike
     setup:service999.echo  id:$inv2 req: name=mary res: $code=0 msg=mary 
 
-testcase:echo enabled:0
+testcase:test1 enabled:0
 
     assert:service999.echo  req:  name=123  
         res: $year.length()=4  msg.length()=3 
@@ -64,22 +64,7 @@ testcase:echo enabled:0
     assert:service999.echo  req:   name= $contact( "${inv1.res.msg}", abc def )
         res: msg="mike"abc def
 
-testcase:echo2
-
-    assert:service999.echo  id:inv3 req:   name= $contact( ${inv1.res.msg}, abc def )
-        res: $year.length()=4 
-            msg.left(4)=mike  
-            $inv3.res.msg.indexOf(ike)=1
-            $inv3.res.msg.contains(mike)=true
-            $inv3.res.msg.contains(abc)=true
-            $inv3.res.msg.contains(def)=true
-            $inv3.res.msg.right(3)=def
-            $inv3.res.msg.matches(mike.*)=true
-            $inv3.res.msg.matches(.*abc.*)=true
-            $inv3.res.msg.matches(.*def$)=true
-            $contact(abc,def)=abcdef
-            $contact($year,def)=1998def
-            $inv3.res.msg.contact(mmm).matches(.*mmm$)=true
+testcase:test2 enabled:0
 
     assert:echo id:inv4  req: m=$colors.toJson() $map.toJson()
         res: $colors.size()=3
@@ -89,4 +74,41 @@ testcase:echo2
              $map.size()=3
              $map.contains(a)=true
              $map.toJson().contains("a")=true
+
+    assert:service999.echo  id:inv3 req:   name= $contact( ${inv1.res.msg}, abc def )
+        res: $year.length()=4 
+            msg.left(4)=mike  
+            $inv3.res.msg.indexOf(ike)=1
+            $inv3.res.msg.contains(mike)=true
+            $inv3.res.msg.contains(abc)=true
+            $inv3.res.msg.contains(def)=true
+            $inv3.res.msg.contains(mmmmm)=false
+            $inv3.res.msg.right(3)=def
+            $inv3.res.msg.matches(mike.*)=true
+            $inv3.res.msg.matches(.*abc.*)=true
+            $inv3.res.msg.matches(.*def$)=true
+            $contact(abc,def)=abcdef
+            $contact($year,def)=1998def # 需要在FlowHelper.scala定义一个函数： def contact(a:String,b:String) = a + b 
+            $inv3.res.msg.contact(mmm).matches(.*mmm$)=true # string对象的函数需要在FlowHelper.scala定义一个函数,第一个参数是string,也就是对象本身： def contact(obj:String,param:String) = obj + param, 实际上和$contact()引用的是相同的函数 
+
+    assert:service999.echo  req:   name=abc
+        res: 
+            msg.contains(abc)=true
+            msg.contains(mmm)=false
+            msg.contains(msg)=true  # 注意，参数里的msg是个表达式，会解析成实际值：abc, 所以assert结果是true
+            $inv3.res.$code=0
+
+    assert:service999.echo  req:   name=abc$inv3.res.$code
+        res: 
+            msg=abc0
+
+    assert:service999.echo  req:   name=abc$inv3.res.$code mmm
+        res: 
+            msg=abc0 mmm
+
+testcase:test3 enabled:1
+    assert:service999.echo  req:   name= { $inv1.res.msg , $inv2.res.msg  
+        res: msg={ mike , mary
+    assert:service999.echo  req:   name= ( $inv1.res.msg , $inv2.res.msg  
+        res: msg=( mike , mary   # 这个不工作
 
