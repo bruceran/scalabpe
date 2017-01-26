@@ -22,13 +22,13 @@ object GenFlowTool {
 """
 usage: scalabpe.GenFlowTool [options]
 options:
-    -h|--help             帮助信息
-    -s|--service  servicefile                         指定服务文件名
-    -d|--dir  dirname                                 指定目录，默认为服务文件名一致
-    -w|--with withname                                所有流程需要继承的基类
-    -i|--import                                       import FlowHelper类
-    -m|--mapping                                      根据uri,uri2,needLogin生成url mapping
-    -p|--plugin [pluginname]                          -m开启时使用，可给url mapping加上plugin参数
+    -h|--help                       帮助信息
+    -s|--service  servicefile       指定服务文件名
+    -d|--dir  dirname               指定目录，默认为服务文件名一致
+    -w|--with withname              所有流程需要继承的基类
+    -i|--import                     自动加上import FlowHelper._
+    -m|--mapping                    根据uri,uri2,needLogin生成url mapping
+    -p|--plugin [pluginname]        -m开启时使用，可给url mapping加上plugin参数
 """)
     }
 
@@ -96,6 +96,7 @@ options:
         val filename = findFile(params.ns("service"))
         if( filename == null ) {
             println("file not found, service="+params.ns("service"))
+            help()
             return
         }
 

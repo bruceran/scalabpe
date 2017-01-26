@@ -31,6 +31,13 @@
 	Avenue协议
 	TLV编码规范
 
+## [辅助开发工具](doc/tools.md)
+
+	GenSdfTool: 服务描述文件xml/txt转换，格式化，修补工具
+	GenSqlTool: 生成db服务描述文件
+	GenFlowTool: 根据服务描述文件生成流程文件和url mapping
+	RenameFlowTool: 对服务描述文件按指定格式进行批量改名
+
 ## [配置指南](doc/config.md) 
 
 	了解confg.xml的所有细节
@@ -39,7 +46,7 @@
 
 ## [测试指南](doc/test.md) 
 
-	如何使用测试工具
+	如何使用测试工具, 编写单元测试和集成测试用例
 	日志目录说明
 	日志格式说明
 	如何调整日志输出

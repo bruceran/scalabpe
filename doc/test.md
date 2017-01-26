@@ -295,7 +295,7 @@
         ,
         miscservice.phoneuserinfocontrol,
         user_client_ip:127.0.0.1^_^src_code:10^_^type:1^_^phone:^_^xid:1003260494^_^mid:1003260494^_^nickname:^_^image_id:^_^u_sex:^_^u_career:^_^u_phone:^_^u_qq:^_^u_email:^_^u_city:^_^u_birthday:^_^mail_address:^_^b_uid:^_^other_flag:,
-        fail_reason:^_^mid:2165378584^_^phone:18689939034^_^nickname:�����������^_^image_id:http://gmm.sdo.com/gmm/img/8.jpg^_^u_sex:-1^_^u_career:^_^u_phone:18689939034^_^u_qq:350127202^_^u_email:^_^u_city:^_^u_birthday:1971-01-01^_^create_time:2015-12-28 21:33:09^_^homepage_header_url:^_^credit_info:{"s_sharing_hours":24,"s_fee_discount":100,"b_eval_total":0,"s_judge_hours":72,"s_credit_value":5,"b_credit_lvl":0,"s_eval_total":0,"b_eval_good":0,"s_credit_lvl":0,"s_eval_good":0,"b_wait_verify_hours":24,"b_credit_value":5}^_^b_uid:1003258903^_^is_complete:0^_^mail_address:,
+        fail_reason:^_^mid:2165378584^_^phone:18689939034^_^nickname:mike^_^image_id:http://gmm.sdo.com/gmm/img/8.jpg^_^u_sex:-1^_^u_career:^_^u_phone:18689939034^_^u_qq:350127202^_^u_email:^_^u_city:^_^u_birthday:1971-01-01^_^create_time:2015-12-28 21:33:09^_^homepage_header_url:^_^credit_info:{"s_sharing_hours":24,"s_fee_discount":100,"b_eval_total":0,"s_judge_hours":72,"s_credit_value":5,"b_credit_lvl":0,"s_eval_total":0,"b_eval_good":0,"s_credit_lvl":0,"s_eval_good":0,"b_wait_verify_hours":24,"b_credit_value":5}^_^b_uid:1003258903^_^is_complete:0^_^mail_address:,
         4,
         0
 
