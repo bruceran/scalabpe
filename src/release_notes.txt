@@ -1,3 +1,16 @@
+
+1.1.14 (20170126)
+================
+
+* 测试框架：按定义顺序执行指令(除teardown)
+* 测试框架：mock里的表达式在被调用时动态执行，mock请求为校验表达式，类似assert
+* 测试框架: 支持!=， 支持$this.req.xx $this.res.xxx, 明确几个特殊字符的转义处理
+* 测试框架: testcase 支持extends:语法，可将多个testcase的公共部分放在一个公共testcase中每次都执行
+* Flow基类支持filterRequest,filterInvoke,filterReply方法,可以将一些公共方法放在基类中统一处理
+* 去除日志中值可能出现",空格空格"引起的解析问题
+* config.xml中支持InstallMock配置属性，可以在正常启动后安装一些mock, 可用于开发过程中联调
+* 测试框架: global节点支持remote属性，可使用远程tcp方式调用服务
+
 1.1.13 (20170105)
 ================
 
@@ -24,7 +37,7 @@
 
 * 日志中增加对logId的输出
 * HashMapStringAny,Request,InvokeResult 增加.nm()方法，如果取到的map为null, 则返回一个空的map
-* JsonCodec新增 parseArrayInt parseArrayString parseArrayMap paseObjectNotNull  parseArrayIntNotNull parseArrayStringNotNull parseArrayMapNotNull
+* JsonCodec新增 parseArrayInt parseArrayString parseArrayObject paseObjectNotNull  parseArrayIntNotNull parseArrayStringNotNull parseArrayObjectNotNull
 * 新增 invokeXxxAutoReply系列方法，当出错的时候直接reply错误码然后结束流程，不调用callback函数，可以使流程编写者只写正常流程；可通过入参errorCode指定返回的错误码
 * config.xml文件中也可通过<assign>...</assign>来设置变量
 * struct的field支持default属性

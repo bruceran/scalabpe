@@ -11,7 +11,7 @@ object Main extends Logging with SignalHandler {
     var mainThread : Thread = _
     var shutdown = false
     var selfCheckServer : SelfCheckServer = _
-    var mockMode = false
+    var testMode = false
     var stopFile = ""
 
     def handle(signal:Signal) {
@@ -51,18 +51,24 @@ object Main extends Logging with SignalHandler {
             }
         }
 
-        router = new Router(rootDir,mockMode)
+        val startSos = !testMode 
+        val installMock = (cfgXml \ "InstallMock").text
+        router = new Router(rootDir,startSos,testMode||(installMock!=""))
 
         val selfCheckPort = (cfgXml \ "CohPort").text.toInt
 
-        if( selfCheckPort > 0 && !mockMode ) {
+        if( selfCheckPort > 0 && startSos ) {
             selfCheckServer = new SelfCheckServer(selfCheckPort,router)
         }
 
         val t2 = System.currentTimeMillis
         log.info("scalabpe started, ts=%s[ms]".format(t2-t1))
 
-        if( mockMode ) {
+        if( installMock != "" ) {
+            TestCaseRunner.installMock(installMock)
+        }
+
+        if( testMode ) {
             return
         }
 

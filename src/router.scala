@@ -26,7 +26,7 @@ object FlowTimoutType {
 
 class MockCfg(val serviceidmsgid:String,val req:HashMapStringAny,val res:HashMapStringAny)
 
-class Router(val rootDir:String,var mockMode:Boolean = false)  extends Logging with Closable with Dumpable {
+class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolean = false)  extends Logging with Closable with Dumpable {
 
     val avenueConfDir = rootDir+File.separator+"avenue_conf"
     val pluginConfFile = "jvmdbbroker.plugins.conf"
@@ -342,7 +342,7 @@ class Router(val rootDir:String,var mockMode:Boolean = false)  extends Logging w
 
         // start sos
         val port = (cfgXml \ "SapPort").text.toInt
-        if( port > 0 && !mockMode )
+        if( port > 0 && startSos )
             sos = new Sos(this,port)
         else {
             sos = new DummySos()
@@ -574,101 +574,99 @@ class Router(val rootDir:String,var mockMode:Boolean = false)  extends Logging w
             return
         }
 
-        if( !actor.isInstanceOf[FlowActor] ) {
-
-            if( !serviceIdsAllowed.contains(data.serviceId) )
-                return
-
+        if( !actor.eq(mockActor) ) {
+            if( !actor.isInstanceOf[FlowActor] ) {
+                if( !serviceIdsAllowed.contains(data.serviceId) )
+                    return
             } else {
-
                 if( serviceIdsNotAllowed.contains(data.serviceId) )
                     return
+            }
+        }
 
+        if( data.msgId >= 1000 ) {
+            val s = getConfig("disabledMsgIdFrom_"+data.serviceId)
+            if( s != "" ) {
+                if( data.msgId >= s.toInt ) {
+                    val remoteIp = rawReq.remoteIp
+                    if( remoteIp != "127.0.0.1" )
+                        return
+                }
+            }
+        }
+
+        try {
+
+            val xhead = TlvCodec4Xhead.decode(data.serviceId,data.xhead)
+
+            val tlvCodec = findTlvCodec(data.serviceId)
+            if( tlvCodec == null ) {
+                log.error("tlv codec not found,serviceid={}",data.serviceId)
+                val info = genRawReqResInfo(rawReq,ResultCodes.SERVICE_NOT_FOUND)
+                rawReq.sender.receive(info)
+                asyncLogActor.receive(info) 
+                persistCommit( rawReq, ResultCodes.SERVICE_NOT_FOUND )
+                return;
             }
 
-            if( data.msgId >= 1000 ) {
-                val s = getConfig("disabledMsgIdFrom_"+data.serviceId)
-                if( s != "" ) {
-                    if( data.msgId >= s.toInt ) {
-                        val remoteIp = rawReq.remoteIp
-                        if( remoteIp != "127.0.0.1" )
-                            return
-                    }
-                }
+            val (body,ec) = tlvCodec.decodeRequest(data.msgId,data.body,data.encoding)
+            if( ec != 0 ) {
+                log.error("decode request error, serviceId="+data.serviceId+", msgId="+data.msgId)
+                val info = genRawReqResInfo(rawReq,ec)
+                rawReq.sender.receive(info)
+                asyncLogActor.receive(info)
+                persistCommit( rawReq,ec )
+                return
             }
 
-            try {
+            val req = new Request (
+                rawReq.requestId,
+                connId,
+                data.sequence,
+                data.encoding,
+                data.serviceId,
+                data.msgId,
+                xhead,
+                body,
+                rawReq.sender
+            )
 
-                val xhead = TlvCodec4Xhead.decode(data.serviceId,data.xhead)
+            req.receivedTime = rawReq.receivedTime
 
-                val tlvCodec = findTlvCodec(data.serviceId)
-                if( tlvCodec == null ) {
-                    log.error("tlv codec not found,serviceid={}",data.serviceId)
-                    val info = genRawReqResInfo(rawReq,ResultCodes.SERVICE_NOT_FOUND)
-                    rawReq.sender.receive(info)
-                    asyncLogActor.receive(info) 
-                    persistCommit( rawReq, ResultCodes.SERVICE_NOT_FOUND )
-                    return;
-                }
+            if( rawReq.persistId == 0 )
+                persist( rawReq )
 
-                val (body,ec) = tlvCodec.decodeRequest(data.msgId,data.body,data.encoding)
-                if( ec != 0 ) {
-                    log.error("decode request error, serviceId="+data.serviceId+", msgId="+data.msgId)
-                    val info = genRawReqResInfo(rawReq,ec)
-                    rawReq.sender.receive(info)
-                    asyncLogActor.receive(info)
-                    persistCommit( rawReq,ec )
-                    return
-                }
+            req.persistId = rawReq.persistId
 
-                val req = new Request (
-                    rawReq.requestId,
-                    connId,
-                    data.sequence,
-                    data.encoding,
-                    data.serviceId,
-                    data.msgId,
-                    xhead,
-                    body,
-                    rawReq.sender
-                )
-
-                req.receivedTime = rawReq.receivedTime
-
-                if( rawReq.persistId == 0 )
-                    persist( rawReq )
-
-                req.persistId = rawReq.persistId
-
-                if( rawReq.persistId != 0 ) {
-                    rawReq.sender.receive( new RawRequestAckInfo(rawReq) )
-                }
-
-                var i = 0
-                while( i < allReqFilters.size ) {
-                    allReqFilters(i).filter(req)
-                    i += 1
-                }
-
-                actor.receive(req)
-
-                // allow local cache visited from outside directly
-                if( actor.isInstanceOf[SyncedActor] ) {
-                    val sc = actor.asInstanceOf[SyncedActor]
-                    val res = sc.get(req.requestId)
-                    reply( new RequestResponseInfo(req,res))
-
-                    asyncLogActor.receive(new RequestResponseInfo(req,res))
-                }
-
-            } catch {
-                case e:Throwable =>
-                    log.error("process raw request error",e)
-                    val info = genRawReqResInfo(rawReq,ResultCodes.SERVICE_INTERNALERROR)
-                    rawReq.sender.receive(info)
-                    asyncLogActor.receive(info)
-                    persistCommit( rawReq,ResultCodes.SERVICE_INTERNALERROR )
+            if( rawReq.persistId != 0 ) {
+                rawReq.sender.receive( new RawRequestAckInfo(rawReq) )
             }
+
+            var i = 0
+            while( i < allReqFilters.size ) {
+                allReqFilters(i).filter(req)
+                i += 1
+            }
+
+            actor.receive(req)
+
+            // allow local cache visited from outside directly
+            if( actor.isInstanceOf[SyncedActor] ) {
+                val sc = actor.asInstanceOf[SyncedActor]
+                val res = sc.get(req.requestId)
+                reply( new RequestResponseInfo(req,res))
+
+                asyncLogActor.receive(new RequestResponseInfo(req,res))
+            }
+
+        } catch {
+            case e:Throwable =>
+                log.error("process raw request error",e)
+                val info = genRawReqResInfo(rawReq,ResultCodes.SERVICE_INTERNALERROR)
+                rawReq.sender.receive(info)
+                asyncLogActor.receive(info)
+                persistCommit( rawReq,ResultCodes.SERVICE_INTERNALERROR )
+        }
     }
 
     def reply(info:RawRequestResponseInfo) : Unit =  {

@@ -20,6 +20,8 @@
 
 [runtest目标地址](#runtest)
 
+[安装Mock](#installmock)
+
 [错误码/错误集中配置](#error)
 
 [定时任务配置](#quartz)
@@ -260,6 +262,12 @@
     <TestServerAddr>host:port</TestServerAddr>
 
     此配置仅用于runtest测试工具，用来将请求发给远程服务而不是本地服务
+
+# <a name="installmock">安装mock</a>
+
+    <InstallMock>path_to_testcasefile</InstallMock>
+
+    在正常启动后安装一个mock文件，用于开发联调
 
 [返回](#toc)
 

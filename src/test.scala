@@ -10,17 +10,23 @@ import java.util.concurrent.locks.ReentrantLock
 import java.text.SimpleDateFormat
 import scala.reflect.runtime.universe
 
-// todo 字符串嵌入${...}
-// 参数也可以是表达式
-// mock,setup的顺序可以在中间，而不是总最前:拆成2个testcase, 后面的可以引用前面的testcase
 object ValueParser {
 
-    var showEscape = false
+    val OP_PREFIX = "___op"
+    val NULL = "NULL"
+
+    var debug = false
 
     var pluginObjectName = "jvmdbbroker.flow.FlowHelper"
-    val runtimeMirror = universe.runtimeMirror(getClass.getClassLoader)
-    val module = runtimeMirror.staticModule(pluginObjectName)
-    val pluginobj = runtimeMirror.reflectModule(module)
+    var pluginobj:universe.ModuleMirror = null
+
+    val g_context = HashMapStringAny()
+
+    def initPlugin() {
+        val runtimeMirror = universe.runtimeMirror(getClass.getClassLoader)
+        val module = runtimeMirror.staticModule(pluginObjectName)
+        pluginobj = runtimeMirror.reflectModule(module)
+    }
 
     // tp: v=value a=array value f=function
     class Field(val key:String,val tp:String, val params:Array[String] = null) {
@@ -35,27 +41,70 @@ object ValueParser {
     val r1 = """(\$\{[^}]+\})""".r
     val r2 = """(\$[^ ]+)""".r
 
-    def parse(s:String,localCtx:HashMapStringAny,glbCtx:HashMapStringAny,returnNull:Boolean):Any = {
-        if( s.indexOf("$") >= 0 ) {
-            if( showEscape )
+    // 从全局上下文里解析值
+    def parseRightValue(v:Any,localCtx:HashMapStringAny,glbCtx:HashMapStringAny):Any = {
+        if( v == null || v == "" ) return v
+        if( !v.isInstanceOf[String] ) return v
+        val s = v.asInstanceOf[String]
+        val nv = ValueParser.parse(s,localCtx,glbCtx,false)
+
+        if( nv == null || nv == "" ) return nv
+        if( !nv.isInstanceOf[String] ) return nv
+        val t = nv.asInstanceOf[String]
+
+        //if( t.length >= 2 && t.startsWith("\"") &&  t.endsWith("\"") ) return t.substring(1,t.length-1)
+        if( t.startsWith("[") && t.endsWith("]") ) return JsonCodec.parseArrayNotNull(t)
+        if( t.startsWith("{") && t.endsWith("}") ) return JsonCodec.parseObjectNotNull(t)
+        if( t.startsWith("s:")) return t.substring(2)
+        if( t.startsWith("i:")) return t.substring(2).toInt
+        t
+    }
+
+    // 从invoke结果集或context上下文里解析值
+    def parseLeftValue(s:String,localCtx:HashMapStringAny,glbCtx:HashMapStringAny):Any = {
+        ValueParser.parse(s,localCtx,glbCtx,true) // 先根据结果集解析, 再根据全局上下文解析
+    }
+
+    def anyToString(a:Any):String = {
+        if( a == null ) return null
+
+        a match {
+            case m:HashMapStringAny =>
+                JsonCodec.mkString(m)
+            case a:ArrayBufferAny =>
+                JsonCodec.mkString(a)
+            case a:ArrayBufferString =>
+                JsonCodec.mkString(a)
+            case a:ArrayBufferInt =>
+                JsonCodec.mkString(a)
+            case a:ArrayBufferMap =>
+                JsonCodec.mkString(a)
+            case _ =>
+                a.toString
+        }
+    }
+
+    private def parse(s0:String,localCtx:HashMapStringAny,glbCtx:HashMapStringAny,returnNull:Boolean):Any = {
+        val s = s0
+        var ns = escape4(escape3(escape1(s)))
+        if( ns.indexOf("$") >= 0 ) {
+            if( debug ) {
                 println("***"+s)            
-            var ns = escape3(escape4(s))
-            if( showEscape )
                 println("###"+ns)            
+            }
             ns = r1.replaceAllIn(ns,(m)=>parseInternalPart1(m.group(1),localCtx,glbCtx).replace("$","\\$"))
-            if( showEscape )
+            if( debug )
                 println("@@@"+ns)            
             if( ns == null ) return null
             ns = r2.replaceAllIn(ns,(m)=>parseInternalPart2(m.group(1),localCtx,glbCtx).replace("$","\\$"))
-            if( showEscape )
+            if( debug )
                 println("%%%"+ns)            
             if( ns == null ) return null
             return unescape(ns)
         }
-
         val v = parseInternal(s,localCtx,glbCtx)
         if( v == null && returnNull ) return null
-        if( v == null && !returnNull ) return s
+        if( v == null && !returnNull ) return unescape(escape1(s))
         v match {
             case s:String =>
                 unescape(s)
@@ -219,6 +268,18 @@ object ValueParser {
                 s.length
             case "toString" => 
                 s.toString
+            case "gt" => 
+                if( params.size == 0 ) return null
+                s.toLong > params(0).toLong
+            case "ge" => 
+                if( params.size == 0 ) return null
+                s.toLong >= params(0).toLong
+            case "lt" => 
+                if( params.size == 0 ) return null
+                s.toLong < params(0).toLong
+            case "le" => 
+                if( params.size == 0 ) return null
+                s.toLong <= params(0).toLong
             case "matches" => 
                 if( params.size == 0 ) return null
                 s.matches(params(0)).toString
@@ -230,12 +291,15 @@ object ValueParser {
                 s.indexOf(params(0)).toString
             case "left" => 
                 if( params.size == 0 ) return null
-                s.substring(0,params(0).toInt).toString
+                s.substring(0,params(0).toInt)
             case "right" => 
                 if( params.size == 0 ) return null
                 val len = s.length
                 if( params(0).toInt > len ) return null
-                s.substring(len-params(0).toInt).toString
+                s.substring(len-params(0).toInt)
+            case "substring" => 
+                if( params.size < 2 ) return null
+                s.substring(params(0).toInt,params(1).toInt)
             case _ => 
                 val methodName = fun
                 params.size match {
@@ -405,21 +469,49 @@ object ValueParser {
         java.util.UUID.randomUUID().toString().replaceAll("-", "")
     }
     
-    val sep1 = 10001.toChar // . in "" 
-    val sep2 = 10002.toChar // , in ""
-    val sep3 = 10003.toChar // [ in ""
-    val sep4 = 10004.toChar // ] in ""
-    val sep5 = 10005.toChar // ( in ""
-    val sep6 = 10006.toChar // ) in ""
-    val sep7 = 10007.toChar // $ in ""
-    val sep8 = 10008.toChar // { in ""
-    val sep9 = 10009.toChar // } in ""
-    val sep10 = 10010.toChar // blank in ""
+    val sepMin = 10001.toChar
+    val sep1 = 10001.toChar // . after \
+    val sep2 = 10002.toChar // , after \
+    val sep3 = 10003.toChar // [ after \
+    val sep4 = 10004.toChar // ] after \
+    val sep5 = 10005.toChar // ( after \
+    val sep6 = 10006.toChar // ) after \
+    val sep7 = 10007.toChar // $ after \
+    val sep8 = 10008.toChar // { in ()
+    val sep9 = 10009.toChar // } in ()
+    val sep10 = 10010.toChar // blank in ()
+    val sep11 = 10011.toChar // = after \
+    val sepMax = 10020.toChar
 
     def escape(s:String):String = {
-        escape3(escape2(escape1(s)))
+        escape3(escape1(s))
     }
 
+    def escape0(s:String):String = {
+        var afterSlash = false
+        var ts = ""
+        for(c <- s) {
+            if( afterSlash ) {
+                c match {
+                    case '=' =>
+                        ts = ts + sep11
+                    case ' ' =>
+                        ts = ts + sep10
+                    case _ =>
+                        ts = ts + '\\'
+                        ts = ts + c
+                }
+                afterSlash = false
+            } else if( c == '\\')  { 
+                afterSlash = true
+            } else {
+                ts = ts + c
+            }
+        }
+        if( afterSlash )
+            ts = ts + '\\'
+        ts
+    }
     def escape1(s:String):String = {
         var afterSlash = false
         var ts = ""
@@ -440,6 +532,12 @@ object ValueParser {
                         ts = ts + sep6
                     case '$' =>
                         ts = ts + sep7
+                    case '{' =>
+                        ts = ts + sep8
+                    case '}' =>
+                        ts = ts + sep9
+                    case '\\' =>
+                        ts = ts + '\\'
                     case _ =>
                         ts = ts + '\\'
                         ts = ts + c
@@ -456,38 +554,6 @@ object ValueParser {
         ts
     }
 
-    def escape2(s:String):String = {
-        var inQuota = false
-        var ts = ""
-        for(c <- s) {
-            if( c == '\"')  { 
-                inQuota = !inQuota
-                ts = ts + "\""
-            } else if( inQuota ) {
-                c match {
-                    case '.' =>
-                        ts = ts + sep1
-                    case ',' =>
-                        ts = ts + sep2
-                    case '[' =>
-                        ts = ts + sep3
-                    case ']' =>
-                        ts = ts + sep4
-                    case '(' =>
-                        ts = ts + sep5
-                    case ')' =>
-                        ts = ts + sep6
-                    case '$' =>
-                        ts = ts + sep7
-                    case _ =>
-                        ts = ts + c
-                }
-            } else {
-                ts = ts + c
-            }
-        }
-        ts
-    }
     def escape3(s:String):String = {
         var brackets = 0
         var ts = ""
@@ -562,7 +628,7 @@ object ValueParser {
         var found = false
         for( i <- 0 until s.length ) {
             val ch = s.charAt(i)
-            if( ch >= sep1 && ch <= sep10 ) found = true
+            if( ch >= sep1 && ch <= sep11 ) found = true
         }
         if( !found ) return s
 
@@ -589,6 +655,8 @@ object ValueParser {
                     ts += "}"
                 case c if c == sep10 =>
                     ts += " "
+                case c if c == sep11 =>
+                    ts += "="
                 case c =>
                     ts += c
             }
@@ -676,7 +744,6 @@ object ValueParser {
 class MockActor extends Actor with Logging with SyncedActor {
 
     val retmap = new ConcurrentHashMap[String,Response]()
-
     override def receive(v:Any) :Unit = {
         v match {
             case req: Request =>
@@ -694,41 +761,59 @@ class MockActor extends Actor with Logging with SyncedActor {
         }
     }
 
-    def checkMatch(req:Request,cfg:MockCfg):Boolean =  {
-        for( (k,v) <- cfg.req ) {
-            v match {
-                case s:String if s == "NULL" => 
-                    if( req.s(k) != null ) return false
-                case s:String => 
-                    if( req.ns(k) != s ) return false
-                case i:Int => 
-                    if( !req.body.contains(k) ) return false
-                    if( req.i(k) != i ) return false
-                case _ => 
+    def checkMatch(req:Request,cfg:MockCfg,context:HashMapStringAny):Boolean =  {
+        for( (k,v) <- cfg.req  if !k.endsWith(ValueParser.OP_PREFIX) ) {
+            val left = ValueParser.anyToString(ValueParser.parseLeftValue(k,req.body,context))
+            val right = ValueParser.anyToString(ValueParser.parseRightValue(v,null,context))
+            val op = cfg.req.getOrElse(k+ValueParser.OP_PREFIX,"=")
+
+            if( op == "=" ) {
+                if( right == ValueParser.NULL && left != null )
+                    return false
+
+                if( right != ValueParser.NULL && left != right )
+                    return false
             }
+
+            if( op == "!=" ) {
+                if( right == ValueParser.NULL && left == null )
+                    return false
+
+                if( right != ValueParser.NULL && left == right )
+                    return false
+            }
+            
         }
         true
     }
 
-    def getCfg(req:Request,cfgs:ArrayBuffer[MockCfg]):MockCfg = {
+    def getCfg(req:Request,cfgs:ArrayBuffer[MockCfg],context:HashMapStringAny):MockCfg = {
         for( cfg <- cfgs ) {
             if( cfg.req.size == 0 ) return cfg
-            if( checkMatch(req,cfg) ) return cfg
+            if( checkMatch(req,cfg,context) ) return cfg
         }
         null
     }
 
     def genResponse(req:Request,cfgs:ArrayBuffer[MockCfg]) {
-        val cfg = getCfg(req,cfgs)
+
+        val context = HashMapStringAny()
+        context ++= ValueParser.g_context
+        context.put("$this",HashMapStringAny("req"->req.body))
+
+        val cfg = getCfg(req,cfgs,context)
         if( cfg == null ) {
             reply(req,-10242404)
             return
         }
         val code = cfg.res.i("$code")
         val params = HashMapStringAny()
-        params ++= cfg.res
+        for( (k,v) <- cfg.res ) {
+            val v2 = ValueParser.parseRightValue(v,null,context)
+            params.put(k,v2)
+        }
         if( code != 0 ) {
-            reply(req,code)
+            reply(req,code,params)
             return
         }
         reply(req,0,params)
@@ -759,7 +844,11 @@ class MockActor extends Actor with Logging with SyncedActor {
 
 }
 
-class TestCaseV2Define(val defines:LinkedHashMapStringAny) {
+trait TestCaseV2Command {
+    def toString(indent:String):String
+}
+
+class TestCaseV2Define(val defines:LinkedHashMapStringAny) extends TestCaseV2Command {
     var lineNo = 0
     def toString(m:LinkedHashMapStringAny):String = {
         val b = new StringBuilder()
@@ -773,12 +862,13 @@ class TestCaseV2Define(val defines:LinkedHashMapStringAny) {
         s
     }
 }
-class TestCaseV2Invoke(val tp:String, val service:String, val timeout:Int, val req:LinkedHashMapStringAny,val res:LinkedHashMapStringAny,val id:String = "") {
+class TestCaseV2Invoke(val tp:String, val service:String, val timeout:Int, val req:LinkedHashMapStringAny,val res:LinkedHashMapStringAny,val id:String = "") extends TestCaseV2Command {
     var lineNo = 0
     def toString(m:LinkedHashMapStringAny):String = {
         val b = new StringBuilder()
-        for( (k,v) <- m ) {
-            b.append(" ").append(k).append("=").append(v)
+        for( (k,v) <- m if !k.endsWith(ValueParser.OP_PREFIX) ) {
+            val op = m.getOrElse(k+ValueParser.OP_PREFIX,"=").toString
+            b.append(" ").append(k).append(op).append(v)
         }
         b.toString
     }
@@ -790,10 +880,14 @@ class TestCaseV2Invoke(val tp:String, val service:String, val timeout:Int, val r
     }
 }
 
-class TestCaseV2(val tp:String,val name:String,val mocks:ArrayBuffer[TestCaseV2Invoke],val setups:ArrayBuffer[TestCaseV2Invoke],val teardowns:ArrayBuffer[TestCaseV2Invoke],val asserts:ArrayBuffer[TestCaseV2Invoke],val defines:ArrayBuffer[TestCaseV2Define]) {
+class TestCaseV2(val tp:String,val name:String,val commands:ArrayBuffer[TestCaseV2Command]) {
 
     var lineNo = 0
     var enabled = true
+    var extendsFrom = ""
+    var pluginObjectName = ""
+    var remote = ""
+
     override def toString():String = {
 
         val indent = "    "
@@ -803,24 +897,16 @@ class TestCaseV2(val tp:String,val name:String,val mocks:ArrayBuffer[TestCaseV2I
         if( name == "global")
             buff += "global:"
         else
-            buff += "testcase:" + name +" enabled:"+enabled
+            buff += "testcase:" + name +" enabled:"+enabled +" extends:"+extendsFrom
 
-        if( defines != null )
-            defines.foreach(buff += _.toString(indent))
-        if( mocks != null )
-            mocks.foreach(buff += _.toString(indent))
-        if( setups != null )
-            setups.foreach(buff += _.toString(indent))
-        if( teardowns != null )
-            teardowns.foreach(buff += _.toString(indent))
-        if( asserts != null )
-            asserts.foreach(buff += _.toString(indent))
+        if( commands != null )
+            commands.foreach(buff += _.toString(indent))
 
         buff.mkString("\n")
     }
 }
 
-object TestCaseRunner {
+object TestCaseRunner extends Logging {
 
     val indent = "    "
     val codeTag = "$code"
@@ -832,6 +918,12 @@ object TestCaseRunner {
     var ir: InvokeResult = _
 
     var runAll = false
+
+    var remote = ""
+    val timeout = 15000
+    var codecs:TlvCodecs = _
+    var soc : SocImpl = _
+    var remoteReqRes: SocRequestResponseInfo = _
 
     var total = 0
     var success = 0
@@ -856,19 +948,193 @@ object TestCaseRunner {
         }
     }
 
+    // remote 调用使用
+    def socCallback(any:Any){
+
+        any match {
+
+            case reqRes: SocRequestResponseInfo =>
+
+                lock.lock();
+                try {
+                    remoteReqRes = any.asInstanceOf[SocRequestResponseInfo]
+                    replied.signal()
+                } finally {
+                    lock.unlock();
+                }
+
+            case ackInfo: SocRequestAckInfo =>
+
+                println("ack="+ackInfo.req.requestId)
+
+            case _ =>
+        }
+    }
+
+    def parseFiles(args:Array[String]):ArrayBufferString = {
+        var i = 0
+        val buff = new ArrayBufferString()
+        while(i < args.size) {
+            if( args(i).startsWith("--") ) i += 2
+            else if( args(i).startsWith("-") ) i += 1
+            else { buff += args(i); i += 1; }
+        }
+        buff
+    }
+
+    def help() {
+        println(
+"""
+usage: jvmdbbroker.core.TestCaseRunner [options] path_to_testcasefile(txt)
+options:
+    -h|--help             帮助信息
+    -a|--all              忽略enabled标志运行所有testcase
+    -d|--dump             输出解析后的testcase到控制台
+""")
+   }
+
+    def parseArgs(args:Array[String]):HashMapStringAny = {
+        val map = HashMapStringAny()
+        var i = 0
+        val files = ArrayBufferString()
+        while(i < args.size) {
+            args(i) match {
+                case "-h" | "--help" => 
+                    return null
+                case "-a" | "--all" => 
+                    map.put("all","1")
+                    i += 1
+                case "-d" | "--dump" => 
+                    map.put("dump","1")
+                    i += 1
+                case "--debug" => 
+                    map.put("debug","1")
+                    i += 1
+                case s if s.startsWith("-") => 
+                    println("invalid option "+s)
+                    return null
+                case _ => 
+                    files += args(i)
+                    i += 1
+            }
+        }
+        map.put("files",files)
+        map
+    }
+
     def main(args:Array[String]) {
 
-        var file = "."+File.separator+"testcase"+File.separator+"default.txt"
-        var s = TestCaseRunnerV1.parseFile(args)
-        if( s != "" ) file = s
+        var params = parseArgs(args)
+        if( params == null ) {
+            help()
+            return
+        }
+
+        var files = params.nls("files")
+        if( files.length == 0 ) {
+            files += "default.txt"
+        }
+
+        for( f <- files ) {
+            runTest(f,params,args)
+        }
+
+        if( Main.testMode ) {
+            Main.close()
+        } 
+        if( soc != null ) {
+            soc.close()
+            log.asInstanceOf[ch.qos.logback.classic.Logger].getLoggerContext().stop
+            soc = null
+        }
+    }
+
+    def resetGlobal() {
+        ValueParser.pluginObjectName = "jvmdbbroker.flow.FlowHelper"
+        ValueParser.pluginobj = null
+        ValueParser.g_context.clear()
+
+        savedMocks.clear()
+        testCaseCount = 0
+        total = 0
+        success = 0
+        failed = 0
+        lineNoCnt = 0
+    }
+
+    // called only by jvmdbbroker.core.main, 在正常启动时安装mock
+    def installMock(f:String) {
+        try {
+            installMockInternal(f)
+        } catch {
+            case e:Throwable =>
+                log.error("install mock file exception, file="+f+", message="+e.getMessage)
+        }
+    }
+
+    def installMockInternal(f:String) {
+        var file = f
+        if( !new File(file).exists() ) {
+            log.error("mock file not found, file="+f)
+            return
+        } 
+
+        val lines = Source.fromFile(file,"UTF-8").getLines.toBuffer.map( (s:String) => s.trim).map(appendLineNo).map(removeComment).map(_.replace("\t"," ")).map(_.trim).filter( _.trim != "")
+        val mergedlines2 = mergeLines(lines).filter( !_.startsWith("#") )
+        val mergedlines = ArrayBufferString()
+        mergedlines2.foreach(mergedlines += _)
+        val (global,dummy) = parseFile(mergedlines)
+        if( global == null ) {
+            log.info("no mock need to be installed, file="+f)
+            return
+        }
+        Router.main.mockActor = new MockActor()
+        if( global.pluginObjectName != "" )
+            ValueParser.pluginObjectName = global.pluginObjectName
+        ValueParser.initPlugin()
+        val context = ValueParser.g_context
+        if( global.commands != null ) {
+            for( c <- global.commands ) {
+                c match {
+                    case d:TestCaseV2Define =>
+                        installDefines(d,context)
+                    case i:TestCaseV2Invoke =>
+                        i.tp match {
+                            case "mock" =>
+                                val (ok,msg) = installMock(i)
+                                if( !ok ) {
+                                    log.error("global mock install failed! service="+i.service+", reason="+msg)
+                                    return
+                                }
+                            case _ => // ignore others
+                        }
+                }
+            }
+        }
+        log.info("mock installed, file="+f)
+    }
+
+    def runTest(f:String,params:HashMapStringAny,args:Array[String]) {
+        var file = f
+        if( !new File(file).exists() ) {
+            file = "."+File.separator+"testcase"+File.separator+f
+            if( !new File(file).exists() ) {
+                println("testcase file not found, file="+f)
+                help()
+                return
+            }
+        } 
+
         if(!isNewFormat(file)) {
             TestCaseRunnerV1.main(args)
             return
         }
 
-        var dumpFlag = TestCaseRunnerV1.parseArg(args,"d")
-        runAll = TestCaseRunnerV1.parseArg(args,"a") == "1"
-        ValueParser.showEscape = TestCaseRunnerV1.parseArg(args,"e") ==  "1"
+        resetGlobal()
+
+        var dumpFlag = params.ns("dump")  == "1"
+        runAll = params.ns("all") == "1"
+        ValueParser.debug = params.ns("debug") ==  "1"
 
         val lines = Source.fromFile(file,"UTF-8").getLines.toBuffer.map( (s:String) => s.trim).map(appendLineNo).map(removeComment).map(_.replace("\t"," ")).map(_.trim).filter( _.trim != "")
         val mergedlines2 = mergeLines(lines).filter( !_.startsWith("#") )
@@ -879,14 +1145,25 @@ object TestCaseRunner {
             return
         }
 
-        Main.mockMode = true
-        Main.main(Array[String]())
-        Router.main.mockActor = new MockActor()
+        if( global != null && global.remote != "" ) {
+            remote = global.remote
+            if( remote != "0" && remote.indexOf(":") < 0 ) {
+                remote = TestCaseRunnerV1.loadTestServerAddr()
+            }
+            codecs = new TlvCodecs("."+File.separator+"avenue_conf")
+            soc = new SocImpl(remote,codecs,socCallback,connSizePerAddr=1)
+        }
 
-        println("-------------------------------------------")
+        if( !Main.testMode && remote == "") {
+            Main.testMode = true
+            Main.main(Array[String]())
+            Router.main.mockActor = new MockActor()
+        }
+
+        println("###########################################")
         println("testcase file:  " + file)
 
-        if( dumpFlag == "1" ) {
+        if( dumpFlag ) {
             println("-------------------------------------------")
             dump(global,testcases)
         }
@@ -905,117 +1182,171 @@ object TestCaseRunner {
         println("-------------------------------------------")
         println("testcase total:%d, success:%d, failed:%d".format(total,success,failed))
         println("-------------------------------------------")
-        Main.close()
     }
 
     def runTest(global:TestCaseV2,testcases:ArrayBuffer[TestCaseV2]) {
-        val context = new HashMapStringAny()
 
-        if( global != null && global.defines != null ) {
-            for( d <- global.defines ) {
-                installDefines(d,context)
-            }
-        }
-        if( context.ns("$pluginObjectName") != "" )
-            ValueParser.pluginObjectName = context.ns("$pluginObjectName")
+        if( global != null && global.pluginObjectName != "" )
+            ValueParser.pluginObjectName = global.pluginObjectName
+        ValueParser.initPlugin()
 
-        Router.main.mocks.clear()
-        if( global != null && global.mocks != null ) {
-            for( m <- global.mocks ) {
-                val (ok,msg) = installMock(m,context)
-                if( !ok ) {
-                    println(">>> LINE#"+m.lineNo+" "+m.toString(""))
-                    println("<<< global mock install failed, stop test! service="+m.service+", reason="+msg)
-                    return
+        val context = ValueParser.g_context
+        context.clear()
+
+        if( remote == "" )
+            Router.main.mocks.clear()
+
+        if( global != null && global.commands != null ) {
+            for( c <- global.commands ) {
+                c match {
+                    case d:TestCaseV2Define =>
+                        installDefines(d,context)
+                    case i:TestCaseV2Invoke =>
+                        i.tp match {
+                            case "mock" =>
+                                val (ok,msg) = installMock(i)
+                                if( !ok ) {
+                                    println(">>> LINE#"+i.lineNo+" "+i.toString(""))
+                                    println("<<< global mock install failed, stop test! service="+i.service+", reason="+msg)
+                                    return
+                                }
+                            case "setup" =>
+                                val (ok,msg,req,res) = callServiceMustOk(i,context)
+                                if( !ok ) {
+                                    println(">>> LINE#"+i.lineNo+" "+i.toString(""))
+                                    println(">>> "+req)
+                                    println("<<< "+res)
+                                    println("<<< global setup failed, stop test! service="+i.service+", reason="+msg)
+                                    return
+                                }
+                            case _ => // ignore teardown and assert
+                        }
                 }
             }
         }
 
         saveGlobalMock()
 
-        if( global != null && global.setups != null ) {
-            for( i <- global.setups ) {
-                val (ok,msg,req,res) = callServiceMustOk(i,context)
-                if( !ok ) {
-                    println(">>> LINE#"+i.lineNo+" "+i.toString(""))
-                    println(">>> "+req)
-                    println("<<< "+res)
-                    println("<<< global setup failed, stop test! service="+i.service+", reason="+msg)
-                    return
-                }
-            }
-        }
         if( testcases != null ) {
             for( t <- testcases ) {
-                doTest(t,context)
+                doTest(t,context,testcases)
             }
         }
-        if( global != null && global.teardowns != null ) {
-            for( i <- global.teardowns ) {
-                callServiceIgnoreResult(i,context)
+        
+        if( global != null && global.commands != null ) {
+            for( c <- global.commands ) {
+                c match {
+                    case i:TestCaseV2Invoke =>
+                        i.tp match {
+                            case "teardown" =>
+                                callServiceIgnoreResult(i,context)
+                            case _ => // ignore mock,setup,assert
+                        }
+                    case _ => // ignore define
+                }
             }
         }
+
     }
 
-    def doTest(t:TestCaseV2,context:HashMapStringAny) {
+    def getBaseTestCase(from:String,testcases:ArrayBuffer[TestCaseV2]):TestCaseV2 = {
+        for( t <- testcases ) {
+            if( t.name == from ) {
+                return t
+            }
+        }
+        null
+    }
+
+    // 只支持extends一级,不支持更多级
+    def doTest(t:TestCaseV2,context:HashMapStringAny,testcases:ArrayBuffer[TestCaseV2]) {
         if( !t.enabled && !runAll ) return
-        Router.main.mocks.clear()
-        Router.main.mocks ++= savedMocks
 
-        if( t.defines != null ) {
-            for( d <- t.defines ) {
-                installDefines(d,context)
-            }
+        if( remote == "") {
+            Router.main.mocks.clear()
+            Router.main.mocks ++= savedMocks
         }
 
-        if( t.mocks != null ) {
-            for( m <- t.mocks ) {
-                val (ok,msg) = installMock(m,context)
-                if( !ok ) {
-                    failed += 1
-                    total += 1
-                    println(">>> LINE#"+m.lineNo+" "+m.toString(""))
-                    println("<<< testcase mock failed, testcase=%s, service=%s, reason=%s".format(t.name,m.service,msg))
-                    return
+        var base:TestCaseV2  = null
+        if( t.extendsFrom != "" ) {
+            base = getBaseTestCase(t.extendsFrom,testcases)
+            if( base == null ) {
+                println("<<< testcase extends not found, testcase=%s, extends=%s".format(t.name,t.extendsFrom))
+                return
+            }
+            doTestStep1(base,context,testcases)
+        }
+        doTestStep1(t,context,testcases)
+
+        if( base != null ) {
+            doTestStep2(base,context,testcases)
+        }
+        doTestStep2(t,context,testcases)
+    }
+
+    def doTestStep1(t:TestCaseV2,context:HashMapStringAny,testcases:ArrayBuffer[TestCaseV2]) {
+
+        if( t != null && t.commands != null ) {
+            for( c <- t.commands ) {
+                c match {
+                    case d:TestCaseV2Define =>
+                        installDefines(d,context)
+                    case i:TestCaseV2Invoke =>
+                        i.tp match {
+                            case "mock" =>
+                                val (ok,msg) = installMock(i)
+                                if( !ok ) {
+                                    failed += 1
+                                    total += 1
+                                    println(">>> LINE#"+i.lineNo+" "+i.toString(""))
+                                    println("<<< testcase mock failed, testcase=%s, service=%s, reason=%s".format(t.name,i.service,msg))
+                                    return
+                                }
+                            case "setup" =>
+                                val (ok,msg,req,res) = callServiceMustOk(i,context)
+                                if( !ok ) {
+                                    failed += 1
+                                    total += 1
+                                    println(">>> LINE#"+i.lineNo+" "+i.toString(""))
+                                    println(">>> "+req)
+                                    println("<<< "+res)
+                                    println("<<< testcase setup failed, testcase=%s, service=%s, reason=%s".format(t.name,i.service,msg))
+                                    return
+                                }
+                            case "assert" =>
+                                val (ok,msg,req,res) = callServiceWithAssert(i,context)
+                                if( !ok ) {
+                                    failed += 1
+                                    total += 1
+                                    println(">>> LINE#"+i.lineNo+" "+i.toString(""))
+                                    println(">>> "+req)
+                                    println("<<< "+res)
+                                    println("<<< assert failed, testcase=%s, service=%s, reason=%s".format(t.name,i.service,msg))
+                                    println("-------------------------------------------")
+                                } else {
+                                    success += 1
+                                    total += 1
+                                }
+                            case _ => // ignore teardown 
+                        }
                 }
             }
         }
-        if( t.setups != null ) {
-            for( i <- t.setups ) {
-                val (ok,msg,req,res) = callServiceMustOk(i,context)
-                if( !ok ) {
-                    failed += 1
-                    total += 1
-                    println(">>> LINE#"+i.lineNo+" "+i.toString(""))
-                    println(">>> "+req)
-                    println("<<< "+res)
-                    println("<<< testcase setup failed, testcase=%s, service=%s, reason=%s".format(t.name,i.service,msg))
-                    return
-                }
-            }
-        }
 
-        if( t.asserts != null ) {
-            for( i <- t.asserts ) {
-                val (ok,msg,req,res) = callServiceWithAssert(i,context)
-                if( !ok ) {
-                    failed += 1
-                    total += 1
-                    println(">>> LINE#"+i.lineNo+" "+i.toString(""))
-                    println(">>> "+req)
-                    println("<<< "+res)
-                    println("<<< assert failed, testcase=%s, service=%s, reason=%s".format(t.name,i.service,msg))
-                    println("-------------------------------------------")
-                } else {
-                    success += 1
-                    total += 1
-                }
-            }
-        }
+    }
 
-        if( t.teardowns != null ) {
-            for( i <- t.teardowns ) {
-                callServiceIgnoreResult(i,context)
+    def doTestStep2(t:TestCaseV2,context:HashMapStringAny,testcases:ArrayBuffer[TestCaseV2]) {
+        if( t != null && t.commands != null ) {
+            for( c <- t.commands ) {
+                c match {
+                    case i:TestCaseV2Invoke =>
+                        i.tp match {
+                            case "teardown" =>
+                                callServiceIgnoreResult(i,context)
+                            case _ => // ignore mock,setup,assert
+                        }
+                    case _ => // ignore define
+                }
             }
         }
     }
@@ -1028,36 +1359,27 @@ object TestCaseRunner {
     }
     def callServiceWithAssert(i:TestCaseV2Invoke,context:HashMapStringAny):Tuple4[Boolean,String,String,String] = {
         val (req,ret) = callService(i,context)
-        val resMap = HashMapStringAny()
-        for( (k,v) <- i.res ) {
-            resMap.put(k,parseRightValue(v,context))
-        }
-        for( (k,v) <- resMap ) {
-            if( v == "NULL" && ret.contains(k) )
-                return (false,"["+k+"] not match, required:null, actual:not null",req.toString,ret.toString)
+        for( (k,v) <- i.res if !k.endsWith(ValueParser.OP_PREFIX) ) {
 
-            v match {
-                case s:String => 
-                    val rets = parseLeftValue(k,ret,context)
-                    if( rets != s ) return (false,"["+k+"] not match, required:"+s+", actual:"+rets,req.toString,ret.toString)
+            val left = ValueParser.anyToString(ValueParser.parseLeftValue(k,ret,context))
+            val right = ValueParser.anyToString(ValueParser.parseRightValue(v,null,context))
+            val op = i.res.getOrElse(k+ValueParser.OP_PREFIX,"=")
 
-                case i:Int => 
-                    val s = i.toString
-                    val rets = parseLeftValue(k,ret,context)
-                    if( rets != s ) return (false,"["+k+"] not match, required:"+s+", actual:"+rets,req.toString,ret.toString)
+            if( op == "=" ) {
+                if( right == ValueParser.NULL && left != null )
+                    return (false,"["+k+"] not match, required:null, actual:not null",req.toString,ret.toString)
 
-                case m:HashMapStringAny =>
-                    val s = JsonCodec.mkString(m)
-                    val rets = parseLeftValue(k,ret,context)
-                    if( rets != s ) return (false,"["+k+"] not match, required:"+s+", actual:"+rets,req.toString,ret.toString)
-                    
-                case a:ArrayBufferAny =>
-                    val s = JsonCodec.mkString(a)
-                    val rets = parseLeftValue(k,ret,context)
-                    if( rets != s ) return (false,"["+k+"] not match, required:"+s+", actual:"+rets,req.toString,ret.toString)
+                if( right != ValueParser.NULL && left != right )
+                    return (false,"["+k+"] not match, required:"+right+", actual:"+left,req.toString,ret.toString)
+            } 
+            if( op == "!=" ) {
+                if( right == ValueParser.NULL && left == null )
+                    return (false,"["+k+"] not match, required:not null, actual:null",req.toString,ret.toString)
 
-                case _ => 
+                if( right != ValueParser.NULL && left == right )
+                    return (false,"["+k+"] not match, required:!="+right+", actual:"+left,req.toString,ret.toString)
             }
+        
         }
         (true,"success",req.toString,ret.toString)
     }
@@ -1071,12 +1393,13 @@ object TestCaseRunner {
         if( id == "" ) return
         val map = HashMapStringAny("req"->tp._1,"res"->tp._2)
         context.put(id,map)
+        context.put("$this",map)
     }
 
     def callService(i:TestCaseV2Invoke,context:HashMapStringAny):Tuple2[HashMapStringAny,HashMapStringAny] = {
             val params = HashMapStringAny()
             for( (k,v) <- i.req ) {
-                params.put(k,parseRightValue(v,context))
+                params.put(k,ValueParser.parseRightValue(v,null,context))
             }
             if( i.service.toLowerCase == "sleep" ) {
                 val s = params.i("s")
@@ -1099,61 +1422,106 @@ object TestCaseRunner {
             if( i.service.toLowerCase == "stop" ) {
                 throw new Exception("stop")
             }
-            val (serviceId,msgId) = Flow.router.serviceNameToId(i.service)
-            if( serviceId == 0 || msgId == 0 ) {
-                val tp = (params,HashMapStringAny("$code"-> (-10242405)))
-                saveInvokeToContext(i.id,tp,context)
-                return tp
-            }
 
-            val (newbody,ec) = Flow.router.encodeRequest(serviceId, msgId, params)
-            if( ec != 0 ) {
-                val tp = (params,HashMapStringAny("$code"-> (-10242400)))
-                saveInvokeToContext(i.id,tp,context)
-                return tp
-            }
+            var req_body = HashMapStringAny()
+            var res_body = HashMapStringAny() 
 
-            val requestId = "TEST"+RequestIdGenerator.nextId()
-            val map = HashMapStringAny()
-            lock.lock();
-            try {
-                val req = new Request (
-                    requestId,
-                    "test:0",
-                    generateSequence(),
-                    1,
-                    serviceId,
-                    msgId,
-                    new HashMapStringAny(),
-                    newbody,
-                    TestActor
-                )
-
-                ir = null
-                ir = Router.main.send(req)
-
-                if( ir == null ) {
-                    replied.await( i.timeout, TimeUnit.MILLISECONDS )
-                } 
-                
-                if( ir != null ) {
-                    map ++= ir.res
-                    map.put("$code",ir.code)
-                } else {
-                    map.put("$code",-10242504)
+            if( remote == "" ) {
+                val (serviceId,msgId) = Flow.router.serviceNameToId(i.service)
+                if( serviceId == 0 || msgId == 0 ) {
+                    val tp = (params,HashMapStringAny("$code"-> (-10242405)))
+                    saveInvokeToContext(i.id,tp,context)
+                    return tp
                 }
 
-                newbody.put("$requestId",requestId)
+                val (newbody,ec) = Flow.router.encodeRequest(serviceId, msgId, params)
+                req_body = newbody
+                if( ec != 0 ) {
+                    val tp = (params,HashMapStringAny("$code"-> (-10242400)))
+                    saveInvokeToContext(i.id,tp,context)
+                    return tp
+                }
 
-            } finally {
-                lock.unlock();
+                val requestId = "TEST"+RequestIdGenerator.nextId()
+                val map = HashMapStringAny()
+                res_body = map
+                lock.lock();
+                try {
+                    val req = new Request (
+                        requestId,
+                        "test:0",
+                        generateSequence(),
+                        1,
+                        serviceId,
+                        msgId,
+                        new HashMapStringAny(),
+                        newbody,
+                        TestActor
+                    )
+
+                    ir = null
+                    ir = Router.main.send(req)
+
+                    if( ir == null ) {
+                        replied.await( i.timeout, TimeUnit.MILLISECONDS )
+                    } 
+                    
+                    if( ir != null ) {
+                        map ++= ir.res
+                        map.put("$code",ir.code)
+                    } else {
+                        map.put("$code",-10242504)
+                    }
+
+                    newbody.put("$requestId",requestId)
+
+                } finally {
+                    lock.unlock();
+                }
+
+            } else {
+                val map = HashMapStringAny()
+                req_body = params
+                res_body = map
+                lock.lock();
+                try {
+                    val (serviceId,msgId) = codecs.serviceNameToId(i.service)
+                    if( serviceId == 0 || msgId == 0 ) {
+                        val tp = (params,HashMapStringAny("$code"-> (-10242405)))
+                        saveInvokeToContext(i.id,tp,context)
+                        return tp
+                    }
+
+                    val requestId = generateSequence().toString
+                    req_body.put("$requestId",requestId)
+                    val req = new SocRequest(requestId,999,106,req_body,AvenueCodec.ENCODING_UTF8,HashMapStringAny())
+                    remoteReqRes = null
+                    soc.send(req,timeout)
+
+                    if( remoteReqRes == null ) {
+                        replied.await( i.timeout, TimeUnit.MILLISECONDS )
+                    } 
+                    
+                    if( remoteReqRes != null ) {
+                        map ++= remoteReqRes.res.body
+                        map.put("$code",remoteReqRes.res.code)
+                    } else {
+                        map.put("$code",-10242504)
+                    }
+
+                } finally {
+                    lock.unlock();
+                }
             }
-            val tp = (newbody,map)
+            val tp = (req_body,res_body)
             saveInvokeToContext(i.id,tp,context)
             return tp
     }
 
     def saveGlobalMock() {
+        if( remote != "" ) return 
+
+        savedMocks.clear()
         for( (k,buff) <- Router.main.mocks ) {
             val newbuff = ArrayBuffer[MockCfg]()
             newbuff ++= buff
@@ -1164,11 +1532,13 @@ object TestCaseRunner {
     // 目前仅支持最简单的常量，不允许变量，不支持作用域, 相同名字的后定义的会覆盖前面的定义
     def installDefines(d:TestCaseV2Define,context:HashMapStringAny) {
         for( (k,v) <- d.defines ) {
-            context.put(k,parseRightValue(v,context))
+            context.put(k,ValueParser.parseRightValue(v,null,context))
         }
     }
 
-    def installMock(m:TestCaseV2Invoke,context:HashMapStringAny):Tuple2[Boolean,String] = {
+    def installMock(m:TestCaseV2Invoke):Tuple2[Boolean,String] = {
+        if( remote != "" ) return (false,"mock cannot be installed in remote mode")
+
         val service = m.service.toLowerCase
         val (serviceId,msgId) = Flow.router.serviceNameToId(service)
         if( serviceId == 0 || msgId == 0 ) {
@@ -1176,16 +1546,9 @@ object TestCaseRunner {
         }
         val req = HashMapStringAny()
         val res = HashMapStringAny()
-        if( m.req != null ) {
-            for( (k,v) <- m.req ) {
-                req.put(k,parseRightValue(v,context))
-            }
-        }
-        if( m.res != null ) {
-            for( (k,v) <- m.res ) {
-                res.put(k,parseRightValue(v,context))
-            }
-        }
+
+        req ++= m.req
+        res ++= m.res
 
         val key = serviceId+":"+msgId
         var buff = Router.main.mocks.getOrElse(key,null)
@@ -1208,45 +1571,6 @@ object TestCaseRunner {
         }
     }
 
-    // 从全局上下文里解析值
-    def parseRightValue(v:Any,context:HashMapStringAny):Any = {
-        if( v == null || v == "" ) return v
-        if( !v.isInstanceOf[String] ) return v
-        val s = v.asInstanceOf[String]
-        val nv = ValueParser.parse(s,null,context,false)
-
-        if( nv == null || nv == "" ) return nv
-        if( !nv.isInstanceOf[String] ) return nv
-        val t = nv.asInstanceOf[String]
-
-        //if( t.length >= 2 && t.startsWith("\"") &&  t.endsWith("\"") ) return t.substring(1,t.length-1)
-        if( t.startsWith("[") && t.endsWith("]") ) return JsonCodec.parseArrayNotNull(t)
-        if( t.startsWith("{") && t.endsWith("}") ) return JsonCodec.parseObjectNotNull(t)
-        if( t.startsWith("s:")) return t.substring(2)
-        if( t.startsWith("i:")) return t.substring(2).toInt
-        t
-    }
-
-    // 从invoke结果集或context上下文里解析值
-    def parseLeftValue(s:String,ret:HashMapStringAny,context:HashMapStringAny):String = {
-        var a = ValueParser.parse(s,ret,context,true) // 先根据结果集解析, 再根据全局上下文解析
-        if( a == null ) return null 
-        a match {
-            case m:HashMapStringAny =>
-                JsonCodec.mkString(m)
-            case a:ArrayBufferAny =>
-                JsonCodec.mkString(a)
-            case a:ArrayBufferString =>
-                JsonCodec.mkString(a)
-            case a:ArrayBufferInt =>
-                JsonCodec.mkString(a)
-            case a:ArrayBufferMap =>
-                JsonCodec.mkString(a)
-            case _ =>
-                a.toString
-        }
-    }
-
     def parseFile(lines:ArrayBufferString):Tuple2[TestCaseV2,ArrayBuffer[TestCaseV2]] = {
         var i = 0
         
@@ -1258,6 +1582,10 @@ object TestCaseRunner {
             t match {
                 case t if t.startsWith("global:") =>
                     val (l_global,nextLine) = parseTestCase("global",lines,i)
+                    if( global != null ) {
+                        println("global can be defined only once")
+                        return null
+                    }
                     global = l_global
                     i = nextLine
                 case t if t.startsWith("testcase:") =>
@@ -1278,35 +1606,36 @@ object TestCaseRunner {
         testCaseCount += 1
         var name = parseAttr(lines(start),"testcase")
         var enabled = parseAttr(lines(start),"enabled")
+        var extendsFrom = parseAttr(lines(start),"extends")
         var lineNo = parseAttr(lines(start),"lineNo")
+        var pluginObjectName = parseAttr(lines(start),"pluginObjectName")
+        var remote = parseAttr(lines(start),"remote")
+        if( remote == "0" ) remote = ""
+
         if( name == "" ) name = "testcase_"+testCaseCount
         if( tp == "global" ) name = "global"
         var i = start + 1
 
-        val mocks = ArrayBuffer[TestCaseV2Invoke]()
-        val setups = ArrayBuffer[TestCaseV2Invoke]()
-        val teardowns = ArrayBuffer[TestCaseV2Invoke]()
-        val asserts = ArrayBuffer[TestCaseV2Invoke]()
-        val defines = ArrayBuffer[TestCaseV2Define]()
+        val commands = ArrayBuffer[TestCaseV2Command]()
 
         var over = false
         while( i < lines.size && !over ){
             val t = lines(i)
             t match {
                 case t if t.startsWith("define:") =>
-                    defines += parseDefine(lines,i)
+                    commands += parseDefine(lines,i)
                     i += 1
                 case t if t.startsWith("mock:") =>
-                    mocks += parseInvoke("mock",lines,i)
+                    commands += parseInvoke("mock",lines,i)
                     i += 1
                 case t if t.startsWith("setup:") =>
-                    setups += parseInvoke("setup",lines,i)
+                    commands += parseInvoke("setup",lines,i)
                     i += 1
                 case t if t.startsWith("teardown:") =>
-                    teardowns += parseInvoke("teardown",lines,i)
+                    commands += parseInvoke("teardown",lines,i)
                     i += 1
                 case t if t.startsWith("assert:") =>
-                    asserts += parseInvoke("assert",lines,i)
+                    commands += parseInvoke("assert",lines,i)
                     i += 1
                 case t if t.startsWith("testcase:") =>
                     over = true
@@ -1317,9 +1646,12 @@ object TestCaseRunner {
                     i += 1
             }
         }
-        val o = new TestCaseV2(tp,name,mocks,setups,teardowns,asserts,defines)
+        val o = new TestCaseV2(tp,name,commands)
         if( lineNo != "" ) o.lineNo = lineNo.toInt
         o.enabled = enabled.toLowerCase != "0" && enabled.toLowerCase != "false"
+        o.extendsFrom = extendsFrom
+        o.pluginObjectName = pluginObjectName
+        o.remote = remote
         (o,i)
     }
 
@@ -1358,11 +1690,8 @@ object TestCaseRunner {
         t
     }
 
-    val sep1 = 1.toChar.toString // blank
-    val sep2 = 2.toChar.toString // =
-
-    val sep3 = 3.toChar // = in ""
-    val sep4 = 4.toChar // blank in ""
+    val sep1 = (ValueParser.sepMax+1).toString // blank
+    val sep2 = (ValueParser.sepMax+2).toString // =
 
     val r1 = """ ([^ =]+)=""".r
 
@@ -1374,81 +1703,31 @@ object TestCaseRunner {
         val ss = ns.split(sep1).map(_.trim)
         for( t <- ss ) { // if t.indexOf(sep2) > 0
             val tt = t.split(sep2)
-            val key = parseKey(tt(0))
+            var key = parseKey(tt(0))
+            var op = "="
+            if( key.endsWith("!") ) { 
+                key = key.substring(0,key.length-1)
+                op = "!="
+            }
             if( tt.size >= 2 ) map.put(key,parseValue(tt(1)))
             else if( tt.size >= 1 && key != "" ) map.put(key,"")
+
+            if( op != "=" ) map.put(key+ValueParser.OP_PREFIX,op)
         }
         map
     }
 
     def escape(s:String):String = {
-        escape2(escape1(s))
-    }
-
-    def escape1(s:String):String = {
-        var afterSlash = false
-        var ts = ""
-        for(c <- s) {
-            if( afterSlash ) {
-                c match {
-                    case '=' =>
-                        ts = ts + sep3
-                    case _ =>
-                        ts = ts + '\\'
-                        ts = ts + c
-                }
-                afterSlash = false
-            } else if( c == '\\')  { 
-                afterSlash = true
-            } else {
-                ts = ts + c
-            }
-        }
-        if( afterSlash )
-            ts = ts + '\\'
-        ts
-    }
-    def escape2(s:String):String = {
-        var inQuota = false
-        var ts = ""
-        for(c <- s) {
-            if( c == '\"')  { 
-                inQuota = !inQuota
-                ts = ts + "\""
-            } else if( inQuota ) {
-                c match {
-                    case '=' =>
-                        ts = ts + sep3
-                    case _ =>
-                        ts = ts + c
-                }
-            } else {
-                ts = ts + c
-            }
-        }
-        ts
-    }
-
-    def unescape(s:String):String = {
-        var ts = ""
-        for(ch <- s) {
-            ch match {
-                case c if c == sep3 =>
-                    ts += "="
-                case c =>
-                    ts += c
-            }
-        }
-        ts
+        ValueParser.escape0(s)
     }
 
     def parseKey(s:String):String = {
-        val t = unescape( s.trim() )
+        val t = ValueParser.unescape( s.trim() )
         t
     }
 
     def parseValue(s:String):Any = {
-        val t = unescape( s.trim() )
+        val t = ValueParser.unescape( s.trim() )
         t
     }
 
@@ -1482,15 +1761,9 @@ object TestCaseRunner {
         l.substring(p1+field.length+1,p2)
     }
 
-    def appendLineNo(line:String):String = {
-        lineNoCnt += 1
+    def appendLineNo(line:String):String = { 
+        lineNoCnt += 1 
         line.trim match {
-            case l if l.startsWith("define:") =>
-                appendLineNo(line,lineNoCnt)
-            case l if l.startsWith("global:") =>
-                appendLineNo(line,lineNoCnt)
-            case l if l.startsWith("testcase:") =>
-                appendLineNo(line,lineNoCnt)
             case l if l.startsWith("mock:") =>
                 appendLineNo(line,lineNoCnt)
             case l if l.startsWith("setup:") =>
@@ -1564,6 +1837,16 @@ object TestCaseRunnerV1 {
     val lock = new ReentrantLock(false)
     val replied = lock.newCondition()
 
+    def loadTestServerAddr():String= {
+        val in = new InputStreamReader(new FileInputStream("."+File.separator+"config.xml"),"UTF-8")
+        val cfgXml = XML.load(in)
+        val port = (cfgXml \ "SapPort").text.toInt
+        var serverAddr = "127.0.0.1:"+port
+        var s = (cfgXml \ "TestServerAddr").text
+        if( s != "" ) serverAddr = s
+        serverAddr
+    }
+
     def main(args:Array[String]) {
 
         var max = 2000000
@@ -1578,14 +1861,8 @@ object TestCaseRunnerV1 {
 
         val codecs = new TlvCodecs("."+File.separator+"avenue_conf")
 
-        val in = new InputStreamReader(new FileInputStream("."+File.separator+"config.xml"),"UTF-8")
-        val cfgXml = XML.load(in)
-        val port = (cfgXml \ "SapPort").text.toInt
+        val serverAddr = loadTestServerAddr()
         val timeout = 15000
-        var serverAddr = "127.0.0.1:"+port
-        s = (cfgXml \ "TestServerAddr").text
-        if( s != "" ) serverAddr = s
-
         soc = new SocImpl(serverAddr,codecs,callback,connSizePerAddr=1,maxPackageSize=max)
 
         val lines = Source.fromFile(file,"UTF-8").getLines.toList.filter( _.trim != "").filter( !_.startsWith("#") )
@@ -1664,9 +1941,6 @@ object TestCaseRunnerV1 {
 
     def parseArg(args:Array[String],key:String):String = {
         for(i <- 0 until args.size) {
-            if( args(i) == "--" + key && i + 1 < args.size ) {
-                return args(i+1)
-            }
             if( args(i) == "-" + key ) {
                 return "1"
             }
@@ -1677,8 +1951,7 @@ object TestCaseRunnerV1 {
     def parseFile(args:Array[String]):String = {
         var i = 0
         while(i < args.size) {
-            if( args(i).startsWith("--") ) i += 2
-            else if( args(i).startsWith("-") ) i += 1
+            if( args(i).startsWith("-") ) i += 1
             else return args(i)
         }
         ""

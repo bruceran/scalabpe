@@ -16,7 +16,7 @@
 
 ## 使用service runscala
 
-	输入./service runscala  进入控制台，可直接输入代码测试类，用来测试辅助类特别方便, 如
+	输入./service runscala 进入控制台，可直接输入代码测试类，用来测试辅助类特别方便, 如
 
 	scala>import jvmdbbroker.core._
 	scala>import jvmdbbroker.flow._
@@ -51,7 +51,7 @@
 
     以下是集成测试版本的使用说明：
 
-    输入./service runtest -a -d testcasefile 
+    输入./service runtest -a -d testcasefile1 testcasefile2 ... 
         -a 忽略enabled标志，运行所有测试用例
         -d 参数表示输出解析后的文本到标准输出，可不传
         testcasefile 不传则默认为 testcase/default.txt文件
@@ -62,49 +62,62 @@
     程序目录名后面带一个 test， 请到test目录下查看所有日志
     testcase运行的所有请求响应日志都在csos_audit.log中，request_audit.log中没有日志
 
-
     testcasefile 文件格式定义:
 
         * 所有缩进和行最后的空格忽略
         * #开头的行为注释，忽略
         * 每行最后的"空格#"开始的文本忽略, 注意，如果调用参数中有"空格#", 需在行最后加一个#以免被当成注释
         * 所有空行忽略
-        * 所有非 global: testcase: define: mock: setup: teardown: assert: 开头的行自动合并到前一行, 合并是在去掉尾部的"空格#"再进行的, 方便对参数加注释
+        * 所有非 global: testcase: define: mock: setup: teardown: assert: 开头的行自动合并到前一行, 
+          合并是在去掉尾部的"空格#"再进行的, 方便对参数加注释
 
         * global 表示testcase的公共部分, 一个文件中只允许有一个global，global下define,mock,setup,teardown
         * testcase 表示定义一个testcase, 一个文件中允许多个testcase, 每个testcase下有define,mock,setup,teardown,assert
         * define表示定义常量, 格式为：define: 参数列表,  参数列表的key可以加$前缀，也可不加，引用的时候必须加$
         * mock表示mock指令，定义一个接口的mock, 格式为：mock:服务名.消息名 req: 参数列表  res: 参数列表;
         * mock指令允许对同一个服务名消息名有多个mock, 这种情况req入参用于条件匹配，先匹配的优先，若无参数则匹配所有请求，若无匹配，则返回错误码-10242404
-        * assert表示断言指令, 格式为：assert:服务名.消息名  id:xxx timeout:15000 req: 参数列表  res: 参数列表, res来的参数用于结果匹配, 只有完全匹配才算成功
-        * setup表示定义testcase启动前要调用的接口，一般用于初始化数据, 格式为：setup:服务名.消息名 id:xxx timeout:15000 req: 参数列表  res: 参数列表, 要求返回码为0才能继续, setup可以类似assert一样加断言
-        * teardown表示定义testcase完成后要调用的接口，一般用于清理数据, 格式为：teardown:服务名.消息名  id:xxx timeout:15000 req: 参数列表  res: 参数列表，忽略返回码
+        * assert表示断言指令, 格式为：assert:服务名.消息名  id:xxx timeout:15000 req: 参数列表  res: 参数列表, res来的参数用于结果匹配, 
+          只有完全匹配才算成功
+        * setup表示定义testcase启动前要调用的接口，一般用于初始化数据, 
+          格式为：setup:服务名.消息名 id:xxx timeout:15000 req: 参数列表  res: 参数列表, 要求返回码为0才能继续, setup可以类似assert一样加断言
+        * teardown表示定义testcase完成后要调用的接口，一般用于清理数据, 
+          格式为：teardown:服务名.消息名  id:xxx timeout:15000 req: 参数列表  res: 参数列表，忽略返回码
         * setup,assert指令里的timeout可以不写，默认为15000,表示15秒; 
-        * setup,assert指令里的id可以不写，如果调用的请求和响应要被引用，则必须定义id, id可以带$前缀，也可以不带，引用的时候必须带$前缀; teardown里定义id意义不大
+        * setup,assert指令里的id可以不写，如果调用的请求和响应要被引用，则必须定义id, id可以带$前缀，也可以不带，引用的时候必须带$前缀; 
+          teardown里定义id意义不大
+        * 如果多个testcase有公共的指令需要每次重复执行，可以指定通过属性extends:basetestcase来指定要重复执行的公共指令，extends指令只支持一级
+        * global节点可以配置remote:属性, 配置为0使用本地模式，否则使用远程模式，可配置为具体的ip:port来指定访问, 或配置为1使用本地config.xml里的配置
+          远程模式的testcase文件里不允许使用mock会报错
 
         * 运行顺序：
 
-            define,mock,setup,assert,teardown的运行顺序是固定的，而不是按文件中指令定义的顺序；
-            
-            不同类别的指令按固定顺序执行，相同类别的指令按定义顺序执行;
+            define,mock,setup,assert,teardown的运行顺序除了teardown以外都是按定义的顺序执行, teardown指令不管定义在哪里总在最后执行； 
+            相同类别的指令按定义顺序执行;
 
-            全局define -> 安装全局mock -> 全局setup
-            testcase级别： 运行define -> 安装mock -> 运行setup -> 运行assert -> 运行teardown
+            全局指令
+            testcase级别： testcase级别指令 -> testcase级别teardown
             全局teardown
             
             所有global和testcase的define都是全局有效的，id必须唯一；若相同则后定义的会覆盖前面的值
             global的mock全局有效，testcase级的mock只在本testcase有效
             setup,assert里的id是全局有效的，若相同，则后定义的执行后会覆盖前面的值；
             可以跨testcase按id引用调用
+            mock安装的是表达式，被调用的时候时候才会被执行，mock中的表达式在运行时执行，可以象assert指令里的表达式一样引用
+            setup指令和assert指令的区别是：setup必须成功，若失败就结束测试；
 
-        * 参数列表: 参数列表的格式为 left1=right1 left2=right2 以空格和等号作为分隔符, 连续的非空字符加一个等号表示一个key的开始，如果=要作为值而不是分隔符，则有可能需要用\=进行转义
-        * 参数列表里的值若为{},[]则会解析为结构体对象和数组对象再返回，若要返回原始json串，需加一个s:前缀, 也可以使用i:前缀返回一个int 
+        * 参数列表: 参数列表的格式为 left1=right1 left2=right2 以空格和等号作为分隔符, 连续的非空字符加一个等号表示一个key的开始，
+          如果=要作为值而不是分隔符，则有可能需要用\=进行转义
+        * 不等判断：在assert/setup指令的响应中和mock指令的请求中，=号的作用是比较而不是赋值， 这2种特殊情况可以使用!=表示不等于
+
+        * 参数列表里的右值若为{},[]则会解析为结构体对象和数组对象再返回，若要返回原始json串，需加一个s:前缀
         * $code 是res参数列表中一个特殊key，表示返回码; 如果不定义$code则表示$code为0
 
         * 值引用：
             $xxx 来引用define定义的常量
             $xxx.req.yyy id为xxx的assert或setup的请求里的yyy值
             $xxx.res.zzz id为xxx的assert或setup的响应里的zzz值
+            $this.req.yyy 当前请求的assert或setup或mock的请求里的yyy值
+            $this.res.zzz 当前请求的assert或setup或mock的响应里的zzz值
             $xxx.req.yyy[0] id为xxx的assert或setup的请求里的yyy下标为0的值
             $xxx.res.zzz.m id为xxx的assert或setup的响应里的zzz结构体里的m的值
             $xxx.res.yyy[1].abc id为xxx的assert或setup的响应请求里的yyy下标为1的结构体里的abc的值
@@ -120,16 +133,18 @@
 
         * 内置函数
              内置的全局函数：$now(), $uuid()
-             内置的string对象函数： toString(), length(), size(), matches(), left(), right(), contains(), indexOf()
+             内置的string对象函数： toString(), length(), size(), matches(), left(), right(), contains(), indexOf(), substring()
+             内置的数值比较函数： gt(), ge(), lt(), le()
              内置的map对象函数： toString(),  size(), toJson(), contains()
              内置的array对象函数： toString(),  size(), toJson(), contains()
 
         * 字符串中可以嵌入 ${...} 或 $xxx, $xxx应只用在无二义的情况下; 
         * 支持表达式的概念，实际上所有值引用，函数调用，字符串中嵌入都是表达式，可以使用表达式的地方如下：
-            所有右值可以使用表达式, 包括define,mock,setup,assert,teardown
-            assert响应的左值可以使用表达式; 
+            所有右值可以使用表达式, 包括define,mock,setup,assert,teardown,mock
+            assert/setup响应的左值可以使用表达式; 
+            mock请求的左值可以使用表达式; 
 
-        * 可以通过在FlowHelper类中定义函数进行功能扩展; 如果不想在FlowHelper中定义，可以define一个$pluginObjectName来指定你自己的类名(必须带路径)
+        * 可以通过在FlowHelper类中定义函数进行功能扩展; 如果不想在FlowHelper中定义，可以在global指令中定义pluginObjectName:xxx属性来指定你自己的类名(必须带路径)
             自定义全局函数的所有参数必须是String类型
             自定义对象函数的第一个参数必须是对象的类型，目前只允许: String,HashMapStringAny,ArrayBufferAny; 其余参数是对象函数的参数，必须是String类型
             自定义函数的返回结果类型不限制，可以是String,Int,HashMapStringAny,ArrayBufferAny等
@@ -140,19 +155,38 @@
         * 支持assert:sleep 特殊消息, 有些服务端流程是异步，需要做下sleep才能保证后续请求成功, 请求参数列表为  s=秒 ms=毫秒 m=要输出消息
         * 支持assert:stop 特殊消息, 出现断言失败的时候，可以在对应断言后加个stop停止执行后续用例便于分析问题, 无请求参数
 
+        * 转义：\= \. \, \( \) \[ \] \$ \\ \{ \}会转义为=.,()[]$\{} 大部分情况不需使用转义，只在表达式解析有问题的时候可加上转义让表达式正确解析
+
         * 示例：
 
-            testcase:t1
+            testcase:t1 
                 define: $year=1998
-                mock:service999.echo req: msg=hello1998 res: msg=hello2006
-                mock:service999.echo req: msg=hello2006 res: msg=hello2016
+                mock:service999.echo req: name=hello1998 res: msg=hello2006
+                mock:service999.echo req: name=hello2006 res: msg=hello2016
 
                 assert:service999.echo id:$s1 
-                    req: msg=hello${year}
+                    req: name=hello${year}
                     res: msg=hello2006  msg.length()=9
                 assert:service999.echo 
-                    req: msg=$s1.res.msg
+                    req: name=$s1.res.msg
                     res: msg=hello2016  msg.matches(.*2016)=true
+
+            testcase:t2
+                define: $year=1998
+                mock:service999.echo req: name.contains(${year})=true res: msg=${this.req.name} $year
+                mock:service999.echo req: res: msg="${this.req.name}"
+
+                assert:service999.echo 
+                    req: name=hello${year}
+                    res: msg=hello1998 1998
+
+            testcase:t3
+                define: $year=1998
+                mock:service999.echo req: name!=1996 res: msg=100
+                mock:service999.echo req: res: msg=101
+
+                assert:service999.echo req: name=${year} res: msg!=101
+                assert:service999.echo req: name=1996 res: msg=101
 
 
 ## 对于使用了http server插件的服务

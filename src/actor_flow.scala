@@ -281,9 +281,12 @@ abstract class Flow extends Logging {
     protected[core] var replyOnError = false
     protected[core] var replyOnErrorCode = 0
 
-    def baseReceive() : Unit = { // for subclass 
-        receive()
-    }
+    // 可重载点
+    def filterRequest(map:HashMapStringAny) : Unit = {}
+    def baseReceive() : Unit = { receive() }
+    def filterInvoke(targetServiceId:Int,targetMsgId:Int,map:HashMapStringAny) : Unit = {}
+    def filterReply(code:Int,map:HashMapStringAny) : Unit = {}
+    def baseEndFlow(): Unit = {}
 
     def receive() : Unit; // user defined flow
 
@@ -325,7 +328,6 @@ abstract class Flow extends Logging {
         reply(lasterrorcode())
     }
 
-    def baseEndFlow(): Unit = {} // for subclass
 
     private def endFlow(): Unit = {
         autoReply()
@@ -352,15 +354,17 @@ abstract class Flow extends Logging {
         lock.lock();
 
         try {
+            filterRequest(req.body)
+
             baseReceive()
 
             if( flowFinished ) {
                 endFlow()
             }
 
-            } finally {
-                lock.unlock()
-            }
+        } finally {
+            lock.unlock()
+        }
 
     }
 
@@ -666,6 +670,8 @@ abstract class Flow extends Logging {
             return new InvokeResult(subrequestId,ResultCodes.SERVICE_NOT_FOUND,new HashMapStringAny())
         }
 
+        filterInvoke(serviceId,msgId,info.params)
+
         val (newbody,ec) = Flow.router.encodeRequest(serviceId, msgId, info.params)
         if( ec != 0 ) {
             //log.error("encode request error, serviceId="+serviceId+", msgId="+msgId)
@@ -732,6 +738,8 @@ abstract class Flow extends Logging {
         if( replied ) {
             throw new RuntimeException("flow already replied")
         }
+
+        filterReply(code,params)
 
         val res = new Response (code,params,req)
 

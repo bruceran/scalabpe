@@ -18,6 +18,8 @@
 
 [自定义启动和关闭函数](#global)
 
+[实现自定义的流程基类](#baseflow)
+
 [Avenue协议](#avenue)
 
 [TLV编码规范](#tlv)
@@ -531,7 +533,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
 ## invokeAutoReply系列方法
 
-    如果只想关注正常流程，对出错的情况希望直接结束流程，可以通过invokeAutoReply简化流程编写
+    如果只想关注正常流程，对出错的情况(错误码非0的情况)希望直接结束流程，可以通过invokeAutoReply简化流程编写
 
     invokeAutoReply(...)
     invoke2AutoReply(...)
@@ -616,13 +618,13 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
         def parseArray(s:String):ArrayBufferAny // 解析嵌套数组
         def parseArrayInt(s:String):ArrayBufferInt // 解析嵌套数组
         def parseArrayString(s:String):ArrayBufferString // 解析嵌套数组
-        def parseArrayMap(s:String):ArrayBufferMap // 解析嵌套数组
+        def parseArrayObject(s:String):ArrayBufferMap // 解析嵌套数组
 
         def parseObjectNotNull(s:String):HashMapStringAny // 解析嵌套对象
         def parseArrayNotNull(s:String):ArrayBufferAny // 解析嵌套数组
         def parseArrayIntNotNull(s:String):ArrayBufferInt // 解析嵌套数组
         def parseArrayStringNotNull(s:String):ArrayBufferString // 解析嵌套数组
-        def parseArrayMapNotNull(s:String):ArrayBufferMap // 解析嵌套数组
+        def parseArrayObjectNotNull(s:String):ArrayBufferMap // 解析嵌套数组
 
         def mkString(m:HashMapStringAny): String // map转换成json串
         def mkString(a:ArrayBufferInt): String // array转换成json串
@@ -681,6 +683,39 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
         要求类名： object jvmdbbroker.flow.Global
         函数：init 启动时调用
         函数：close 关闭时调用
+
+[返回](#toc)
+
+# <a name="baseflow">实现自定义的基类</a>
+
+    可以自定义流程基类，比如对session的处理
+
+    示例：
+
+    abstract class YourBaseFlow extends Flow {
+        // 重载你需要的函数
+    }
+
+    在流程中//$servicename.msgname.with(YourBaseFlow)来使用你自定义的基类
+
+    YourBaseFlow中可通过重载Flow基类中预定义的几个函数进行功能扩展：
+
+    共有以下的可重载点:
+
+    // 在流程开始执行前会调用此函数处理req.body, 重载函数内应只对map进行操作
+    def filterRequest(map:HashMapStringAny) : Unit = {}  
+
+    // 在receive执行前会调用此函数，此函数最后需调用receive()才能走到流程的标准入口, 此函数内可做任意异步调用并等待返回
+    def baseReceive() : Unit = { receive() } 
+
+    // 发出的任意一个调用都会调用此函数处理入参, 重载函数内应只对map进行操作
+    def filterInvoke(targetServiceId:Int,targetMsgId:Int,map:HashMapStringAny) : Unit = {} 
+
+    // 在真正的reply前会调用此函数处理响应结果, 重载函数内应只对map进行操作
+    def filterReply(code:Int,map:HashMapStringAny) : Unit = {} 
+
+    // 在流程结束前会调用此函数, 可发出不需要等待响应的请求
+    def baseEndFlow(): Unit = {} 
 
 [返回](#toc)
 

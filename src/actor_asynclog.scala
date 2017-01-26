@@ -1102,30 +1102,30 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
             if( i > 0 ) buff.append(valueSplitter)
 
             val fieldName = keys(i)
-        val v = body.getOrElse(fieldName,"")
+            val v = body.getOrElse(fieldName,"")
 
-        if( asyncLogWithFieldName ) {
-            buff.append( fieldName ).append( ":" )
-        }
+            if( asyncLogWithFieldName ) {
+                buff.append( fieldName ).append( ":" )
+            }
 
-        if( v != null ) {
+            if( v != null ) {
 
-            if( passwordFieldsSet != null && passwordFieldsSet.contains( fieldName ) ) {
-                buff.append("***")
-            } else { 
-                v match {
-                    case i: Int => buff.append( String.valueOf(i) )
-                    case s: String => buff.append( removeCrNl(s) )
-                    case m: HashMapStringAny => buff.append( removeCrNl(m.toString) )
-                    case ai: ArrayBufferInt => buff.append( trimArrayBufferInt(ai).toString )
-                    case as: ArrayBufferString => buff.append( removeCrNl(trimArrayBufferString(as).toString) ) 
-                    case am: ArrayBufferMap => buff.append( removeCrNl(trimArrayBufferMap(am).toString) ) 
-                    case aa: ArrayBufferAny => buff.append( removeCrNl(trimArrayBufferAny(aa).toString) ) 
-                    case _ => buff.append( v.toString )
+                if( passwordFieldsSet != null && passwordFieldsSet.contains( fieldName ) ) {
+                    buff.append("***")
+                } else { 
+                    v match {
+                        case i: Int => buff.append( String.valueOf(i) )
+                        case s: String => buff.append( removeCrNl(s) )
+                        case m: HashMapStringAny => buff.append( removeCrNl(m.toString) )
+                        case ai: ArrayBufferInt => buff.append( trimArrayBufferInt(ai).toString )
+                        case as: ArrayBufferString => buff.append( removeCrNl(trimArrayBufferString(as).toString) ) 
+                        case am: ArrayBufferMap => buff.append( removeCrNl(trimArrayBufferMap(am).toString) ) 
+                        case aa: ArrayBufferAny => buff.append( removeCrNl(trimArrayBufferAny(aa).toString) ) 
+                        case _ => buff.append( v.toString )
+                    }
                 }
             }
-        }
-        i+=1
+            i+=1
         }
     }
     def appendToBuffForRes(keys:ArrayBufferString,flags:ArrayBuffer[Boolean],body:HashMapStringAny,logVars:HashMapStringAny,buff:StringBuilder) {
@@ -1202,7 +1202,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
     }
 
     def removeCrNl(s:String):String= {
-        removeNl(removeCr(s))
+        removeSeparator(removeNl(removeCr(s)))
     }
     def removeCr(s:String):String= {
         if( s.indexOf("\r")<0) return s
@@ -1211,6 +1211,10 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
     def removeNl(s:String):String= {
         if( s.indexOf("\n")<0) return s
         s.replaceAll("\n","")
+    }
+    def removeSeparator(s:String):String= {
+        if( s.indexOf(",  ")<0) return s
+        s.replaceAll(",  ","")
     }
 
     def trimArrayBufferInt(ai: ArrayBufferInt ):ArrayBufferInt = {

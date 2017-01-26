@@ -194,7 +194,6 @@ image/x-icon ico
     val cacheMap = new ConcurrentHashMap[String,Array[Byte]]()
     var httpCacheSeconds = 24*3600
     var skipMinFile = false
-    var enableMock = false
     var urlArgs = "?"
     var hasPattern = false
 
@@ -334,9 +333,6 @@ image/x-icon ico
         s = (cfgNode \ "@skipMinFile").text
         if( s != "" )  skipMinFile = isTrue(s)
 
-        s = (cfgNode \ "@enableMock").text
-        if( s != "" )  enableMock = isTrue(s)
-
         s = (cfgNode \ "@devMode").text
         if( s != "" )  devMode = isTrue(s)
 
@@ -351,7 +347,6 @@ image/x-icon ico
             httpCacheSeconds = 0
             router.parameters.put("httpserver.template.cache","0")
             skipMinFile = true
-            enableMock = true
         }
 
         val itemlist = (cfgNode \ "UrlMapping" \ "Item").toList
@@ -1914,24 +1909,12 @@ image/x-icon ico
         var hasSlash = false
         var tpl : Tuple4[Int,Int,String,ArrayBufferPattern] = null
         do {
-            if( enableMock ) {
-                tpl =  urlMapping.getOrElse(part+"/mock",null)
-                if( tpl != null ) return tpl
-            }
             tpl =  urlMapping.getOrElse(part,null)
             if( tpl != null ) return tpl
 
             if( hasPattern ) {
-                if( enableMock ) {
-                    tpl =  urlMapping.getOrElse(part+"/*/*/mock",null)
-                    if( tpl != null ) return tpl
-                }
                 tpl =  urlMapping.getOrElse(part+"/*/*",null)
                 if( tpl != null ) return tpl
-                if( enableMock ) {
-                    tpl =  urlMapping.getOrElse(part+"/*/mock",null)
-                    if( tpl != null ) return tpl
-                }
                 tpl =  urlMapping.getOrElse(part+"/*",null)
                 if( tpl != null ) return tpl
             }
@@ -1946,16 +1929,8 @@ image/x-icon ico
         } while( hasSlash )
 
         if( hasPattern ) {
-            if( enableMock ) {
-                tpl =  urlMapping.getOrElse("*/*/mock",null)
-                if( tpl != null ) return tpl
-            }
             tpl =  urlMapping.getOrElse("*/*",null)
             if( tpl != null ) return tpl
-            if( enableMock ) {
-                tpl =  urlMapping.getOrElse("*/mock",null)
-                if( tpl != null ) return tpl
-            }
             tpl =  urlMapping.getOrElse("*",null)
             if( tpl != null ) return tpl
         }

@@ -1,5 +1,5 @@
 
-global:
+global: 
     define: $year=1998 $colors=["red","black","green"] map={"a":1,"b":2,"c":"3"}
     setup:service999.echo  id:$inv1 req:   name=mike res: $code=0  msg=mike
     setup:service999.echo  id:$inv2 req: name=mary res: $code=0 msg=mary 
@@ -10,10 +10,10 @@ testcase:test1 enabled:0
         res: $year.length()=4  msg.length()=3 
     assert:service999.echo  req:   name=$inv1.res.msg $inv2.res.msg  
         res: msg=mike mary
-    assert:service999.echo  req:   name=$inv1.res.msg a\= $inv2.res.msg 
-        res: msg=mike a\= mary
-    assert:service999.echo  req:   name="$inv1.res.msg a= ${inv2.res.msg}" 
-        res: msg="mike a= mary"
+    assert:service999.echo  req:   name=$inv1.res.msg a\= $inv2.res.msg  # 注意：要用\=转义
+        res: msg=mike a\= mary # 注意：要用\=转义
+    assert:service999.echo  req:   name="$inv1.res.msg a\= ${inv2.res.msg}"  # 注意，要用\=转义, 引号里也要转义
+        res: msg="mike a\= mary" # 注意：要用\=转义, 引号里也要转义
     assert:service999.echo  req:   name=abc${inv1.res.msg}def $inv2.res.msg
         res: msg=abcmikedef mary
 
@@ -106,9 +106,56 @@ testcase:test2 enabled:0
         res: 
             msg=abc0 mmm
 
-testcase:test3 enabled:1
+testcase:test3 enabled:0
     assert:service999.echo  req:   name= { $inv1.res.msg , $inv2.res.msg  
         res: msg={ mike , mary
-    assert:service999.echo  req:   name= ( $inv1.res.msg , $inv2.res.msg  
-        res: msg=( mike , mary   # 这个不工作
+    assert:service999.echo  req:   name=hello${year}
+        res: msg.contains($year)=true
+
+testcase:test3 enabled:0 # 转义测试, 足够复杂了
+
+    assert:sleep  req:   m=abc\=\\= 
+    assert:service999.echo  req:   name=abc\=\\=
+        res: msg.length()=6  # abc=\=
+
+    assert:sleep  req:   m= \( $inv1.res.msg , $inv2.res.msg
+    assert:service999.echo  req:   name= \( $inv1.res.msg , $inv2.res.msg
+        res: msg=( mike , mary
+
+    assert:sleep  req:   m=\\,\\(
+    assert:service999.echo  req:   name=\\,\\(
+        res: msg.length()=4 #  \.\(
+
+    assert:sleep  req:   m=\.\,\[\]\(\)\$\{\}
+    assert:service999.echo  req:   name=\.\,\[\]\(\)\$\{\}
+        res: msg.length()=9 # .,[]()${}
+
+    assert:sleep  req:   m=abc\.\,\[\]\(\)\$
+    assert:service999.echo  req:   name=abc\.\,\[\]\(\)\$
+        res: msg.length()=10 # abc.,[]()$
+
+    assert:sleep  req:   m=\\.\\,\\[\\]\\(\\)\\{\\}\\$
+    assert:service999.echo  req:   name=\\.\\,\\[\\]\\(\\)\\{\\}\\$
+        res: msg.length()=18 #\,\[\]\(\)\{\}\$
+
+    assert:sleep  req:   m=\\$\\.\\,\\[\\]\\(\\)
+    assert:service999.echo  req:   name=\\$\\.\\,\\[\\]\\(\\)  # $后面的看成表达式引用
+        res: msg.length()=1 # \
+
+
+testcase:test4 enabled:1
+    assert:service999.echo  req:   name=123 
+        res: msg.length().ge(3)=true
+             msg.length().ge(4)=false
+             msg.length().gt(3)=false
+             msg.length().lt(3)=false
+             msg.length().le(3)=true
+             msg.substring(1,3)=23
+
+    assert:service999.echo  req:   name=123 
+        res: msg=123  
+             msg!=def
+             msg!=NULL 
+             msg2=NULL
+             msg2!=abc
 

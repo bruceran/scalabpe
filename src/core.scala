@@ -40,6 +40,27 @@ class HashMapStringAny extends HashMap[String,Any] {
 class ArrayBufferMap extends ArrayBuffer[HashMapStringAny]
 
 class LinkedHashMapStringAny extends LinkedHashMap[String,Any] {
+
+    def s(name:String) : String = {
+        val v = getOrElse(name,null)
+        if( v == null ) return null
+        return v.toString
+    }
+    def s(name:String,defaultValue:String) : String = {
+        val v = getOrElse(name,null)
+        if( v == null ) return defaultValue
+        return v.toString
+    }
+    def ns(name:String) : String = {
+        val v = getOrElse(name,"")
+        return v.toString
+    }
+    def ns(name:String,defaultValue:String) : String = {
+        val v = getOrElse(name,"")
+        if( v == "" ) return defaultValue
+        return v.toString
+    }
+
     def toHashMapStringAny():HashMapStringAny = {
         val m = HashMapStringAny()
         m ++= this

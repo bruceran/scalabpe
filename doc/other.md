@@ -12,9 +12,11 @@
 
 * invoke服务调用后都应检查返回码，所有的异常都是以返回码形式的，而不是抛异常；
   
-* 传统上调用jdbc会阻塞，jdbc阻塞多久应用程序线程就等多久，ScalaBPE里调用DB服务可设定超时时间; 
-
 * 使用invokeWithNoReply进行消息投递
+
+* 使用invokeAutoReply只处理正常的消息，失败的消息由框架自动处理
+
+* 传统上调用jdbc会阻塞，jdbc阻塞多久应用程序线程就等多久，ScalaBPE里调用DB服务可设定超时时间; 
 
 * 每个函数在发出invoke后不应该再继续执行任何代码，流程引擎同时只允许一个invoke；
   在if条件分支里的invoke后面别忘了return结束该函数, 否则流程会继续往下执行，很有可能造成同时多个invoke

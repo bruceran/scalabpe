@@ -6,6 +6,8 @@
     <SapPort>6210</SapPort>
     <CohPort>7210</CohPort>
 
+    <!--<InstallMock>testcase/t4.txt</InstallMock>-->
+
     <assign>@user2=testabc</assign>
     <assign>@user=222testabc</assign>
     <DbSosList threadNum="8">
