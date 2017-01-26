@@ -23,7 +23,7 @@ object GenFlowTool {
 usage: scalabpe.GenFlowTool [options]
 options:
     -h|--help                       帮助信息
-    -s|--service  servicefile       指定服务文件名
+    -s|--sdf  servicefile           指定服务文件名
     -d|--dir  dirname               指定目录，默认为服务文件名一致
     -w|--with withname              所有流程需要继承的基类
     -i|--import                     自动加上import FlowHelper._
@@ -40,7 +40,7 @@ options:
             args(i) match {
                 case "-h" | "--help" => 
                     return null
-                case "-s" | "--service" => 
+                case "-s" | "--sdf" => 
                     val (v,skip) = parseNextParam(args,i+1)
                     if( v == "" ) {
                         println("invalid option "+args(i))

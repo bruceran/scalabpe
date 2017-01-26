@@ -29,6 +29,49 @@
         -c|--console          转换完毕后输出结果到控制台
         -o|--output filename  生成到指定文件中
 
+    手工编写xml格式的服务描述文件比较麻烦; 通过此辅助工具可以在xml和等价的txt文件之间互相转换;
+    txt语法的宗旨是尽可能降低编写服务描述文件的工作量
+
+    txt文件语法：
+
+        # 注释
+        ### 多行注释, 必须以###结束注释
+        service:xxx 定义服务, 必须定义服务名和服务号
+        type:xxx 定义类型, 只有name必须定义, 通过array(auto或实际name)定义数组type 通过name后面直接带 #int 或 #struct 来指定类型, string为默认类型, code可自动生成
+        message:xxx 定义消息, 只有消息名必须定义，id可自动生成
+        sql: 表示开始sql语句定义
+        req: 表示开始请求体参数列表
+        res: 表示开始响应体参数列表
+        其它：非以上的内容都认为是struct或message的field, field只有name必须定义，
+              对结构体field, 通过name后面直接带 #int 或 #string 来指定类型,systemstring为默认类型
+              对请求响应参数field, type默认为name加上_type
+        通过xxx:yyy来定义属性，desc:属性必须是最后一个属性，desc:后的数据可以是任何数据, 不用考虑转义
+
+    txt文件示例：
+
+       service:gate    id:345
+
+        type:fail_reason_type code:10000    desc:错误原因
+
+        type:name_type     code:1                   
+        type:quantity_type#int
+        type:goodsinfo_type#struct array:auto
+            name
+            goods_type
+            seller_id
+
+        message:get_goods    id:1
+            req:
+                name                      
+                quantity                      
+            res:
+                fail_reason                 
+                list type:goodsinfo_array_type
+ 
+        message:buy_goods
+            req:
+            res:
+
 ## GenSqlTool 生成db服务描述文件
 
     usage: scalabpe.GenSqlTool [options]
@@ -73,7 +116,7 @@
     usage: scalabpe.GenFlowTool [options]
     options:
         -h|--help                       帮助信息
-        -s|--service  servicefile       指定服务文件名
+        -s|--sdf  servicefile           指定服务文件名
         -d|--dir  dirname               指定目录，默认为服务文件名一致
         -w|--with withname              所有流程需要继承的基类
         -i|--import                     自动加上import FlowHelper._

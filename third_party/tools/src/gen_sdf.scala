@@ -12,20 +12,7 @@ import org.apache.commons.lang.StringUtils
 import Tools._
 
 /*
-    手工编写xml格式的服务描述文件比较麻烦; 通过此辅助类可以在xml和等价的txt文件之间互相转换;
-
-    txt文件语法：
-
-        # 注释
-        ### 多行注释, 必须以###结束注释
-        service:xxx 定义服务
-        type:xxx 定义类型, 通过array(auto或实际name)定义数组type 通过name后面直接带 #int 或 #struct 来指定类型, string为默认类型
-        message:xxx 定义消息
-        sql: 表示开始sql语句定义
-        req: 表示开始请求体参数列表
-        res: 表示开始响应体参数列表
-        其它：struct或message的field, 对结构体field, 通过name后面直接带 #int 或 #string 来指定类型,systemstring为默认类型
-        通过xxx:yyy来定义属性，desc:属性必须是最后一个属性，desc:后的数据可以是任何数据, 不会被解析成属性
+    手工编写xml格式的服务描述文件比较麻烦; 通过此辅助工具可以在xml和等价的txt文件之间互相转换;
 */
 
 object GenSdfTool {
