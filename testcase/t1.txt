@@ -1,0 +1,29 @@
+testcase:t1 enabled:0
+    define: $year=1998
+    mock:service999.echo req: name=hello1998 res: msg=hello2006
+    mock:service999.echo req: name=hello2006 res: msg=hello2016
+
+    assert:service999.echo id:$s1 
+        req: name=hello${year}
+        res: msg=hello2006  msg.length()=9
+    assert:service999.echo 
+        req: name=$s1.res.msg
+        res: msg=hello2016  msg.matches(.*2016)=true
+
+testcase:t2
+    define: $year=1998
+    mock:service999.echo req: name.contains(${year})=true res: msg=${this.req.name} $year
+    mock:service999.echo req: res: msg="${this.req.name}"
+
+    assert:service999.echo 
+        req: name=hello${year}
+        res: msg=hello1998 1998
+
+testcase:t3
+    define: $year=1998
+    mock:service999.echo req: name!=1996 res: msg=100
+    mock:service999.echo req: res: msg=101
+
+    assert:service999.echo req: name=${year} res: msg!=101
+    assert:service999.echo req: name=1996 res: msg=101
+

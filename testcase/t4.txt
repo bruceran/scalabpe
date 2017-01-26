@@ -1,0 +1,4 @@
+global:
+    define: $year=1998
+    mock:service999.echo req: name=hello res: msg=you are good $year $mm
+    mock:service999.echo req: res: msg=how are you

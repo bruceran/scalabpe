@@ -1,0 +1,13 @@
+testcase:base enabled:0
+    define: $year=1998
+    mock:service999.echo req: name=hello1998 res: msg=hello2006
+    mock:service999.echo req: name=hello2006 res: msg=hello2016
+
+testcase:t2 extends:base22
+
+    assert:sleep req: m=$year
+
+    assert:service999.echo 
+        req: name=hello${year}
+        res: msg=hello2006 $year=1998
+
