@@ -1,0 +1,9 @@
+-t Gmm.Invite
+--table_in_msg invite
+-g "id as testid,b_uid,account,cnt,create_Time"
+-q "id as testid,b_uid,account,cnt,create_Time"
+-i a,b,c
+-u a,b,c#c1,c2,c3
+-d c1,c2=2,c3
+--sdf db_invite_4020021.xml
+

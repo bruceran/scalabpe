@@ -1,0 +1,12 @@
+-t TradeAdmin.cGameTemplate
+--table_in_msg gametemplate
+--pk id
+-g 
+-q 
+-i 
+-u 
+-d
+--url jdbc:mysql://127.0.0.1:13309/
+--username gmmdev
+--password gmmdev
+--sdf db_invite_4020021.xml
