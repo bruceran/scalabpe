@@ -1084,15 +1084,13 @@ class TlvCodec(val configFile:String) extends Logging {
         buff.position(buff.position + alignedLen - bytes.length - tlvheadlen )
     }
 
-    type BaseStructType = scala.collection.Map[String,Any]
-
     def encodeStruct(buffs: ArrayBuffer[ByteBuffer],config:TlvType, value:Any, encoding:Int):Unit ={
 
         value match {
 
-            case map: BaseStructType =>
+            case map: scala.collection.Map[_,_]=>
 
-                val datamap = map
+                val datamap = map.asInstanceOf[scala.collection.Map[String,Any]]
                 val data = new ArrayBufferAny()
                 var totalLen = 0
 

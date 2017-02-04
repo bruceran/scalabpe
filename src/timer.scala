@@ -1,7 +1,8 @@
 package jvmdbbroker.core
 
 import java.util.concurrent.atomic.{AtomicBoolean,AtomicInteger}
-import scala.collection.mutable.{HashMap,Queue,SynchronizedQueue,ArrayBuffer}
+import java.util.concurrent.ConcurrentLinkedQueue
+import scala.collection.mutable.{HashMap,Queue,ArrayBuffer}
 
 class QuickTimer (val expireTime:Long,val data:Any,val cancelled:AtomicBoolean, val timeoutFunctionId: Int = 0) {
 
@@ -17,7 +18,7 @@ object QuickTimerEngine {
 class QuickTimerEngine (val timeoutFunction: (Any)=>Unit,val checkInterval:Int = 100) extends Logging with Dumpable {
 
     val queueMap = new HashMap[ Int, Queue[QuickTimer] ]()
-    val waitingList = new SynchronizedQueue[ Tuple2[Int,QuickTimer] ]()
+    val waitingList = new ConcurrentLinkedQueue[ Tuple2[Int,QuickTimer] ]()
 
     val shutdown = new AtomicBoolean()
     val shutdownFinished = new AtomicBoolean()
@@ -73,15 +74,15 @@ class QuickTimerEngine (val timeoutFunction: (Any)=>Unit,val checkInterval:Int =
         val expireTime = System.currentTimeMillis + timeout
         val timer = new QuickTimer(expireTime,data,new AtomicBoolean(),timeoutFunctionId)
         val tp = (timeout,timer)
-        waitingList.enqueue(tp)
+        waitingList.offer(tp)
         timer
     }
 
     def checkTimeout() {
 
-        while( waitingList.size > 0 ) {
+        while( !waitingList.isEmpty() ) {
 
-            val (timeout,timer) = waitingList.dequeue()
+            val (timeout,timer) = waitingList.poll()
 
             var queue = queueMap.getOrElse(timeout,null)
             if( queue == null ) {

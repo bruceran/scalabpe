@@ -428,7 +428,6 @@ options:
     def genTypes(tlvMap:LinkedHashMap[String,Tlv]):ArrayBufferString = {
         val types_buff = ArrayBufferString()
         for( (k,tlv) <- tlvMap ) {
-            existed_types
             var s = ""
             if( tlv.cls == "struct") {
                 val exist = checkExist(tlv)

@@ -5,7 +5,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock;
 import java.net.InetSocketAddress;
-import scala.collection.mutable.{ArrayBuffer,HashMap,Queue,SynchronizedQueue}
+import scala.collection.mutable.{ArrayBuffer,HashMap,Queue}
 
 import org.jboss.netty.util._;
 import org.jboss.netty.buffer._;
@@ -50,7 +50,7 @@ class RedisNettyClient(
 
     val channels = new Array[Channel](addrs.size*connSizePerAddr) // channel array
     val channelIds = new Array[String](addrs.size*connSizePerAddr) // connId array
-    val channelSequenceBuff = new Array[SynchronizedQueue[Int]](addrs.size*connSizePerAddr) // SynchronizedQueue[sequence] array
+    val channelSequenceBuff = new Array[ConcurrentLinkedQueue[Int]](addrs.size*connSizePerAddr) // ConcurrentLinkedQueue[sequence] array
     val channelIdMap = new ConcurrentHashMap[String,Int]() // connId->(idx+1)
     val dataMap = new ConcurrentHashMap[Int,TimeoutInfo]()
 
@@ -123,7 +123,7 @@ class RedisNettyClient(
             for( connidx <- 0 until connSizePerAddr ) {
 
                 val idx = hostidx + connidx * addrs.size
-                channelSequenceBuff(idx) = new SynchronizedQueue[Int]()
+                channelSequenceBuff(idx) = new ConcurrentLinkedQueue[Int]()
 
                 val future = bootstrap.connect(new InetSocketAddress(host,port))
 
@@ -422,7 +422,7 @@ class RedisNettyClient(
         val v = channelIdMap.get(connId)
         if( v > 0 ) {
             val idx = v - 1
-            channelSequenceBuff(idx).enqueue(sequence)
+            channelSequenceBuff(idx).offer(sequence)
         }
     }
 
@@ -431,7 +431,7 @@ class RedisNettyClient(
         if( v > 0 ) {
             try {
                 val idx = v - 1
-                val seq = channelSequenceBuff(idx).dequeue()
+                val seq = channelSequenceBuff(idx).poll()
                 return new Tuple2(true,seq)
             } catch {
                 case e:Throwable =>

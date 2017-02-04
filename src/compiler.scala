@@ -170,7 +170,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
         settings.classpath.value = cp
 
         settings.outdir.value = new File(tempDir+File.separator+"classes").getPath
-        settings.deprecation.value = true
+        settings.deprecation.value = false
         settings.unchecked.value = true
         settings.encoding.value = "UTF-8"
 

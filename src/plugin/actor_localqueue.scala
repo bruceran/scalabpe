@@ -7,7 +7,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util._
 import java.io.{File,StringWriter}
 import scala.xml._
-import scala.collection.mutable.{ArrayBuffer,HashMap,HashSet,SynchronizedQueue}
+import scala.collection.mutable.{ArrayBuffer,HashMap,HashSet}
 
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind._
@@ -189,8 +189,8 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
     val hasNewData = lock.newCondition()
     val sequence = new AtomicInteger(1)
 
-    val waitingRunnableList = new SynchronizedQueue[Runnable]()
-    val waitingQueueNameList = new SynchronizedQueue[String]()
+    val waitingRunnableList = new ConcurrentLinkedQueue[Runnable]()
+    val waitingQueueNameList = new ConcurrentLinkedQueue[String]()
     val queuesNoData = new HashMap[String,LocalQueueSendingData]()
     val queuesHasData = new HashMap[String,LocalQueueSendingData]()
     val requestIdMap = new ConcurrentHashMap[String,LocalQueueSendingData]() // requestId -> LocalQueueSendingData
@@ -261,7 +261,7 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
         val queueNames = persistQueueManager.getQueueNames
         for( i <- 0 until queueNames.size ) {
-            waitingQueueNameList.enqueue(queueNames.get(i))
+            waitingQueueNameList.offer(queueNames.get(i))
         }
 
         val firstServiceId = serviceIds.split(",")(0)
@@ -424,7 +424,7 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
                 log.error("send failed, requestId="+sendingdata.requestId)
             }
 
-            waitingRunnableList.enqueue(
+            waitingRunnableList.offer(
                 new Runnable() {
                     def run() {
                         commit(sendingdata.queueName,sendingdata.idx)
@@ -441,7 +441,7 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
         timer.schedule( new TimerTask() {
             def run() {
 
-                waitingRunnableList.enqueue(
+                waitingRunnableList.offer(
                     new Runnable() {
                         def run() {
                             retry(sendingdata)
@@ -493,8 +493,8 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
     }
 
     def needRun() = {
-        waitingRunnableList.size > 0 ||
-        waitingQueueNameList.size > 0 ||
+        !waitingRunnableList.isEmpty() ||
+        !waitingQueueNameList.isEmpty() ||
         queuesHasData.values.filter( _.requestId == null ).size > 0
     }
 
@@ -551,9 +551,9 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
     def sendDataInternal() {
 
-        while( waitingRunnableList.size > 0 ) {
+        while( !waitingRunnableList.isEmpty() ) {
 
-            val runnable = waitingRunnableList.dequeue()
+            val runnable = waitingRunnableList.poll()
 
             try {
                 runnable.run()
@@ -563,8 +563,8 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
         }
 
-        while( waitingQueueNameList.size > 0 ) {
-            val queueName = waitingQueueNameList.dequeue()
+        while( !waitingQueueNameList.isEmpty() ) {
+            val queueName = waitingQueueNameList.poll()
             addQueueName(queueName)
         }
 
@@ -727,7 +727,7 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
         try {
             val queue = persistQueueManager.getQueue(queueName)
             queue.put(s)
-            waitingQueueNameList.enqueue(queueName)
+            waitingQueueNameList.offer(queueName)
             wakeUpSendThread()
             hasIOException.set(false)
             return true

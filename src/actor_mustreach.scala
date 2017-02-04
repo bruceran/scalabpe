@@ -8,7 +8,7 @@ import java.util._
 import java.io.{File,StringWriter}
 import java.nio.ByteBuffer
 import scala.xml._
-import scala.collection.mutable.{ArrayBuffer,HashMap,HashSet,SynchronizedQueue}
+import scala.collection.mutable.{ArrayBuffer,HashMap,HashSet}
 
 import com.sdo.billing.queue._
 import com.sdo.billing.queue.impl._
@@ -70,8 +70,8 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
     val hasNewData = lock.newCondition()
     val sequence = new AtomicInteger(1)
 
-    val waitingRunnableList = new SynchronizedQueue[Runnable]()
-    val waitingQueueNameList = new SynchronizedQueue[String]()
+    val waitingRunnableList = new ConcurrentLinkedQueue[Runnable]()
+    val waitingQueueNameList = new ConcurrentLinkedQueue[String]()
     val queuesNoData = new HashMap[String,MustReachSendingData]()
     val queuesHasData = new HashMap[String,MustReachSendingData]()
 
@@ -148,7 +148,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
 
         val queueNames = persistQueueManager.getQueueNames
         for( i <- 0 until queueNames.size ) {
-            waitingQueueNameList.enqueue(queueNames.get(i))
+            waitingQueueNameList.offer(queueNames.get(i))
         }
 
         retryThread = new Thread(queueTypeName+"_retrythread") {
@@ -248,7 +248,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
                 onReceiveRawRequest(rawReq)
                 return
             case _ =>
-                waitingRunnableList.enqueue( new Runnable() {
+                waitingRunnableList.offer( new Runnable() {
                     def run() {
                         onReceiveCommitInfo(v)
                 } } )
@@ -304,7 +304,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
                 cachedData.put(queueName+":"+idx,bs)
             }
 
-            waitingQueueNameList.enqueue(queueName)
+            waitingQueueNameList.offer(queueName)
             wakeUpRetryThread()
             hasIOException.set(false)
         } catch {
@@ -410,16 +410,16 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
     def needRun() = {
         val now = System.currentTimeMillis
 
-        waitingRunnableList.size > 0 ||
-        waitingQueueNameList.size > 0 ||
+        !waitingRunnableList.isEmpty() ||
+        !waitingQueueNameList.isEmpty() ||
         queuesHasData.values.filter( d => d.data == null || d.data != null && d.nextRunTime < now).size > 0
     }
 
     def sendDataInternal() {
 
-        while( waitingRunnableList.size > 0 ) {
+        while( !waitingRunnableList.isEmpty() ) {
 
-            val runnable = waitingRunnableList.dequeue()
+            val runnable = waitingRunnableList.poll()
 
             try {
                 runnable.run()
@@ -429,8 +429,8 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
 
         }
 
-        while( waitingQueueNameList.size > 0 ) {
-            val queueName = waitingQueueNameList.dequeue()
+        while( !waitingQueueNameList.isEmpty() ) {
+            val queueName = waitingQueueNameList.poll()
             addQueueName(queueName)
         }
 
