@@ -158,7 +158,7 @@ class AvenueCodec {
         req.get(body.array())
         body.position(0)
 
-        if( key != null && key != "" && AvenueCodec.decrypt_f != null) {
+        if( key != null && key != "" && AvenueCodec.decrypt_f != null && body != null && body.limit()>0 ) {
             body = AvenueCodec.decrypt_f(body,key)
         }
 
@@ -177,7 +177,7 @@ class AvenueCodec {
     def encode(res: AvenueData,key:String="") : ByteBuffer = {
 
         var body = res.body
-        if( key != null && key != "" && AvenueCodec.encrypt_f != null ) {
+        if( key != null && key != "" && AvenueCodec.encrypt_f != null && body != null && body.limit()>0  ) {
             body = AvenueCodec.encrypt_f(body,key)
         }
 

@@ -1,0 +1,32 @@
+//$service999.download2
+
+import java.io._
+
+def readFile(filename:String):Array[Byte] = {
+    val len = new File(filename).length().toInt
+    val buffer = new Array[Byte](len)
+    val in = new FileInputStream(filename)
+    try {
+        in.read(buffer)
+        return buffer
+    } catch {
+        case e:Throwable =>
+            return null
+    } finally {
+        in.close()
+    }
+}
+
+//#receive
+
+    // 生成要下载内容的二进制内容传给content参数
+    // 文件名用filename传入
+    val filename = "f:/ttt中文uuu.xlsx"
+    val content = readFile(filename)
+
+    reply(0,
+        "content"->content,
+        "filename"->filename
+        )
+
+

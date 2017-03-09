@@ -83,6 +83,10 @@
 		  def generateContent(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String):String
 		}
 
+        trait HttpServerRawOutputPlugin {
+            def generateRawContent(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String,headers:HashMap[String,String]):Array[Byte]
+        }
+
 		trait HttpServerVerifyPlugin {
 		  def verify(serviceId:Int,msgId:Int,xhead:HashMapStringAny,body:HashMapStringAny,httpReq:HttpRequest):Boolean
 		}
@@ -93,6 +97,7 @@
     HttpServerRequestPostParsePlugin  请求参数解析后处理插件, 在body已解析完毕后二次处理
     HttpServerPreOutputPlugin 输出预处理插件，可在正式输出前对body进行处理
     HttpServerOutputPlugin 输出插件
+    HttpServerRawOutputPlugin 输出二进制内容插件, 此插件优先级高于HttpServerOutputPlugin
     HttpServerVerifyPlugin 签名校验插件, 该接口为同步接口，实现该接口时不能发生阻塞，否则影响性能
 
 ## db 插件

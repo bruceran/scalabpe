@@ -48,7 +48,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
     var passwordFieldsSet : HashSet[String] = _
     var asyncLogWithFieldName = true
     var asyncLogArray = 1
-    var asyncLogLogId = 1
+    var asyncLogLogId = 0
     var asyncLogMaxParamsLen = 500
     var asyncLogMaxContentLen = 500
     val dispatchMap = new HashMap[String,Tuple2[Int,Int]]()
@@ -871,7 +871,10 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                         content = content.replace("\n","")
                         length = content.length
                     } else {
-                        length = content.length
+                        if( content.startsWith("raw_content:"))
+                            length = content.substring(12).toInt
+                        else
+                            length = content.length
                         content = """{"contentType":"%s","contentLength":%d}""".format(contentType,length)
                     }
                 } else {

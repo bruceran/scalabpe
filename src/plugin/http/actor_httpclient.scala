@@ -13,6 +13,7 @@ class HttpClientActor(val router: Router,val cfgNode: Node) extends Actor with L
     var connectTimeout = 3000
     var maxThreadNum = 2
     var timerInterval = 100
+    var maxContentLength = 1048576
 
     var serviceIds: String = _
 
@@ -52,6 +53,11 @@ class HttpClientActor(val router: Router,val cfgNode: Node) extends Actor with L
         s = (cfgNode \ "@connectTimeout").text
         if( s != "" ) connectTimeout = s.toInt*1000
 
+        s = (cfgNode \ "MaxContentLength").text
+        if( s != "" ) maxContentLength = s.toInt
+        s = (cfgNode \ "@maxContentLength").text
+        if( s != "" ) maxContentLength = s.toInt
+
         s = (cfgNode \ "ThreadNum").text
         if( s != "" ) maxThreadNum = s.toInt
         s = (cfgNode \ "@threadNum").text
@@ -67,7 +73,7 @@ class HttpClientActor(val router: Router,val cfgNode: Node) extends Actor with L
         pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
         pool.prestartAllCoreThreads()
 
-        httpClient = new HttpClientImpl(cfgNode,router.codecs,this.receive,connectTimeout,timerInterval)
+        httpClient = new HttpClientImpl(cfgNode,router.codecs,this.receive,connectTimeout,timerInterval,1,maxContentLength)
         log.info("HttpClientActor started {}",serviceIds)
     }
 

@@ -16,6 +16,12 @@
 	</type>
 	<type name="shippingto_array_type" class="array" itemType="shippingto_type"/>
 
+    <type name="filename_type" class="string" code="12"/>
+    <type name="attachment_type" class="int" code="13"/>
+    <type name="delete_type" class="int" code="14"/>
+    <type name="content_type" class="string" code="15" isbytes="1"/>
+    <type name="expire_type" class="string" code="16"/>
+
 	<message name="queryUserInfo" id="1">
 		<requestParameter>
 			<field name="userId" type="userId_type"/>
@@ -39,6 +45,28 @@
 		</requestParameter>
 
 		<responseParameter>
+		</responseParameter>
+	</message>
+
+    <message name="download1" id="3">
+		<requestParameter>
+		</requestParameter>
+		<responseParameter>
+			<field name="filename" type="filename_type"/>
+			<field name="attachment" type="attachment_type" default="1"/>
+			<field name="delete" type="delete_type" default="1"/>
+			<field name="expire" type="expire_type" default="0"/>
+		</responseParameter>
+	</message>
+
+    <message name="download2" id="4">
+		<requestParameter>
+		</requestParameter>
+		<responseParameter>
+			<field name="filename" type="filename_type"/>
+			<field name="content" type="content_type"/>
+			<field name="attachment" type="attachment_type" default="1"/>
+			<field name="expire" type="expire_type" default="0"/>
 		</responseParameter>
 	</message>
 

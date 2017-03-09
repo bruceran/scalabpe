@@ -444,6 +444,7 @@ image/x-icon ico
 
                 if(s == "plain") s = "jvmdbbroker.plugin.http.PlainTextPlugin"
                 if(s == "redirect") s = "jvmdbbroker.plugin.http.RedirectPlugin"
+                if(s == "download") s = "jvmdbbroker.plugin.http.DownloadPlugin"
                 if(s == "template") s = "jvmdbbroker.plugin.http.TemplatePlugin"
 
                 if( s.indexOf(".") < 0 ) s = "jvmdbbroker.flow."+s
@@ -1365,7 +1366,30 @@ image/x-icon ico
 
         }
 
-        if( pluginObj != null && pluginObj.isInstanceOf[HttpServerOutputPlugin]) {
+        var rawContent:Array[Byte] = null
+
+        if( pluginObj != null && pluginObj.isInstanceOf[HttpServerRawOutputPlugin]) {
+
+            if( errorCode == 0 ) {
+                val domainName = getDomainName(req.xhead.s("host",""))
+                if( !body.contains(domainNameFieldName) ) body.put(domainNameFieldName,domainName)
+                val contextPath = getContextPath(params)
+                if( contextPath != "" && !body.contains("contextPath") ) body.put("contextPath",contextPath)
+                if( urlArgs != "" && !body.contains("urlArgs") ) body.put("urlArgs",urlArgs)
+                rawContent = pluginObj.asInstanceOf[HttpServerRawOutputPlugin].generateRawContent(serviceId,msgId,errorCode,errorMessage,body,pluginParam,headers)
+                content = "raw_content:"+ ( if(rawContent == null ) 0 else rawContent.length )
+                
+                val ext = body.remove("__file_ext__")
+                if( !ext.isEmpty) {
+                    contentType = mimeTypeMap.getOrElse(ext.get.toString,contentType)
+                }
+            }
+            if( rawContent == null ) {
+                write404InReply(req,errorCode)
+                return null
+            }
+
+        } else if( pluginObj != null && pluginObj.isInstanceOf[HttpServerOutputPlugin]) {
 
             val domainName = getDomainName(req.xhead.s("host",""))
             if( !body.contains(domainNameFieldName) ) body.put(domainNameFieldName,domainName)
@@ -1385,7 +1409,6 @@ image/x-icon ico
                 content = JsonCodec.mkString( jsonTypeProcess(req.serviceId,req.msgId,body) )
 
             } else {
-
                 val map = HashMapStringAny()
                 map.put("return_code",errorCode)
                 map.put("return_message",errorMessage)
@@ -1404,7 +1427,10 @@ image/x-icon ico
         req.xhead.put("charset",charset)
 
         if( !isRpc ) {
-            write(connId, content, req.xhead, cookies, headers)
+            if( rawContent != null )
+                writeRaw(connId, rawContent, req.xhead, cookies, headers)
+            else
+                write(connId, content, req.xhead, cookies, headers)
             asynclog(reqResInfo)
             null
         } else {
@@ -1457,19 +1483,24 @@ image/x-icon ico
     }
 
     def write(connId:String, content:String, xhead:HashMapStringAny, cookies: HashMap[String,Cookie], headers: HashMap[String,String]){
+        val charset = xhead.s("charset","UTF-8")
+        val rawContent = content.getBytes(charset)
+        writeRaw(connId,rawContent,xhead,cookies,headers)
+    }
+
+    def writeRaw(connId:String, rawContent:Array[Byte], xhead:HashMapStringAny, cookies: HashMap[String,Cookie], headers: HashMap[String,String]){
 
         val method = xhead.s("method","POST")
         val keepAlive = xhead.s("keepAlive","true") == "true"
         val contentType = xhead.s("contentType","")
-        val charset = xhead.s("charset","UTF-8")
 
         val response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK)
 
-        response.setHeader(HttpHeaders.Names.SERVER, "jvmhttpserver/1.1.0")
+        response.setHeader(HttpHeaders.Names.SERVER, "scalabpe httpserver/1.1.0")
         setDateHeader(response,true)
 
         response.setHeader(HttpHeaders.Names.CONTENT_TYPE, contentType)
-        val buff = ChannelBuffers.wrappedBuffer(content.getBytes(charset))
+        val buff = ChannelBuffers.wrappedBuffer(rawContent)
         response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(buff.readableBytes()))
 
         if( cookies != null && cookies.size > 0 ) {
@@ -1500,6 +1531,26 @@ image/x-icon ico
         nettyHttpServer.write(connId,response,keepAlive)
     }
 
+    def write404InReply(req:HttpSosRequest,errorCode:Int) {
+        val keepAlive =  req.xhead.s("keepAlive","true") == "true"
+        val response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND)
+        setDateHeader(response)
+        if( !keepAlive ) response.setHeader(HttpHeaders.Names.CONNECTION, "close")
+        val s = "FILE_NOT_FOUND"
+        val buff = ChannelBuffers.wrappedBuffer(s.getBytes())
+        response.setContent(buff)
+        val contentType = "text/plain"
+        response.setHeader(HttpHeaders.Names.CONTENT_TYPE, contentType )
+        response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(buff.readableBytes()))
+        nettyHttpServer.write(req.connId,response,keepAlive)
+
+        val reqResInfo = new HttpSosRequestResponseInfo(req,new HttpSosResponse(req.requestId,errorCode,s))
+        req.xhead.put("contentType",MIMETYPE_PLAIN)
+        req.xhead.put("charset","UTF-8")
+        req.xhead.put("httpCode","404")
+        asynclog(reqResInfo)
+    }
+    
     def write404(httpReq:HttpRequest,connId:String,xhead:HashMapStringAny,requestId:String,uri:String) {
         val keepAlive =  HttpHeaders.isKeepAlive(httpReq)
         val response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.NOT_FOUND)
@@ -1549,7 +1600,7 @@ image/x-icon ico
 
         val response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK)
 
-        response.setHeader(HttpHeaders.Names.SERVER, "jvmhttpserver/1.1.0")
+        response.setHeader(HttpHeaders.Names.SERVER, "scalabpe httpserver/1.1.0")
         setDateHeaderAndCache(response,f)
 
         if( !keepAlive ) response.setHeader(HttpHeaders.Names.CONNECTION, "close")

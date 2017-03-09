@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="MediaServer" id="55609"  IsTreeStruct ="false">
+	<type name="messageType_Type" 	     class="int"    code="1"/>
+	<type name="mediaId_Type"          	 class="string" code="2"/> 
+	<type name="appId_Type"          	 class="int"    code="3"/> 
+		
+	<type name="DATA0_Type" 	         class="string" code="100" isbytes="1"/>
+	<type name="DATA1_Type" 	         class="string" code="101" isbytes="1"/> 
+	<type name="DATA2_Type"         	 class="string" code="102" isbytes="1"/> 
+	<type name="DATA3_Type"          	 class="string" code="103" isbytes="1"/> 
+	<type name="DATA4_Type"          	 class="string" code="104" isbytes="1"/> 
+	<type name="DATA5_Type" 	         class="string" code="105" isbytes="1"/> 
+	<type name="DATA6_Type"         	 class="string" code="106" isbytes="1"/> 
+	<type name="DATA7_Type"          	 class="string" code="107" isbytes="1"/> 
+	<type name="DATA8_Type"          	 class="string" code="108" isbytes="1"/> 
+	<type name="DATA9_Type"          	 class="string" code="109" isbytes="1"/> 
+	
+	<type name="failReason_Type" 	     class="string" code="1000"/> 
+	
+    <type name="requestUri_type" class="string" code="11"/>
+    <type name="filename_type" class="string" code="12"/>
+    <type name="expire_type" class="string" code="15"/>
+
+	<message name="saveMedia" id="100">
+		<requestParameter>
+			<field name="appId" 			type="appId_Type"       />
+			<field name="messageType" 		type="messageType_Type" />	
+			<field name="message0" 			type="DATA0_Type" />
+			<field name="message1" 			type="DATA1_Type" />	
+			<field name="message2" 			type="DATA2_Type" />	
+			<field name="message3" 			type="DATA3_Type" />	
+			<field name="message4" 			type="DATA4_Type" />
+			<field name="message5" 			type="DATA5_Type" />	
+			<field name="message6" 			type="DATA6_Type" />	
+			<field name="message7" 			type="DATA7_Type" />	
+			<field name="message8" 			type="DATA8_Type" />	
+			<field name="message9" 			type="DATA9_Type" />				
+		</requestParameter>
+		<responseParameter>
+			<field name="mediaId" 	   	    type="mediaId_Type"  />	
+			<field name="failReason" 	    type="failReason_Type"  />						
+			</responseParameter>
+    </message>
+	
+	<message name="getMedia" id="101">
+		<requestParameter>
+			<field name="appId" 			type="appId_Type"       />
+			<field name="mediaId" 	        type="mediaId_Type"   />		
+		</requestParameter>
+		
+		<responseParameter>
+			<field name="message0" 			type="DATA0_Type" />
+			<field name="message1" 			type="DATA1_Type" />	
+			<field name="message2" 			type="DATA2_Type" />	
+			<field name="message3" 			type="DATA3_Type" />	
+			<field name="message4" 			type="DATA4_Type" />
+			<field name="message5" 			type="DATA5_Type" />	
+			<field name="message6" 			type="DATA6_Type" />	
+			<field name="message7" 			type="DATA7_Type" />	
+			<field name="message8" 			type="DATA8_Type" />	
+			<field name="message9" 			type="DATA9_Type" />
+			<field name="failReason" 	    type="failReason_Type"  />	
+		</responseParameter>
+    </message>
+	
+	<message name="getThumbNail" id="102">
+		<requestParameter>
+			<field name="appId" 			type="appId_Type"       />
+			<field name="mediaId" 	        type="mediaId_Type"   />		
+		</requestParameter>
+		
+		<responseParameter>
+			<field name="message0" 			type="DATA0_Type" />
+			<field name="message1" 			type="DATA1_Type" />	
+			<field name="message2" 			type="DATA2_Type" />	
+			<field name="message3" 			type="DATA3_Type" />	
+			<field name="message4" 			type="DATA4_Type" />
+			<field name="message5" 			type="DATA5_Type" />	
+			<field name="message6" 			type="DATA6_Type" />	
+			<field name="message7" 			type="DATA7_Type" />	
+			<field name="message8" 			type="DATA8_Type" />	
+			<field name="message9" 			type="DATA9_Type" />
+			<field name="failReason" 	    type="failReason_Type"  />	
+		</responseParameter>
+    </message>
+	
+    <message name="head" id="103">
+		<requestParameter>
+            <field name="requestUri" type="requestUri_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="filename" type="filename_type"/>
+			<field name="expire" type="expire_type"/>
+		</responseParameter>
+	</message>
+
+</service>
+

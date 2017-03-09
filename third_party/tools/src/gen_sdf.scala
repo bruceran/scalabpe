@@ -15,6 +15,8 @@ import Tools._
     手工编写xml格式的服务描述文件比较麻烦; 通过此辅助工具可以在xml和等价的txt文件之间互相转换;
 */
 
+// todo 合并field里的desc和type里相同的desc, 不相同的保留
+
 object GenSdfTool {
 
     val r2 = """ ([^ :]+):""".r

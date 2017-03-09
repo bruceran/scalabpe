@@ -2,6 +2,7 @@ package jvmdbbroker.plugin.http
 
 import org.jboss.netty.handler.codec.http._;
 import jvmdbbroker.core._
+import scala.collection.mutable.HashMap
 
 trait HttpServerPlugin {}
 
@@ -19,6 +20,10 @@ trait HttpServerPreOutputPlugin {
 
 trait HttpServerOutputPlugin {
     def generateContent(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String):String
+}
+
+trait HttpServerRawOutputPlugin {
+    def generateRawContent(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String,headers:HashMap[String,String]):Array[Byte]
 }
 
 trait HttpServerVerifyPlugin {

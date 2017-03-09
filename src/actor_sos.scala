@@ -810,20 +810,20 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
     def decode(bb:ByteBuffer,connId:String):AvenueData = {
         var data : AvenueData = null
         if( isEncrypted ) {
-            val key = aesKeyMap.get(connId)
-            try {
-                data = converter.decode(bb,key)
-            } catch {
-                case e:CodecException =>
-                    log.error("decode error,service=%d,msgId=%d".format(data.serviceId,data.msgId))
-                    throw e
-            }
+                val key = aesKeyMap.get(connId)
+                try {
+                    data = converter.decode(bb,key)
+                } catch {
+                    case e:CodecException =>
+                        log.error("decode error,service=%d,msgId=%d".format(data.serviceId,data.msgId))
+                        throw e
+                }
 
-            val serviceIdMsgId = data.serviceId + ":" + data.msgId
-            if( key == null && serviceIdMsgId != shakeHandsServiceIdMsgId ) {
-                log.error("decode error, not shakehanded,service=%d,msgId=%d".format(data.serviceId,data.msgId))
-                throw new RuntimeException("not shakehanded")
-            }
+                val serviceIdMsgId = data.serviceId + ":" + data.msgId
+                if( key == null && serviceIdMsgId != shakeHandsServiceIdMsgId && serviceIdMsgId != "0:0") { // heartbeat
+                    log.error("decode error, not shakehanded,service=%d,msgId=%d".format(data.serviceId,data.msgId))
+                    throw new RuntimeException("not shakehanded")
+                }
             } else {
                 data = converter.decode(bb)
             }

@@ -8,6 +8,7 @@
 
     <!--<InstallMock>testcase/t4.txt</InstallMock>-->
 
+    <!--
     <assign>@user2=testabc</assign>
     <assign>@user=222testabc</assign>
     <DbSosList threadNum="8">
@@ -16,22 +17,25 @@
 			<defaultconn>jdbc:mysql://127.0.0.1:13306/chat?useUnicode=true&amp;characterEncoding=utf8&amp;zeroDateTimeBehavior=convertToNull&amp;autoReconnect=true user=vip password=vip</defaultconn>
         </MasterDb>
     </DbSosList>
-    <!--
     -->
 
 <!-- 以下是常用插件的最简配置示例，更多配置参数参考配置指南 -->
 
 
 <!-- http server 配置 -->
-<!-- 
     <HttpServerCfg port="8088" devMode="1">
 
         <UrlMapping>
             <Item>test/queryUserInfo,999,1</Item>
             <Item>test/updateUserInfo,999,2</Item>
+            <Item plugin="download">downloadtest1,999,3</Item>
+            <Item plugin="download">downloadtest2,999,4</Item>
         </UrlMapping>
-
+        <MimeTypes>
+            <Item>application/vnd.ms-excel xls xlsx</Item>
+        </MimeTypes>
     </HttpServerCfg>
+<!-- 
 -->
 
 <!-- 定时任务配置 -->
@@ -251,13 +255,6 @@
         <Connection>service=bolt://192.168.52.128 user=neo4j password=neo4jadmin</Connection>
     </Neo4jCfg>
 -->
-
-    <StateMachines>
-        <StateMachine id="setpwd">
-            <Transfer state="init_status" event="e2_no_pwd" nextState="ddd" desc="xxxx"/>
-            <Transfer state="init_status" event="e2_no_pwd" nextState="ddd" desc="xxx"/>
-        </StateMachine>
-    </StateMachines>
 
 </parameters>
 

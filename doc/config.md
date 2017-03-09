@@ -1019,6 +1019,7 @@
           <ConnectTimeout>3</ConnectTimeout>
           <ThreadNum>2</ThreadNum>
           <TimerInterval>100</TimerInterval>
+          <MaxContentLength>1048576</MaxContentLength>
 
           <Service>
 
@@ -1061,6 +1062,7 @@
       TimerInterval 内部定时器的间隔毫秒数，默认为100毫秒，如果需要100毫秒内的超时精度，可调整此值
       TimeOut,ConnectTimeout,ThreadNum,TimerInterval的设置也可以用AhtCfg节点的属性方式设置，
             对应属性：timeOut,connectTimeout,threadNum,timerInterval
+      MaxContentLength aht插件允许的最大返回内容,响应若超过此大小会报错
 
       AHT默认支持的格式：
           请求 application/x-www-form-urlencoded
@@ -1281,13 +1283,20 @@
 
         accessControlAllowOrigin 输出Access-Control-Allow-Origin值控制跨域访问，默认不输出, 此配置为消息级别的全局配置，若未配置，则取全局配置
 
-        plugin="plain|redirect|template|..."
+        plugin="plain|redirect|template|download|..."
         plugin中允许的值为预定义的值或者类名, 预定义的值有：
             1) plain 输出纯文本，从plainText参数中取值，若要调整参数名，可以用plugin="plain:参数名"形式
             2) redirect 输出一段html进行跳转，从redirectUrl参数中取值，若要调整参数名，
                可以用plugin="redirect:参数名"形式
             3) template 根据模板输出内容，必须用plugin="template:模板名"形式来指定模板;
                 模板必须放在 template目录下，不带后缀名
+            3) download 输出二进制内容,可以是文件系统中已存在的文件或动态生成二进制数据, download插件从响应中取以下值进行处理
+                content 二进制内容, Array[Byte] 类型, 服务描述文件需定义为 string 且 isbytes="1"; 此值若未空则从filename中取数据
+                filename  文件名, 可带中文, content非空时此值仅用来表示文件名,不需带路径; 否则需带完整路径
+                attachment 是否输入Content-Disposition头
+                delete 输出完毕后是否删除filename对应的文件
+                expire 文件的过期时间, 0表示不缓存, 单位:秒
+                lastModified 输出 LAST_MODIFIED, 为0表示当前时间,否则为绝对时间, 从1970年开始的秒数
             4) 类名, 支持以下几种插件
                 trait HttpServerPlugin 标记接口，所有插件必须有此标记
                 trait HttpServerRequestParsePlugin 参数解析插件

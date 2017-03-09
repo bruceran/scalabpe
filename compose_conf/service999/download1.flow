@@ -1,0 +1,14 @@
+//$service999.download1
+
+//#receive
+
+    // 先生成好文件, 然后reply生成好的文件名的完整路径,可以带中文
+    // 注意: delete默认为1, 会删除传入的文件,若不需要可传入"delete"->"0"
+    val filename = "f:/mmm中文nnn.xls"
+
+    reply(0,
+        "filename"->filename,
+        "delete"->0
+        )
+
+

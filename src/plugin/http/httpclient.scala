@@ -141,7 +141,8 @@ class HttpClientImpl(
     val receiver_f: (Any)=>Unit,
     val connectTimeout :Int = 15000,
     val timerInterval :Int = 100,
-    val retryTimes : Int = 1 ) extends HttpClient with HttpClient4Netty with Logging with Dumpable {
+    val retryTimes : Int = 1,
+    val maxContentLength:Int = 1048576) extends HttpClient with HttpClient4Netty with Logging with Dumpable {
 
     var nettyHttpClient : NettyHttpClient = _
     val generator = new AtomicInteger(1)
@@ -175,7 +176,8 @@ class HttpClientImpl(
 
         nettyHttpClient = new NettyHttpClient(this,
             connectTimeout,
-            timerInterval
+            timerInterval,
+            maxContentLength
             )
 
         log.info("httpclient started")

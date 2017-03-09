@@ -38,7 +38,8 @@ object NettyHttpClient {
 class NettyHttpClient(
     val httpClient: HttpClient4Netty,
     val connectTimeout :Int = 15000,
-    val timerInterval :Int = 100 )
+    val timerInterval :Int = 100,
+    val maxContentLength :Int = 1048576 )
 extends Logging with Dumpable {
 
     var factory : NioClientSocketChannelFactory = _
@@ -231,7 +232,7 @@ extends Logging with Dumpable {
         def getPipeline() : ChannelPipeline =  {
             val pipeline = Channels.pipeline();
             pipeline.addLast("decoder", new HttpResponseDecoder());
-            pipeline.addLast("aggregator", new HttpChunkAggregator(1048576));
+            pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
             pipeline.addLast("encoder", new HttpRequestEncoder());
             pipeline.addLast("handler", nettyHttpClientHandler);
             pipeline;
@@ -249,7 +250,7 @@ extends Logging with Dumpable {
             pipeline.addLast("ssl", new SslHandler(engine));
 
             pipeline.addLast("decoder", new HttpResponseDecoder());
-            pipeline.addLast("aggregator", new HttpChunkAggregator(1048576));
+            pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
             pipeline.addLast("encoder", new HttpRequestEncoder());
             pipeline.addLast("handler", nettyHttpClientHandler);
             pipeline;

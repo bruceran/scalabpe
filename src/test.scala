@@ -1144,7 +1144,6 @@ options:
         if( testcases == null ) {
             return
         }
-
         if( global != null && global.remote != "" ) {
             remote = global.remote
             if( remote != "0" && remote.indexOf(":") < 0 ) {
@@ -1442,6 +1441,11 @@ options:
                     return tp
                 }
 
+                val xhead = HashMapStringAny()
+                for( (k,v) <- params if k.startsWith("xhead.") ) {
+                    xhead.put(k.substring(6),v)
+                }
+
                 val requestId = "TEST"+RequestIdGenerator.nextId()
                 val map = HashMapStringAny()
                 res_body = map
@@ -1454,7 +1458,7 @@ options:
                         1,
                         serviceId,
                         msgId,
-                        new HashMapStringAny(),
+                        xhead,
                         newbody,
                         TestActor
                     )
@@ -1494,7 +1498,13 @@ options:
 
                     val requestId = generateSequence().toString
                     req_body.put("$requestId",requestId)
-                    val req = new SocRequest(requestId,999,106,req_body,AvenueCodec.ENCODING_UTF8,HashMapStringAny())
+
+                    val xhead = HashMapStringAny()
+                    for( (k,v) <- params if k.startsWith("xhead.") ) {
+                        xhead.put(k.substring(6),v)
+                    }
+
+                    val req = new SocRequest(requestId,serviceId,msgId,req_body,AvenueCodec.ENCODING_UTF8,xhead)
                     remoteReqRes = null
                     soc.send(req,timeout)
 

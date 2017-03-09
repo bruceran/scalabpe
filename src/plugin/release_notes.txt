@@ -1,8 +1,10 @@
-1.1.14 (20170204)
+1.1.14 (20170306)
 ================
 
 * 删除httpserver插件里原来的url mock支持, 可以改用更好的InstallMock配置属性
 * 在jdk1.8.0+scala2.12.1下编译通过，对代码微调，消除一些警告
+* aht插件增加maxContentLength配置参数，默认为1M
+* httpserver增加HttpServerRawOutputPlugin插件接口; 新增内置的download插件,用于动态内容生成, 如excel
 
 1.1.13 (20170105)
 ================
