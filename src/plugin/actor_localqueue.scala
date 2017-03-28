@@ -35,21 +35,21 @@ extends LocalQueueLike(router,cfgNode) {
         queueTypeName = "localqueue"
         serviceIds = (cfgNode \ "ServiceId").text
 
-        var infos = cfgNode \ "Msg"
-            for (inf <- infos) {
-                var msgId = (inf \ "@msgId").text
-                var s = (inf \ "@retryInterval").toString()
-                var retryIntervalCfg = s.toInt
-                s = (inf \ "@maxSendTimes").toString()
-                var maxSendTimesCfg = s.toInt
-                s = (inf \ "@concurrentNum").toString()
-                var concurrentNum = if( s != "" ) s.toInt else 0
-
-                msgIdCfgMap.put(msgId, new MsgPaCfg(maxSendTimesCfg,retryIntervalCfg,concurrentNum))
-
-            }
-
         super.init
+
+        var infos = cfgNode \ "Msg"
+        for (inf <- infos) {
+            var msgId = (inf \ "@msgId").text
+            var s = (inf \ "@retryInterval").toString()
+            var retryIntervalCfg = if( s != "" ) s.toInt else 0
+            s = (inf \ "@maxSendTimes").toString()
+            var maxSendTimesCfg = if( s != "" ) s.toInt else 0
+            s = (inf \ "@concurrentNum").toString()
+            var concurrentNum = if( s != "" ) s.toInt else 0
+
+            msgIdCfgMap.put(msgId, new MsgPaCfg(maxSendTimesCfg,retryIntervalCfg,concurrentNum))
+
+        }
 
         val serviceIdArray = serviceIds.split(",").map(_.toInt)
         for( serviceId <- serviceIdArray ) {
@@ -389,7 +389,8 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
     def getMaxSendTimes(msgId: Int):Int ={
         val tempvalue = msgIdCfgMap.getOrElse(msgId.toString, null)
         if (tempvalue != null){
-            return tempvalue.maxSendTimes
+            val c = if( tempvalue.maxSendTimes <= 0 ) maxSendTimes else tempvalue.maxSendTimes
+            return c
         }else{
             return maxSendTimes
         }
@@ -398,7 +399,8 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
     def getRetryInterval(msgId: Int):Int ={
         val tempvalue = msgIdCfgMap.getOrElse(msgId.toString, null)
         if (tempvalue != null){
-            return tempvalue.retryInterval
+            val c = if( tempvalue.retryInterval <= 0 ) retryInterval else tempvalue.retryInterval
+            return c
         }else{
             return retryInterval
         }

@@ -1,3 +1,9 @@
+1.1.15 (20170326)
+================
+
+* (0315)ConnLocalQueueCfg按消息配置并发度的时候，concurrentNum maxSendTimes retryInterval 都可以为不配置，不配置则使用默认值
+* (0326)httpclient插件新增HttpPreRequestPlugin接口，在解析要调用的url之前调用
+
 1.1.14 (20170306)
 ================
 

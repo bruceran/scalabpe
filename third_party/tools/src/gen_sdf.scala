@@ -233,6 +233,8 @@ options:
     def repairTxtTypes(lines:Buffer[String],repair:Boolean):ArrayBufferString = {
         val typenames = ArrayBufferString()
         val missedtypes = new LinkedHashMapStringAny()
+        val notusedtypes = new LinkedHashMapStringAny()
+
         for( l <- lines ) {
             if( l.startsWith("type:") ) {
                 val m = parseMap(l)
@@ -244,10 +246,13 @@ options:
                     name = name.substring(0,p)
                 }
                 typenames += name.toLowerCase
+                notusedtypes.put(name.toLowerCase,"0")
                 var array = m.ns("array")
                 if( array != "" ) {
                     val arrayName = nameToArrayName(name,array)
                     typenames += arrayName.toLowerCase
+                    notusedtypes.put(arrayName.toLowerCase,"0")
+                    notusedtypes.remove(name.toLowerCase)
                 }
             }
         }
@@ -264,6 +269,7 @@ options:
                     if( desc == "" && desc2 != "" ) desc = desc2
                     missedtypes.put(tp,desc)
                 }
+                notusedtypes.put(tp.toLowerCase,"1")
             }
 
             if( l.startsWith("req:") ) {
@@ -275,6 +281,14 @@ options:
             if( l.startsWith("res_end:") ) {
                 context = ""
             }
+        }
+
+        if( true ) {
+            println("--- not used types ---")
+            for( (k,v) <- notusedtypes if v == "0" ) {
+                    println(k)
+            }
+            println("--- not used types end ---")
         }
 
         if(!repair) { 
@@ -667,6 +681,8 @@ options:
         var context = ""
         var comment_indent = indent
         val arrayMap = parseXmlArray(lines)
+        var lastCode = "0"
+        var lastMessageId = "0"
         for( l <- lines ) {
 
                     l match {
@@ -725,8 +741,11 @@ options:
                                 var s = indent+"type:"+name
                                 if( cls != "string" ) s += "#"+cls 
                                 s = StringUtils.rightPad(s,40,' ')
-                                if(!resetFlag)
-                                    s += indent+"code:"+code
+                                if(!resetFlag) {
+                                    if( code.toInt != lastCode.toInt + 1 )
+                                        s += indent+"code:"+code
+                                }
+                                lastCode = code
                                 val arrayName = arrayMap.ns(name.toLowerCase)
                                 if( arrayName != "" ) 
                                     s += indent + "array:"+arrayName
@@ -780,8 +799,11 @@ options:
                                 attrs.remove("desc")
 
                                 var s = indent+"message:"+name
-                                if(!resetFlag)
-                                    s += indent+"id:"+id
+                                if(!resetFlag) {
+                                    if( id.toInt != lastMessageId.toInt + 1 )
+                                        s += indent+"id:"+id
+                                }
+                                lastMessageId = id
                                 for( (k,v) <- attrs ) s += indent+k+":"+escape0(v.toString)
                                 if( desc != null ) 
                                     s += indent + "desc:"+desc

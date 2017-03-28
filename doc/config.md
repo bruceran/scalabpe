@@ -682,7 +682,7 @@
 
     <ConnLocalQueueCfg concurrentNum="20" receiverServiceId="879" maxSendTimes="5" retryInterval="30000">
         <ServiceId>878,...</ServiceId>
-        <Msg msgId="1" maxSendTimes="5" retryInterval="5000"/>
+        <Msg msgId="1" concurrentNum="1" maxSendTimes="5" retryInterval="5000"/>
         ...
     </ConnLocalQueueCfg>
 

@@ -5,6 +5,11 @@ import jvmdbbroker.core._
 // http plugin tag interface
 trait HttpPlugin {}
 
+// adjust request body
+trait HttpPreRequestPlugin {
+    def adjustRequestBody(msg:HttpMsgDefine,body:HashMapStringAny):Unit
+}
+
 // generate request string from body, including signature
 trait HttpRequestPlugin {
     def generateRequestBody(msg:HttpMsgDefine,body:HashMapStringAny):String

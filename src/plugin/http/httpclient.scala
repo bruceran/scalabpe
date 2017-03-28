@@ -875,6 +875,11 @@ class HttpClientImpl(
             return
         }
 
+        if( msg.pluginObj != null && msg.pluginObj.isInstanceOf[HttpPreRequestPlugin] ) {
+            val reqPlugin = msg.pluginObj.asInstanceOf[HttpPreRequestPlugin]
+            reqPlugin.adjustRequestBody(msg,req.body)
+        }
+
         val (ssl,host,path) = generateHostPath(msg,req.body)
         if( host == "" || path == "") {
             val res = createErrorResponse(ResultCodes.TLV_ENCODE_ERROR,req)
@@ -896,6 +901,11 @@ class HttpClientImpl(
             val res = createErrorResponse(ResultCodes.TLV_ENCODE_ERROR,req)
             receiver_f(new SocRequestResponseInfo(req,res))
             return
+        }
+
+        if( msg.pluginObj != null && msg.pluginObj.isInstanceOf[HttpPreRequestPlugin] ) {
+            val reqPlugin = msg.pluginObj.asInstanceOf[HttpPreRequestPlugin]
+            reqPlugin.adjustRequestBody(msg,req.body)
         }
 
         val (ssl,host,path) = generateHostPath(msg,req.body)

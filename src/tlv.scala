@@ -418,6 +418,11 @@ class TlvCodec(val configFile:String) extends Logging {
                 throw new CodecException("class not valid, class=%s".format( (t \ "@class").toString))
             val code =  if( cls != TlvCodec.CLS_ARRAY )  (t \ "@code").toString.toInt else 0
 
+            val metadatas = t.attributes.filter(  _.key != "code").filter( _.key != "name").filter( _.key != "class").filter( _.key != "isbytes")
+            for( m <- metadatas ) {
+                codecAttributes.put("type-"+name+"-"+m.key,m.value.text)
+            }
+
             val fieldInfo = getTlvFieldInfo(t)
 
             cls match {
@@ -494,6 +499,10 @@ class TlvCodec(val configFile:String) extends Logging {
                             codecAttributes.put("classex-"+name,"some")
                         }
 
+                        val itemmetadatas = f.attributes.filter(  _.key != "name").filter( _.key != "type").filter( _.key != "len")
+                        for( m <- itemmetadatas ) {
+                            codecAttributes.put("type-"+name+"-"+fieldName+"-"+m.key,m.value.text)
+                        }
                     }
 
                     var lenOk = true
