@@ -20,6 +20,16 @@ object Main extends Logging with SignalHandler {
         mainThread.interrupt()
     }
 
+    def initProfile(rootDir:String) {
+        val profile = System.getProperty("scalabpe.profile")
+        if( profile != null && profile != "") {
+           val filename = "config_"+profile+".xml"
+           if( new File(rootDir+File.separator+filename).exists )
+               Router.configXml = filename
+        }
+        log.info("use config file="+Router.configXml)
+    }
+
     def main(args:Array[String]) {
 
         System.setProperty("org.terracotta.quartz.skipUpdateCheck","true");
@@ -35,7 +45,9 @@ object Main extends Logging with SignalHandler {
 
         val t1 = System.currentTimeMillis
 
-        val in = new InputStreamReader(new FileInputStream(rootDir+File.separator+"config.xml"),"UTF-8")
+        initProfile(rootDir)
+
+        val in = new InputStreamReader(new FileInputStream(rootDir+File.separator+Router.configXml),"UTF-8")
         val cfgXml = XML.load(in)
         in.close()
 

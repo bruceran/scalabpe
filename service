@@ -1,5 +1,11 @@
 
 mem=1024M
+newsize=256M
+if [ "$SCALABPE_PROFILE" = "dev" -o "$SCALABPE_PROFILE" = "devtest" -o "$SCALABPE_PROFILE" = "test" ]; then
+    mem=256M
+    newsize=64M
+fi
+
 pidfile="scalabpe.pid"
 cd `dirname $0`
 pid=`cat $pidfile 2>/dev/null`
@@ -52,7 +58,7 @@ start_app()
 
 		echo -n "starting scalabpe"
 
-		java -Dapplication.name=$APPLICATION_NAME -server -Xms$mem -Xmx$mem -XX:+UseConcMarkSweepGC -XX:NewSize=256m -XX:MaxNewSize=256m -cp "$CLASSPATH" jvmdbbroker.core.Main 1>$consolelog 2>&1 &
+		java -Dscalabpe.profile=$SCALABPE_PROFILE -Dapplication.name=$APPLICATION_NAME -server -Xms$mem -Xmx$mem -XX:+UseConcMarkSweepGC -XX:NewSize=$newsize -XX:MaxNewSize=$newsize -cp "$CLASSPATH" jvmdbbroker.core.Main 1>$consolelog 2>&1 &
 		parentpid=$!
 		echo -n " ."
 
@@ -165,7 +171,7 @@ case "$1" in
 		echo "scalabpe compile timestamp file removed"
 		;;
 	runtest)
-		java -Dapplication.name=${APPLICATION_NAME} -Dfile.encoding=UTF-8 -cp "$CLASSPATH" jvmdbbroker.core.TestCaseRunner $2 $3 $4 $5 $6 $7
+		java -Dscalabpe.profile=$SCALABPE_PROFILE -Dapplication.name=${APPLICATION_NAME} -Dfile.encoding=UTF-8 -cp "$CLASSPATH" jvmdbbroker.core.TestCaseRunner $2 $3 $4 $5 $6 $7
 		;;
 	runscala)
 		env JAVA_OPTS="-Dfile.encoding=UTF-8"  scala -cp "classes:temp/classes:lib/*:."

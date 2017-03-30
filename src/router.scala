@@ -16,6 +16,7 @@ import scala.reflect.runtime.universe
 
 object Router {
     val DO_NOT_REPLY:String = ""
+    var configXml = "config.xml"
     var main:Router = null
 }
 
@@ -211,7 +212,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
     def loadParameterFile():HashMapStringString = {
 
         val pmap = HashMapStringString()
-        val configfile = "config.xml"
+        val configfile = Router.configXml
         if( new File(rootDir+"/"+configfile).exists() ) {
             val in = new InputStreamReader(new FileInputStream(rootDir+"/"+configfile),"UTF-8")
             val pxml = XML.load(in)
@@ -232,7 +233,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
         val pluginMap = readPluginsByType("inithook")
         if( pluginMap.size > 0 ) {
 
-            val in = new InputStreamReader(new FileInputStream(rootDir+"/config.xml"),"UTF-8")
+            val in = new InputStreamReader(new FileInputStream(rootDir+"/"+configfile),"UTF-8")
             val tXml = XML.load(in)
             in.close()
 
