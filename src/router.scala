@@ -17,6 +17,8 @@ import scala.reflect.runtime.universe
 object Router {
     val DO_NOT_REPLY:String = ""
     var configXml = "config.xml"
+    var dataDir = ""
+    var tempDir = ""
     var main:Router = null
 }
 
@@ -274,7 +276,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
     def prepareConfigFile():String = {
 
-        val lines = FileUtils.readLines(new File(rootDir+"/config.xml"),"UTF-8").asInstanceOf[java.util.List[String]]
+        val lines = FileUtils.readLines(new File(rootDir+"/"+Router.configXml),"UTF-8").asInstanceOf[java.util.List[String]]
 
         val pmap = loadParameterFile()
         cfgParameters = pmap
@@ -337,6 +339,11 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
             val value = p.text.toString
             parameters.put(key,value)
         }
+
+        val appName = System.getProperty("application.name")
+        Router.dataDir = rootDir+File.separator+"data"
+        val dataDirRoot = (cfgXml \ "DataDirRoot" ).text
+        if( dataDirRoot != "" ) Router.dataDir = dataDirRoot+File.separator+appName
 
         var s = getConfig("globalCls","")
         if( s != "" ) globalCls = s

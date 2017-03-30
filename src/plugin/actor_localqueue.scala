@@ -96,7 +96,7 @@ extends LocalQueueLike(router,cfgNode) {
 
         localDir = (cfgNode \ "LocalDir").text
         if( localDir == "" ) {
-            localDir = "data" + File.separator + queueTypeName
+            localDir = Router.dataDir + File.separator + queueTypeName
         }
 
         if( LocalQueueActor.localDirs.contains(localDir) ) {

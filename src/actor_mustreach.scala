@@ -58,7 +58,6 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
     val mustReachMsgMap = new HashMap[String,MustReachRetryConfig]()   // serviceId:msgId
 
     val queueTypeName = "mustreach"
-    val localDir = "data" + File.separator + queueTypeName
 
     var persistQueueManager : PersistQueueManagerImpl = _
 
@@ -139,7 +138,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
 
         }
 
-        val dataDir = router.rootDir + File.separator + localDir
+        val dataDir = Router.dataDir + File.separator + queueTypeName
         new File(dataDir).mkdirs()
         persistQueueManager = new PersistQueueManagerImpl()
         persistQueueManager.setDataDir(dataDir)

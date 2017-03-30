@@ -269,7 +269,7 @@ object CryptHelper {
 object LocalStorage {
 
     def save(key:String,value:String) {
-        val dir = Router.main.rootDir+File.separator+"data"+File.separator+"localstorage"
+        val dir = Router.dataDir+File.separator+"localstorage"
         val fdir = new File(dir)
         if( !fdir.exists() ) fdir.mkdirs()
         val filename = dir+File.separator+key
@@ -294,7 +294,7 @@ object LocalStorage {
     }
 
     def loadString(key:String):String = {
-        val filename = Router.main.rootDir+File.separator+"data"+File.separator+"localstorage"+File.separator+key
+        val filename = Router.dataDir+File.separator+"localstorage"+File.separator+key
         val f = new File(filename)
         if( !f.exists() ) return ""
         val s = FileUtils.readFileToString(f,"UTF-8")

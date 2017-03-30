@@ -51,6 +51,11 @@ object Main extends Logging with SignalHandler {
         val cfgXml = XML.load(in)
         in.close()
 
+        Router.tempDir = rootDir+File.separator+"temp"
+        val appName = System.getProperty("application.name")
+        val tempDirRoot = System.getProperty("scalabpe.tempdirroot")
+        if( tempDirRoot != "" ) Router.tempDir = tempDirRoot+File.separator+appName
+
         val t = System.getenv("runninginide")
         if( t != null && t == "yes" ) {
             log.info("running in ide, skip compiling")

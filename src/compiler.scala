@@ -9,8 +9,8 @@ import scala.collection.mutable.{LinkedHashMap,HashSet,ArrayBuffer}
 class FlowCompiler(val rootDir:String) extends Logging {
 
     val composeDir = rootDir+File.separator+"compose_conf"
-    val tempDir = rootDir+File.separator+"temp"
     val libDir = rootDir+File.separator+"lib"
+    val tempDir = Router.tempDir
 
     val flowTsFile = tempDir+File.separator+"flowts"
     val scalaTsFile = tempDir+File.separator+"scalats"

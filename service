@@ -10,6 +10,10 @@ pidfile="scalabpe.pid"
 cd `dirname $0`
 pid=`cat $pidfile 2>/dev/null`
 APPLICATION_NAME=`pwd | sed 's,^\(.*/\)\?\([^/]*\),\2,'`
+tempdir=temp
+if [ "$SCALABPE_TEMPDIRROOT" != "" ]; then
+    tempdir=$SCALABPE_TEMPDIRROOT/$APPLICATION_NAME
+fi
 
 consolelog="/opt/logs/$APPLICATION_NAME/log/console.log"
 mkdir -p /opt/logs/$APPLICATION_NAME/log/
@@ -25,7 +29,7 @@ chmod +x ./lib/linux-jdk32/*
 fi
 
 CLASSPATH=`find lib -type d ! -name linux-jdk* | sed -e 's/$/\/*'/ | tr '\n' ':'`
-CLASSPATH=${CLASSPATH}temp/classes:.
+CLASSPATH=${CLASSPATH}$tempdir/classes:.
 
 check_running()
 {
@@ -54,11 +58,11 @@ start_app()
 
 		rm -f $pidfile
 		rm -f $consolelog
-		mkdir -p temp/classes
+		mkdir -p $tempdir/classes
 
 		echo -n "starting scalabpe"
 
-		java -Dscalabpe.profile=$SCALABPE_PROFILE -Dapplication.name=$APPLICATION_NAME -server -Xms$mem -Xmx$mem -XX:+UseConcMarkSweepGC -XX:NewSize=$newsize -XX:MaxNewSize=$newsize -cp "$CLASSPATH" jvmdbbroker.core.Main 1>$consolelog 2>&1 &
+		java -Dapplication.name=$APPLICATION_NAME -Dscalabpe.profile=$SCALABPE_PROFILE -Dscalabpe.tempdirroot=$SCALABPE_TEMPDIRROOT -server -Xms$mem -Xmx$mem -XX:+UseConcMarkSweepGC -XX:NewSize=$newsize -XX:MaxNewSize=$newsize -cp "$CLASSPATH" jvmdbbroker.core.Main 1>$consolelog 2>&1 &
 		parentpid=$!
 		echo -n " ."
 
@@ -167,14 +171,14 @@ case "$1" in
 		check_status
 		;;
 	forcecompile)
-		rm -f temp/*ts
+		rm -f $tempdir/*ts
 		echo "scalabpe compile timestamp file removed"
 		;;
 	runtest)
-		java -Dscalabpe.profile=$SCALABPE_PROFILE -Dapplication.name=${APPLICATION_NAME} -Dfile.encoding=UTF-8 -cp "$CLASSPATH" jvmdbbroker.core.TestCaseRunner $2 $3 $4 $5 $6 $7
+		java -Dapplication.name=${APPLICATION_NAME} -Dscalabpe.profile=$SCALABPE_PROFILE -Dscalabpe.tempdirroot=$SCALABPE_TEMPDIRROOT -Dfile.encoding=UTF-8 -cp "$CLASSPATH" jvmdbbroker.core.TestCaseRunner $2 $3 $4 $5 $6 $7
 		;;
 	runscala)
-		env JAVA_OPTS="-Dfile.encoding=UTF-8"  scala -cp "classes:temp/classes:lib/*:."
+		env JAVA_OPTS="-Dfile.encoding=UTF-8"  scala -cp "classes:$tempdir/classes:lib/*:."
 		;;
 	help)
 		show_help
