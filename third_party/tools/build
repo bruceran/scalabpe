@@ -31,7 +31,7 @@ case "$1" in
 		if [ ! -d classes ] ; then mkdir classes; fi;
 		env JAVA_OPTS="-Dfile.encoding=UTF-8" scalac -deprecation -encoding UTF8 -cp "../../lib/*:lib/*:."  -d "./classes"  src/*.scala
 		cp -f src/release_notes.txt ./classes/
-		jar cf ./lib/scalabpe-$pluginname-$pluginversion.jar -C ./classes/ ./release_notes.txt
+		jar cf ./lib/scalabpe-$pluginname-$pluginversion.jar -C ./classes/ ./scalabpe -C ./classes/ ./release_notes.txt 
 		;;
 esac
 	
