@@ -129,7 +129,7 @@ class LocalCache(
     val router: Router,
     val owner: LocalCacheActor ) extends DbLike with CacheLike with Dumpable {
 
-    val runDir = router.rootDir
+    var runDir = router.rootDir
 
     val sqlMap = HashMap[Int,String]() // serviceId -> sql
     val cache = new ConcurrentHashMap[Int, HashMapStringAny ]()
@@ -155,6 +155,10 @@ class LocalCache(
     }
 
     def init() {
+
+        if( connString != "" ) {
+            runDir = Router.dataDir
+        }
 
         initCacheTlv(serviceIds,router.codecs)
 

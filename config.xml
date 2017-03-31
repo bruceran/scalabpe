@@ -5,6 +5,7 @@
 
     <SapPort>6210</SapPort>
     <CohPort>7210</CohPort>
+    <DataDirRoot>/opt/data</DataDirRoot>
 
     <!--<InstallMock>testcase/t4.txt</InstallMock>-->
 

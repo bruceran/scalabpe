@@ -54,7 +54,7 @@ object Main extends Logging with SignalHandler {
         Router.tempDir = rootDir+File.separator+"temp"
         val appName = System.getProperty("application.name")
         val tempDirRoot = System.getProperty("scalabpe.tempdirroot")
-        if( tempDirRoot != "" ) Router.tempDir = tempDirRoot+File.separator+appName
+        if( tempDirRoot != null && tempDirRoot != "" ) Router.tempDir = tempDirRoot+File.separator+appName
 
         val t = System.getenv("runninginide")
         if( t != null && t == "yes" ) {

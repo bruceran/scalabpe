@@ -1,7 +1,7 @@
 
 mem=1024M
 newsize=256M
-if [ "$SCALABPE_PROFILE" = "dev" -o "$SCALABPE_PROFILE" = "devtest" -o "$SCALABPE_PROFILE" = "test" ]; then
+if [ "$SCALABPE_PROFILE" != "prd" -a "$SCALABPE_PROFILE" != "vrf"  ]; then
     mem=256M
     newsize=64M
 fi
