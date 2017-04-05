@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.io.{File,PrintWriter}
 import scala.tools.nsc.{Global, Settings}
@@ -123,7 +123,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
 
         val t1 = System.currentTimeMillis
 
-        val classesDir = tempDir+File.separator+"classes"+File.separator+"jvmdbbroker"+File.separator+"flow"
+        val classesDir = tempDir+File.separator+"classes"+File.separator+"scalabpe"+File.separator+"flow"
         val srcDir = tempDir+File.separator+"src"
         val classesFile = new File(classesDir)
         classesFile.mkdirs()
@@ -210,7 +210,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
         true
     }
 
-    val package_template = "package jvmdbbroker.flow;import jvmdbbroker.core._;"
+    val package_template = "package scalabpe.flow;import scalabpe.core._;"
     val class_template = "class Flow_%s extends %s { def receive() {"
     val class2_template = "class Flow_%s extends %s { "
 
@@ -269,7 +269,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
         if( s.startsWith(tag_with) && s.endsWith(")")) {
             val t = s.substring(5,s.length-1)
             if( t.indexOf(".") >= 0 ) return t
-            else return "jvmdbbroker.flow."+t
+            else return "scalabpe.flow."+t
         }
         flow_class
     }

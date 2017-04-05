@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.cache
+package scalabpe.plugin.cache
 
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -17,7 +17,7 @@ import org.jboss.netty.channel.socket.nio._;
 import org.jboss.netty.handler.codec.frame.FrameDecoder;
 import org.jboss.netty.handler.timeout.IdleStateHandler;
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object RedisNettyClient {
     val count = new AtomicInteger(1)
@@ -184,14 +184,14 @@ class RedisNettyClient(
         while( i < addrs.size ) {
             if( channels(i) == null ) {
                 val msg = "sos ["+addrs(i)+"] has error"
-                buff += new SelfCheckResult("JVMDBBRK.REDIS",errorId,true,msg)
+                buff += new SelfCheckResult("SCALABPE.REDIS",errorId,true,msg)
             }
 
             i += 1
         }
 
         if( buff.size == 0 ) {
-            buff += new SelfCheckResult("JVMDBBRK.REDIS",errorId)
+            buff += new SelfCheckResult("SCALABPE.REDIS",errorId)
         }
 
         buff

@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicInteger
@@ -19,7 +19,7 @@ import org.jboss.netty.util._;
 
 import com.fasterxml.jackson.core.JsonFactory
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object SelfCheckServer {
     val count = new AtomicInteger(1)

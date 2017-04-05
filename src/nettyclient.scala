@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -302,14 +302,14 @@ class NettyClient(
         while( i < addrs.size ) {
             if( channels(i) == null ) {
                 val msg = "sos ["+addrs(i)+"] has error"
-                buff += new SelfCheckResult("JVMDBBRK.SOS",errorId,true,msg)
+                buff += new SelfCheckResult("SCALABPE.SOS",errorId,true,msg)
             }
 
             i += 1
         }
 
         if( buff.size == 0 ) {
-            buff += new SelfCheckResult("JVMDBBRK.SOS",errorId)
+            buff += new SelfCheckResult("SCALABPE.SOS",errorId)
         }
 
         buff

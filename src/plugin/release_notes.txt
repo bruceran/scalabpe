@@ -302,4 +302,4 @@
 * AHT插件
 * 支持事务的同步DB插件
 * 本地持久化队列插件
-* 参考jvmdbbroker.plugins.conf
+* 参考scalabpe.plugins.conf

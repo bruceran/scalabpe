@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.io._
 import sun.misc.Signal;

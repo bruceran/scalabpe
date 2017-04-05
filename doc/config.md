@@ -876,7 +876,7 @@
             conns="4" 
             splitTableType="custom" 
             tbfactor="6" 
-            splitTableCustomCls="jvmdbbroker.flow.SampleDbPlugin">
+            splitTableCustomCls="scalabpe.flow.SampleDbPlugin">
               <DefaultConn>service=jdbcstring user=riskcontrol password=riskcontrol</DefaultConn>
           </MasterDb>
         </DbSosList>
@@ -902,7 +902,7 @@
 
         <DbSosList>
           <ServiceId>45601,...</ServiceId>
-          <MasterDb conns="4" splitDbType="custom" dbfactor="3" splitDbCustomCls="jvmdbbroker.flow.SampleDbPlugin">
+          <MasterDb conns="4" splitDbType="custom" dbfactor="3" splitDbCustomCls="scalabpe.flow.SampleDbPlugin">
               <DivideConns>
                 <Conn>service=jdbcstring user=riskcontrol password=riskcontrol</Conn>
                 <Conn>service=jdbcstring user=riskcontrol password=riskcontrol</Conn>
@@ -1735,18 +1735,18 @@
 
         #include "jni.h"
 
-        #ifndef _Included_jvmdbbroker_plugins
-        #define _Included_jvmdbbroker_plugins
+        #ifndef _Included_scalabpe_plugins
+        #define _Included_scalabpe_plugins
 
         #ifdef __cplusplus
         extern "C" {
         #endif
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDes(JNIEnv *env, jobject obj, jstring jstr);
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptDes(JNIEnv *env, jobject obj, jstring jstr);
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDesX(JNIEnv *env, jobject obj, jstring jstr);
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptDesX(JNIEnv *env, jobject obj, jstring jstr);
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptRsa(JNIEnv *env, jobject obj, jstring jstr);
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptRsa(JNIEnv *env, jobject obj, jstring jstr);
 
         #ifdef __cplusplus
         }
@@ -1800,21 +1800,21 @@
             return (jstring)env->NewObject(strClass, ctorID, bytes, encoding);
         }
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDes
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptDes
           (JNIEnv *env, jobject obj, jstring jstr) {
             string s  = jstring2string(env,jstr);
             string ns = decrypt_des(s);
             return string2jstring(env,ns);
         }
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDesX
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptDesX
           (JNIEnv *env, jobject obj, jstring jstr) {
             string s  = jstring2string(env,jstr);
             string ns = decrypt_desx(s);
             return string2jstring(env,ns);
         }
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptRsa
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptRsa
           (JNIEnv *env, jobject obj, jstring jstr) {
             string s  = jstring2string(env,jstr);
             string ns = decrypt_rsa(s);

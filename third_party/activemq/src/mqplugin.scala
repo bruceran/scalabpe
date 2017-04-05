@@ -1,6 +1,6 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 // selialize body to string
 trait MqSelialize {

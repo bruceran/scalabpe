@@ -1,5 +1,5 @@
-package jvmdbbroker.core
-import jvmdbbroker.core._
+package scalabpe.core
+import scalabpe.core._
 import com.fasterxml.jackson.core.JsonFactory
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.node._

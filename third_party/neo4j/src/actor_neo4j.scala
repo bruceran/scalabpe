@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.neo4j
+package scalabpe.plugin.neo4j
 
 import java.util.concurrent._
 import scala.collection.mutable.{HashMap,ArrayBuffer,HashSet}
@@ -6,7 +6,7 @@ import scala.xml._
 
 import org.neo4j.driver.v1._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class DbConfig ( val connNum: Int, val connStr: String) {
 
@@ -371,7 +371,7 @@ class DbClient(
     val dbActor: BaseDbActor,
     val dbMode: Int) extends DbLike  with Dumpable {
 
-    import jvmdbbroker.plugin.neo4j.DbClient._
+    import scalabpe.plugin.neo4j.DbClient._
 
     mode = dbMode
 
@@ -861,11 +861,11 @@ class DbClient(
 
         if( hasError(driver) ) {
             val msg = "neo4j db has error"
-            buff += new SelfCheckResult("JVMDBBRK.DB",errorId,true,msg)
+            buff += new SelfCheckResult("SCALABPE.DB",errorId,true,msg)
         }
 
         if( buff.size == 0 ) {
-            buff += new SelfCheckResult("JVMDBBRK.DB",errorId)
+            buff += new SelfCheckResult("SCALABPE.DB",errorId)
         }
 
         buff

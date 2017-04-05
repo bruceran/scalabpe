@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.io._
 import java.nio.ByteBuffer
@@ -431,7 +431,7 @@ class TlvCodec(val configFile:String) extends Logging {
 
                     val itemType = (t \ "@itemType").toString.toLowerCase
                     val itemConfig = typeNameToCodeMap.getOrElse(itemType,TlvType.UNKNOWN)
-                    if( itemConfig == TlvType.UNKNOWN ) {
+                    if( itemConfig == TlvType.UNKNOWN ) { // todo
                         throw new CodecException("itemType not valid,name=%s,itemType=%s".format(name,itemType ))
                     }
                     val arraycls = TlvCodec.clsToArrayType(itemConfig.cls)

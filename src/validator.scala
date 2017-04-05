@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import org.apache.commons.lang.StringUtils 
 import scala.collection.mutable.{HashMap,HashSet}
@@ -136,12 +136,12 @@ class NumberRangeValidator(val cls:String, val param:String, val returnCode:Int)
                     val i = s.toInt
                     if( i < min || i > max ) 
                         return returnCode
-                    } catch {
-                        case e:Throwable => 
-                            return returnCode
-                    }
-                        case _  => 
-                            return returnCode
+                } catch {
+                    case e:Throwable => 
+                        return returnCode
+                }
+            case _  => 
+                return returnCode
         }
         0
     }

@@ -1,6 +1,6 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 // http plugin tag interface
 trait HttpPlugin {}

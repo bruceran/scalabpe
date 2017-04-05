@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.Properties;
 import java.util.concurrent._
@@ -11,7 +11,7 @@ import javax.mail._;
 import javax.mail.internet._;
 import java.security._  
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class MailActor(val router: Router,val cfgNode: Node) extends Actor with Logging with Closable with Dumpable {
 

@@ -1,7 +1,7 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
 import org.jboss.netty.handler.codec.http._;
-import jvmdbbroker.core._
+import scalabpe.core._
 import scala.collection.mutable.HashMap
 
 trait HttpServerPlugin {}

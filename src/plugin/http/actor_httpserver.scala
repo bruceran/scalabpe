@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
 import java.io._
 import org.apache.commons.io.FileUtils
@@ -18,7 +18,7 @@ import scala.xml._
 import scala.util.matching.Regex
 import java.text.{SimpleDateFormat,ParsePosition}
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object HttpTimeHelper {
 
@@ -442,12 +442,12 @@ image/x-icon ico
                     s = s.substring(0,p)
                 }
 
-                if(s == "plain") s = "jvmdbbroker.plugin.http.PlainTextPlugin"
-                if(s == "redirect") s = "jvmdbbroker.plugin.http.RedirectPlugin"
-                if(s == "download") s = "jvmdbbroker.plugin.http.DownloadPlugin"
-                if(s == "template") s = "jvmdbbroker.plugin.http.TemplatePlugin"
+                if(s == "plain") s = "scalabpe.plugin.http.PlainTextPlugin"
+                if(s == "redirect") s = "scalabpe.plugin.http.RedirectPlugin"
+                if(s == "download") s = "scalabpe.plugin.http.DownloadPlugin"
+                if(s == "template") s = "scalabpe.plugin.http.TemplatePlugin"
 
-                if( s.indexOf(".") < 0 ) s = "jvmdbbroker.flow."+s
+                if( s.indexOf(".") < 0 ) s = "scalabpe.flow."+s
 
                 msgAttrs.put(serviceId+"-"+msgId+"-plugin",s)
                 if( pluginParam != "")

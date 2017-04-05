@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -22,7 +22,7 @@ import javax.net.ssl._
 import java.security._
 import java.security.cert._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 // used by netty
 trait HttpClient4Netty {

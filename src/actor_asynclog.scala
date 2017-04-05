@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent._
 import java.util.concurrent.locks.ReentrantLock;
@@ -80,9 +80,9 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
     val reqStatsLock = new ReentrantLock(false)
     val sosStatsLock = new ReentrantLock(false)
 
-    val reqStatLog = LoggerFactory.getLogger("jvmdbbroker.ReqStatLog")
-    val reqSummaryLog = LoggerFactory.getLogger("jvmdbbroker.ReqSummaryLog")
-    val sosStatLog = LoggerFactory.getLogger("jvmdbbroker.SosStatLog")
+    val reqStatLog = LoggerFactory.getLogger("scalabpe.ReqStatLog")
+    val reqSummaryLog = LoggerFactory.getLogger("scalabpe.ReqSummaryLog")
+    val sosStatLog = LoggerFactory.getLogger("scalabpe.SosStatLog")
 
     val statf_tl = new ThreadLocal[SimpleDateFormat]() {
         override def initialValue() : SimpleDateFormat = {
@@ -581,7 +581,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         val key = serviceId+"."+msgId
         var log = requestLogMap.get(key,null)
         if( log != null ) return log
-        val key2 = "jvmdbbroker.RequestLog."+key
+        val key2 = "scalabpe.RequestLog."+key
         log = LoggerFactory.getLogger(key2)
         requestLogMap.put(key,log)
         log
@@ -591,7 +591,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         val key = serviceId+"."+msgId
         var log = csosLogMap.get(key,null)
         if( log != null ) return log
-        val key2 = "jvmdbbroker.CsosLog."+key
+        val key2 = "scalabpe.CsosLog."+key
         log = LoggerFactory.getLogger(key2)
         csosLogMap.put(key,log)
         log
@@ -600,7 +600,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         val key = serviceId+"."+msgId
         var log = httpRequestLogMap.get(key,null)
         if( log != null ) return log
-        val key2 = "jvmdbbroker.HttpRequestLog."+key
+        val key2 = "scalabpe.HttpRequestLog."+key
         log = LoggerFactory.getLogger(key2)
         httpRequestLogMap.put(key,log)
         log
@@ -609,7 +609,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         val key = "access"
         var log = httpRequestLogMap.get(key,null)
         if( log != null ) return log
-        val key2 = "jvmdbbroker.HttpRequestLog."+key
+        val key2 = "scalabpe.HttpRequestLog."+key
         log = LoggerFactory.getLogger(key2)
         httpRequestLogMap.put(key,log)
         log

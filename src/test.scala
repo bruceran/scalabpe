@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent.atomic.{AtomicBoolean,AtomicInteger}
 import java.io._
@@ -17,7 +17,7 @@ object ValueParser {
 
     var debug = false
 
-    var pluginObjectName = "jvmdbbroker.flow.FlowHelper"
+    var pluginObjectName = "scalabpe.flow.FlowHelper"
     var pluginobj:universe.ModuleMirror = null
 
     val g_context = HashMapStringAny()
@@ -985,7 +985,7 @@ object TestCaseRunner extends Logging {
     def help() {
         println(
 """
-usage: jvmdbbroker.core.TestCaseRunner [options] path_to_testcasefile(txt)
+usage: scalabpe.core.TestCaseRunner [options] path_to_testcasefile(txt)
 options:
     -h|--help             帮助信息
     -a|--all              忽略enabled标志运行所有testcase
@@ -1050,7 +1050,7 @@ options:
     }
 
     def resetGlobal() {
-        ValueParser.pluginObjectName = "jvmdbbroker.flow.FlowHelper"
+        ValueParser.pluginObjectName = "scalabpe.flow.FlowHelper"
         ValueParser.pluginobj = null
         ValueParser.g_context.clear()
 
@@ -1062,7 +1062,7 @@ options:
         lineNoCnt = 0
     }
 
-    // called only by jvmdbbroker.core.main, 在正常启动时安装mock
+    // called only by scalabpe.core.main, 在正常启动时安装mock
     def installMock(f:String) {
         try {
             installMockInternal(f)

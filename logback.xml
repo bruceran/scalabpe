@@ -127,30 +127,30 @@
   </encoder>
 </appender>
 
-<logger name="jvmdbbroker" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
-<logger name="jvmdbbroker.core.Main" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>
-<logger name="jvmdbbroker.core.NettyServer" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>
-<logger name="jvmdbbroker.core.FlowCompiler" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>
-<logger name="jvmdbbroker.core.NettyClient" level="info" additivity="false"><appender-ref ref="SOC" /></logger>
+<logger name="scalabpe" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
+<logger name="scalabpe.core.Main" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>
+<logger name="scalabpe.core.NettyServer" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>
+<logger name="scalabpe.core.FlowCompiler" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>
+<logger name="scalabpe.core.NettyClient" level="info" additivity="false"><appender-ref ref="SOC" /></logger>
 
-<logger name="jvmdbbroker.ReqStatLog" level="info" additivity="false"><appender-ref ref="REQSTATLOG" /></logger>
-<logger name="jvmdbbroker.ReqSummaryLog" level="info" additivity="false"><appender-ref ref="REQSUMMARYLOG" /></logger>
-<logger name="jvmdbbroker.SosStatLog" level="info" additivity="false"><appender-ref ref="SOSSTATLOG" /></logger>
+<logger name="scalabpe.ReqStatLog" level="info" additivity="false"><appender-ref ref="REQSTATLOG" /></logger>
+<logger name="scalabpe.ReqSummaryLog" level="info" additivity="false"><appender-ref ref="REQSUMMARYLOG" /></logger>
+<logger name="scalabpe.SosStatLog" level="info" additivity="false"><appender-ref ref="SOSSTATLOG" /></logger>
 
-<logger name="jvmdbbroker.RequestLog" level="info" additivity="false"><appender-ref ref="REQUESTLOG" /></logger>
-<logger name="jvmdbbroker.CsosLog" level="info" additivity="false"><appender-ref ref="CSOSLOG" /></logger>
+<logger name="scalabpe.RequestLog" level="info" additivity="false"><appender-ref ref="REQUESTLOG" /></logger>
+<logger name="scalabpe.CsosLog" level="info" additivity="false"><appender-ref ref="CSOSLOG" /></logger>
 
-<logger name="jvmdbbroker.HttpRequestLog" level="info" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
-<logger name="jvmdbbroker.HttpRequestLog.access" level="info" additivity="false"><appender-ref ref="HTTPACCESSLOG" /></logger>
+<logger name="scalabpe.HttpRequestLog" level="info" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
+<logger name="scalabpe.HttpRequestLog.access" level="info" additivity="false"><appender-ref ref="HTTPACCESSLOG" /></logger>
 
 <!--
-<logger name="jvmdbbroker.plugin.http.HttpClientImpl" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
-<logger name="jvmdbbroker.plugin.http.HttpServerActor" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
-<logger name="jvmdbbroker.plugin.DbClient" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
-<logger name="jvmdbbroker.plugin.MemCacheClient" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
-<logger name="jvmdbbroker.plugin.RedisClient" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
-<logger name="jvmdbbroker.plugin.TlvCodec4Xhead" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
-<logger name="jvmdbbroker.plugin.ErrorCodeUtils" level="debug" additivity="false"><appender-ref ref="ALL" /></logger>
+<logger name="scalabpe.plugin.http.HttpClientImpl" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
+<logger name="scalabpe.plugin.http.HttpServerActor" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
+<logger name="scalabpe.plugin.DbClient" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
+<logger name="scalabpe.plugin.MemCacheClient" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
+<logger name="scalabpe.plugin.RedisClient" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
+<logger name="scalabpe.plugin.TlvCodec4Xhead" level="info" additivity="false"><appender-ref ref="ALL" /></logger>
+<logger name="scalabpe.plugin.ErrorCodeUtils" level="debug" additivity="false"><appender-ref ref="ALL" /></logger>
 -->
 
 <root level="warn"><appender-ref ref="ROOT" /></root>

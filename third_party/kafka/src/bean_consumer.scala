@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.kafka
+package scalabpe.plugin.kafka
 
 import java.io.{File,StringWriter}
 import java.util._
@@ -14,7 +14,7 @@ import kafka.consumer.KafkaStream;
 import com.sdo.billing.queue._
 import com.sdo.billing.queue.impl._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object KafkaConsumerBean {
     val localDirs = new HashSet[String]()
@@ -396,7 +396,7 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
 
         if( hasIOException.get() ) {
             val msg = "local persistqueue has io error"
-            buff += new SelfCheckResult("JVMDBBRK.IO",ioErrorId,true,msg)
+            buff += new SelfCheckResult("SCALABPE.IO",ioErrorId,true,msg)
         }
 
         buff

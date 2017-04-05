@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
 import java.io._
 import java.util.concurrent._
@@ -20,7 +20,7 @@ import org.jboss.netty.handler.codec.http._;
 import org.jboss.netty.util._;
 import org.jboss.netty.handler.stream._;
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 // used by netty
 trait HttpServer4Netty {

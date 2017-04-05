@@ -1,11 +1,11 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
 import java.io.File
 import scala.collection.mutable.{ArrayBuffer,HashMap}
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.StringUtils
 import org.jboss.netty.handler.codec.http._;
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class PlainTextPlugin extends HttpServerPlugin with HttpServerOutputPlugin {
 

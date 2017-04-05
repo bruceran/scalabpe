@@ -18,11 +18,11 @@
 
 	输入./service runscala 进入控制台，可直接输入代码测试类，用来测试辅助类特别方便, 如
 
-	scala>import jvmdbbroker.core._
-	scala>import jvmdbbroker.flow._
+	scala>import scalabpe.core._
+	scala>import scalabpe.flow._
     scala>new java.util.ArrayList()
     scala>Thread.sleep(50)
-    scala>jvmdbbroker.flow.Utils.checkInclude(s,"123") 测试自己写的辅助类object Utils里的checkInclude方法
+    scala>scalabpe.flow.Utils.checkInclude(s,"123") 测试自己写的辅助类object Utils里的checkInclude方法
 
 ## 使用service runtest测试工具，简单版本
 
@@ -482,48 +482,48 @@
 ## 请求响应日志文件 request_audit.log 输出配置
 
 	默认日志以info级别输出，如果要关闭，可以设置为warn
-    <logger name="jvmdbbroker.RequestLog" level="info" additivity="false"><appender-ref ref="REQUESTLOG" /></logger>
+    <logger name="scalabpe.RequestLog" level="info" additivity="false"><appender-ref ref="REQUESTLOG" /></logger>
 
 	如果要关闭某个服务号的日志输出，如108服务号, 可如下配置
-    <logger name="jvmdbbroker.RequestLog.108" level="warn" additivity="false"><appender-ref ref="REQUESTLOG" /></logger>
+    <logger name="scalabpe.RequestLog.108" level="warn" additivity="false"><appender-ref ref="REQUESTLOG" /></logger>
 
 	如果要关闭某个服务号下某个特定消息的日志输出，如108服务号201消息号，可如下配置
-    <logger name="jvmdbbroker.RequestLog.108.201" level="warn" additivity="false"><appender-ref ref="REQUESTLOG" /></logger>
+    <logger name="scalabpe.RequestLog.108.201" level="warn" additivity="false"><appender-ref ref="REQUESTLOG" /></logger>
 
 ## 流程内部调用日志文件 csos_audit.log 输出配置
 	
 	默认日志以info级别输出，如果要关闭，可以设置为warn
-    <logger name="jvmdbbroker.CsosLog" level="info" additivity="false"><appender-ref ref="CSOSLOG" /></logger>
+    <logger name="scalabpe.CsosLog" level="info" additivity="false"><appender-ref ref="CSOSLOG" /></logger>
 
     如果要关闭某个服务号的日志输出，如231服务号, 可如下配置
-    <logger name="jvmdbbroker.CsosLog.231" level="info" additivity="false"><appender-ref ref="CSOSLOG" /></logger>
+    <logger name="scalabpe.CsosLog.231" level="info" additivity="false"><appender-ref ref="CSOSLOG" /></logger>
 
     如果要关闭某个服务号下某个特定消息的日志输出，如231服务号12消息号，可如下配置
-    <logger name="jvmdbbroker.CsosLog.231.12" level="info" additivity="false"><appender-ref ref="CSOSLOG" /></logger>
+    <logger name="scalabpe.CsosLog.231.12" level="info" additivity="false"><appender-ref ref="CSOSLOG" /></logger>
 
 ## HTTP SERVER请求响应日志文件 http/request_audit.log 输出配置
 
 	默认日志以info级别输出，如果要关闭，可以设置为warn
-    <logger name="jvmdbbroker.HttpRequestLog" level="info" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
+    <logger name="scalabpe.HttpRequestLog" level="info" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
 
 	如果要关闭某个服务号的日志输出，如108服务号, 可如下配置
-    <logger name="jvmdbbroker.HttpRequestLog.108" level="warn" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
+    <logger name="scalabpe.HttpRequestLog.108" level="warn" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
 
 	如果要关闭某个服务号下某个特定消息的日志输出，如108服务号201消息号，可如下配置
-    <logger name="jvmdbbroker.HttpRequestLog.108.201" level="warn" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
+    <logger name="scalabpe.HttpRequestLog.108.201" level="warn" additivity="false"><appender-ref ref="HTTPREQUESTLOG" /></logger>
 
 ## 插件的日志输出
 
 	框架源码中很多插件的日志是以debug级别输出, 由于log/all.log默认是info级别，
     日志实际并不会输出，若要看到这些日志需调整为debug级别
 
-    查看DB请求的SQL和实际参数，需设置<logger name="jvmdbbroker.plugin.DbClient" level="debug" ...
+    查看DB请求的SQL和实际参数，需设置<logger name="scalabpe.plugin.DbClient" level="debug" ...
 
-    查看MemCache实际的KEY,VALUE内容，需设置<logger name="jvmdbbroker.plugin.MemCacheClient" level="debug" ...
+    查看MemCache实际的KEY,VALUE内容，需设置<logger name="scalabpe.plugin.MemCacheClient" level="debug" ...
 
-    查看REDIS实际的KEY,VALUE内容，需设置<logger name="jvmdbbroker.plugin.RedisClient" level="debug" ...
+    查看REDIS实际的KEY,VALUE内容，需设置<logger name="scalabpe.plugin.RedisClient" level="debug" ...
 
-    查看AHT请求和响应原始内容，需设置<logger name="jvmdbbroker.plugin.http.HttpClientImpl" level="debug" ...
+    查看AHT请求和响应原始内容，需设置<logger name="scalabpe.plugin.http.HttpClientImpl" level="debug" ...
 
 ## logVar
     

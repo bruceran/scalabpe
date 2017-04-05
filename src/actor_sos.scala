@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent._

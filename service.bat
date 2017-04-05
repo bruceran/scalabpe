@@ -21,11 +21,11 @@ if "%1"=="runscala" goto runscala
 echo projectname: %APPLICATION_NAME%
 echo classpath: %CLASSPATH%
 mkdir %tempdir%\classes 2>>nul >>nul 
-java -Dapplication.name=%APPLICATION_NAME% -Dscalabpe.profile=%SCALABPE_PROFILE%  -Dscalabpe.tempdirroot=%SCALABPE_TEMPDIRROOT% -cp "%CLASSPATH%"  jvmdbbroker.core.Main
+java -Dapplication.name=%APPLICATION_NAME% -Dscalabpe.profile=%SCALABPE_PROFILE%  -Dscalabpe.tempdirroot=%SCALABPE_TEMPDIRROOT% -cp "%CLASSPATH%"  scalabpe.core.Main
 goto end
 
 :runtest
-java -Dapplication.name=%APPLICATION_NAME% -Dscalabpe.profile=%SCALABPE_PROFILE%  -Dscalabpe.tempdirroot=%SCALABPE_TEMPDIRROOT%  -cp "lib\*;classes;%tempdir%\classes;." jvmdbbroker.core.TestCaseRunner %2 %3 %4 %5 %6 %7 
+java -Dapplication.name=%APPLICATION_NAME% -Dscalabpe.profile=%SCALABPE_PROFILE%  -Dscalabpe.tempdirroot=%SCALABPE_TEMPDIRROOT%  -cp "lib\*;classes;%tempdir%\classes;." scalabpe.core.TestCaseRunner %2 %3 %4 %5 %6 %7 
 goto end
 
 :runscala

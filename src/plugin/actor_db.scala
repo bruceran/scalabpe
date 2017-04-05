@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.concurrent._
 import java.sql._
@@ -6,7 +6,7 @@ import javax.sql.DataSource
 import scala.collection.mutable.{HashMap,ArrayBuffer,HashSet}
 import scala.xml._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object MsgDefine{
 
@@ -572,7 +572,7 @@ class DbClient(
     val dbActor: BaseDbActor,
     val dbMode: Int) extends DbLike  with Dumpable {
 
-    import jvmdbbroker.plugin.DbClient._
+    import scalabpe.plugin.DbClient._
 
     mode = dbMode
 
@@ -1108,7 +1108,7 @@ class DbClient(
         for( ds <- masterList ) {
             if( hasError(ds) ) {
                 val msg = "master db ["+DbLike.getUrl(ds)+"] has error"
-                buff += new SelfCheckResult("JVMDBBRK.DB",errorId,true,msg)
+                buff += new SelfCheckResult("SCALABPE.DB",errorId,true,msg)
             }
         }
         if( slaveList != null ) {
@@ -1116,14 +1116,14 @@ class DbClient(
             for( ds <- slaveList ) {
                 if( hasError(ds) ) {
                     val msg = "slave db ["+DbLike.getUrl(ds)+"] has error"
-                    buff += new SelfCheckResult("JVMDBBRK.DB",errorId,true,msg)
+                    buff += new SelfCheckResult("SCALABPE.DB",errorId,true,msg)
                 }
             }
 
         }
 
         if( buff.size == 0 ) {
-            buff += new SelfCheckResult("JVMDBBRK.DB",errorId)
+            buff += new SelfCheckResult("SCALABPE.DB",errorId)
         }
 
         buff

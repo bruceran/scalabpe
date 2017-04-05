@@ -1,6 +1,6 @@
-package jvmdbbroker.plugin.hadoop
+package scalabpe.plugin.hadoop
 
-import jvmdbbroker.core._
+import scalabpe.core._
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet

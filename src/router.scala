@@ -1,4 +1,4 @@
-package jvmdbbroker.core 
+package scalabpe.core 
 import java.util.concurrent.TimeoutException
 import java.util.concurrent._
 import java.util.concurrent.locks.ReentrantLock;
@@ -32,7 +32,7 @@ class MockCfg(val serviceidmsgid:String,val req:HashMapStringAny,val res:HashMap
 class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolean = false)  extends Logging with Closable with Dumpable {
 
     val avenueConfDir = rootDir+File.separator+"avenue_conf"
-    val pluginConfFile = "jvmdbbroker.plugins.conf"
+    val pluginConfFile = "scalabpe.plugins.conf"
     val EMPTY_BUFFER = ByteBuffer.allocate(0)
 
     val pReg = """@[0-9a-zA-Z_-]+[ <\]]""".r // allowed: @xxx< @xxx]]> @xxx[SPACE]
@@ -46,7 +46,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
     val serviceIdsAllowed = HashSet[Int]() // to control the visibility of not-flow serviceids, default is closed
     val serviceIdsNotAllowed = HashSet[Int]() // to control the visibility of flow serviceids, default is open
-    val reverseServiceIds = HashSet[Int]() // 3 or other service for jvmdbbroker clients
+    val reverseServiceIds = HashSet[Int]() // 3 or other service for scalabpe clients
 
     val mocks = HashMap[String,ArrayBuffer[MockCfg]]()
     var mockActor:Actor = null
@@ -55,7 +55,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
     val qte = new QuickTimerEngine(timeout_function,25)
 
-    var globalCls = "jvmdbbroker.flow.Global"
+    var globalCls = "scalabpe.flow.Global"
     var codecs : TlvCodecs = _
     var cfgParameters = HashMapStringString()
     var cfgXml : Elem = _

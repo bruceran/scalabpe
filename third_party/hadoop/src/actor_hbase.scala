@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.hadoop
+package scalabpe.plugin.hadoop
 
 import java.util._
 import java.util.concurrent._
@@ -13,7 +13,7 @@ import org.apache.hadoop.hbase.client._
 import org.apache.hadoop.hbase.util._
 import org.apache.hadoop.hbase.filter._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class HbaseActor(val router:Router,val cfgNode: Node) 
    extends Actor with Logging with Closable with SelfCheckLike with Dumpable  {

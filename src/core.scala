@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent.ConcurrentHashMap
 import java.nio.ByteBuffer
@@ -229,8 +229,8 @@ class RawRequest( val requestId:String, val data:AvenueData,val connId:String, v
     def remoteIp() : String = {
         if( connId == null || connId == "" ) return null
         val p = connId.indexOf(":")
-    if( p == -1 ) return null
-    connId.substring(0,p)
+        if( p == -1 ) return null
+        connId.substring(0,p)
     }
 
 }

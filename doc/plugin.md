@@ -13,13 +13,13 @@
 	xml形式, http server插件的输出是一个xml格式，而不是标准的json格式
 
 	轻量级插件只要将实现类放入compose_conf目录就可以使用，框架启动时会自动编译该插件类
-	轻量级插件的包名建议用 jvmdbbroker.flow
+	轻量级插件的包名建议用 scalabpe.flow
 
 	常用的插件：
 
 ## http client插件
 
-    参考：src/jvmdbbroer/plugin/http/httpclientplugin.scala
+    参考：src/scalabpe/plugin/http/httpclientplugin.scala
 
 		trait HttpPlugin {}
 
@@ -63,7 +63,7 @@
 		
 ## http server 插件
 
-    参考：src/jvmdbbroer/plugin/http/httpserverplugin.scala
+    参考：src/scalabpe/plugin/http/httpserverplugin.scala
 
 		trait HttpServerPlugin {}
 
@@ -102,7 +102,7 @@
 
 ## db 插件
 
-    参考：src/jvmdbbroer/plugin/dbplugin.scala
+    参考：src/scalabpe/plugin/dbplugin.scala
 
     	// 分表插件
 		trait SplitTablePlugin {
@@ -178,21 +178,21 @@
 ## 插件的打包
 
 	每个插件编译后都需生成jar包，
-	每个jar包根目录下需包含一个 jvmdbbroker.plugins.conf文件，该文件用来申明插件及其配置
+	每个jar包根目录下需包含一个 scalabpe.plugins.conf文件，该文件用来申明插件及其配置
 	每个生成好的jar包放入lib/目录, 调整config.xml 即可使用
 	如插件有依赖的jar包，也需要一起放入lib/目录。
 
-## jvmdbbroker.plugins.conf格式说明
+## scalabpe.plugins.conf格式说明
 
 	#开头的配置行忽略
 	插件类型,类名,config.xml对应的配置节点名
 	示例：
 
-		bean,jvmdbbroker.plugin.SampleBean,SampleBeanCfg
-		requestfilter,jvmdbbroker.plugin.SampleRequestFilter,SampleRequestFilterCfg
-		responsefilter,jvmdbbroker.plugin.ErrorDescResponseFilter,ErrorCodeCfg
-		actor,jvmdbbroker.plugin.MailActor,MailCfg
-		inithook,jvmdbbroker.plugin.InitHookSample,InitHook
+		bean,scalabpe.plugin.SampleBean,SampleBeanCfg
+		requestfilter,scalabpe.plugin.SampleRequestFilter,SampleRequestFilterCfg
+		responsefilter,scalabpe.plugin.ErrorDescResponseFilter,ErrorCodeCfg
+		actor,scalabpe.plugin.MailActor,MailCfg
+		inithook,scalabpe.plugin.InitHookSample,InitHook
 
 ## 一些特殊trait
 

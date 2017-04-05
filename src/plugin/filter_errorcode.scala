@@ -1,9 +1,9 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import scala.collection.mutable.HashMap
 import scala.xml._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class ErrorCodeDefine(val resultCodeName:String,val resultMsgName:String);
 

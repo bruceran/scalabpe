@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.{Timer,TimerTask}
 import java.util.TreeMap
@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 import redis.clients.jedis._
 import redis.clients.util._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class RedisActor(override val router:Router,override val cfgNode: Node)
 extends BaseCacheActor(router,cfgNode) with SelfCheckLike with Dumpable  {
@@ -792,7 +792,7 @@ extends BaseCacheClient(cacheTypeCfg,serverAddrs,serviceIds,readThreadNum,writeT
 
                     if( pools(i).hasError() ) {
                         val msg = "redis ["+serverAddrs(i)+"] has error"
-                        buff += new SelfCheckResult("JVMDBBRK.REDIS",errorId,true,msg)
+                        buff += new SelfCheckResult("SCALABPE.REDIS",errorId,true,msg)
                     }
 
                     i += 1
@@ -802,18 +802,18 @@ extends BaseCacheClient(cacheTypeCfg,serverAddrs,serviceIds,readThreadNum,writeT
 
                 if( pool_master.hasError() ) {
                     val msg = "master redis ["+serverAddrs(0)+"] has error"
-                    buff += new SelfCheckResult("JVMDBBRK.REDIS",errorId,true,msg)
+                    buff += new SelfCheckResult("SCALABPE.REDIS",errorId,true,msg)
                 }
 
                 if( pool_slave.hasError() ) {
                     val msg = "slave redis ["+serverAddrs(1)+"] has error"
-                    buff += new SelfCheckResult("JVMDBBRK.REDIS",errorId,true,msg)
+                    buff += new SelfCheckResult("SCALABPE.REDIS",errorId,true,msg)
                 }
 
         }
 
         if( buff.size == 0 ) {
-            buff += new SelfCheckResult("JVMDBBRK.REDIS",errorId)
+            buff += new SelfCheckResult("SCALABPE.REDIS",errorId)
         }
 
         buff

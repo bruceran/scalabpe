@@ -1,9 +1,9 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.ArrayBuffer
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object CacheLike {
     val MSGID_GET = 1

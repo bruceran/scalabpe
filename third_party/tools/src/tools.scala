@@ -7,7 +7,7 @@ import scala.io.Source
 import org.apache.commons.io.FileUtils
 import scala.xml._
 import scala.collection.mutable._
-import jvmdbbroker.core._
+import scalabpe.core._
 import org.apache.commons.lang.StringUtils
 
 object Tools {
