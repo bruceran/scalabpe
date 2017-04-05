@@ -25,6 +25,7 @@ java -Dapplication.name=%APPLICATION_NAME% -Dscalabpe.profile=%SCALABPE_PROFILE%
 goto end
 
 :runtest
+mkdir %tempdir%\classes 2>>nul >>nul 
 java -Dapplication.name=%APPLICATION_NAME% -Dscalabpe.profile=%SCALABPE_PROFILE%  -Dscalabpe.tempdirroot=%SCALABPE_TEMPDIRROOT%  -cp "lib\*;classes;%tempdir%\classes;." scalabpe.core.TestCaseRunner %2 %3 %4 %5 %6 %7 
 goto end
 
