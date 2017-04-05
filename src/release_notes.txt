@@ -5,6 +5,7 @@
 * (0330)支持SCALABPE_TEMPDIRROOT环境变量，可将temp放在非当前目录下
 * (0330)支持SCALABPE_PROFILE环境变量,根据profile加载不同的config_xxx.xml文件
 * (0330)代码未做改动，改到jdk 1.8和scala 2.12.1下编译
+* (0405)包名从jvmdbbroker修改成scalabpe
 
 1.1.15 (20170328)
 ================
