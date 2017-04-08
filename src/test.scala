@@ -989,6 +989,7 @@ usage: scalabpe.core.TestCaseRunner [options] path_to_testcasefile(txt)
 options:
     -h|--help             帮助信息
     -a|--all              忽略enabled标志运行所有testcase
+       --all_files        对testcase下所有txt文件运行测试
     -d|--dump             输出解析后的testcase到控制台
 """)
    }
@@ -1003,6 +1004,9 @@ options:
                     return null
                 case "-a" | "--all" => 
                     map.put("all","1")
+                    i += 1
+                case "--all_files" => 
+                    map.put("all_files","1")
                     i += 1
                 case "-d" | "--dump" => 
                     map.put("dump","1")
@@ -1031,6 +1035,12 @@ options:
         }
 
         var files = params.nls("files")
+        if( params.ns("all_files") == "1" ) {
+            files.clear()
+            for( f <- new File("./testcase/").listFiles ) {
+                files += f.getName()
+            }
+        }
         if( files.length == 0 ) {
             files += "default.txt"
         }
