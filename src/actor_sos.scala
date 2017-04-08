@@ -807,6 +807,12 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             "0.0.0.0"
     }
 
+    def in(ss:String,s:String,t:String=","):Boolean={
+        if( ss == null || ss == "" ) return false
+        if( s == null || s == "" ) return true
+        (t+ss+t).indexOf(t+s+t) >= 0 
+    }
+
     def decode(bb:ByteBuffer,connId:String):AvenueData = {
         var data : AvenueData = null
         if( isEncrypted ) {
@@ -820,14 +826,14 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
                 }
 
                 val serviceIdMsgId = data.serviceId + ":" + data.msgId
-                if( key == null && serviceIdMsgId != shakeHandsServiceIdMsgId && serviceIdMsgId != "0:0") { // heartbeat
+                if( key == null && !in(shakeHandsServiceIdMsgId,serviceIdMsgId) && serviceIdMsgId != "0:0") { // heartbeat
                     log.error("decode error, not shakehanded,service=%d,msgId=%d".format(data.serviceId,data.msgId))
                     throw new RuntimeException("not shakehanded")
                 }
-            } else {
-                data = converter.decode(bb)
-            }
-            data
+        } else {
+            data = converter.decode(bb)
+        }
+        data
     }
 
     def encode(data:AvenueData,connId:String):ByteBuffer = {
@@ -835,11 +841,11 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
         if( isEncrypted ) {
             var key = aesKeyMap.get(connId)
             val serviceIdMsgId = data.serviceId + ":" + data.msgId
-            if( key == null && serviceIdMsgId != shakeHandsServiceIdMsgId ) {
+            if( key == null && !in(shakeHandsServiceIdMsgId,serviceIdMsgId) ) {
                 log.error("encode error, not shakehanded,service=%d,msgId=%d".format(data.serviceId,data.msgId))
                 return null
             }
-            if( serviceIdMsgId == shakeHandsServiceIdMsgId ) key = null
+            if( in(shakeHandsServiceIdMsgId,serviceIdMsgId) ) key = null
             bb = converter.encode(data,key)
         } else {
             bb = converter.encode(data)

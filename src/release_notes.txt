@@ -3,6 +3,7 @@
 
 * (0408)tlvcodec类增加msgIds记录每个消息在服务描述文件里的顺序
 * (0408)runtest工具增加--all_files参数，对testcase下所有文件运行测试,无需手工指定文件名
+* (0408)sos组件的shakeHandsServiceIdMsgId支持配置多个消息
 
 1.2.0 (20170405)
 ================
