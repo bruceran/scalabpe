@@ -1,7 +1,7 @@
 1.2.1 (20170408)
 ================
 
-* 无变动
+* httpserver 插件增加 removeReturnMessageInBody，将body中的return_message,fail_reason等错误提示去掉，避免和顶层的return_message重复
 
 1.2.0 (20170330)
 ================

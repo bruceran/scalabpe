@@ -129,6 +129,7 @@ with BeforeClose  with Refreshable with AfterInit with HttpServer4Netty with Log
     var timeout = 30000
     var idleTimeout = 45000
     var timerInterval:Int = 50
+    var removeReturnMessageInBody = false
     var returnMessageFieldNames = ArrayBufferString("return_message","resultMsg","failReason","resultMessage","result_msg","fail_reason","result_message")
     var defaultVerify = "false"
     var osapDb = false
@@ -254,6 +255,11 @@ image/x-icon ico
             returnMessageFieldNames = new ArrayBufferString()
             val ss = s.split(",")
             for(s <- ss ) returnMessageFieldNames += s
+        }
+
+        s = (cfgNode \ "@removeReturnMessageInBody").text
+        if( s != "" ) {
+            removeReturnMessageInBody = isTrue(s)
         }
 
         s = (cfgNode \ "@sessionFieldName").text
@@ -2232,8 +2238,9 @@ image/x-icon ico
 
     def fetchMessage(body:HashMapStringAny):String = {
         for( key <- returnMessageFieldNames ) {
-            val s = body.s(key,"")
-            if( s != "" ) return s
+            val s = body.s(key,null)
+            if( s != null && removeReturnMessageInBody ) body.remove(key)
+            if( s != null && s != "" ) return s
         }
         null
     }
