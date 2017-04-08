@@ -1,7 +1,7 @@
 @echo off
 
-set version=1.2.0
-set pluginversion=1.2.0
+set version=1.2.1
+set pluginversion=1.2.1
 
 if "%1"=="" goto build
 if "%1"=="clean" goto clean

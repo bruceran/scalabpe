@@ -1,6 +1,6 @@
 
 pluginname=tools
-pluginversion=0.1.0
+pluginversion=0.1.1
 
 show_help()
 {

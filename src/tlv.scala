@@ -146,6 +146,8 @@ class TlvCodec(val configFile:String) extends Logging {
     val msgKeysForRes = new HashMap[Int,ArrayBufferString]()
     val msgKeyToFieldInfoMapForRes = new HashMap[Int,HashMap[String,TlvFieldInfo]]()
 
+    val msgIds = ArrayBufferInt()
+
     val codecAttributes = new HashMapStringString()
 
     val msgAttributes = new HashMap[Int,HashMapStringString]()
@@ -564,6 +566,8 @@ class TlvCodec(val configFile:String) extends Logging {
             val msgId = (t \ "@id").toString.toInt
             val msgNameOrig = (t \ "@name").toString
             val msgName = (t \ "@name").toString.toLowerCase
+
+            msgIds += msgId
 
             if( msgIdToNameMap.getOrElse(msgId,null) != null ) {
                 throw new CodecException("msgId duplicated, msgId=%d,serviceId=%d".format(msgId,serviceId))

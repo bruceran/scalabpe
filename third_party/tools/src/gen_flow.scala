@@ -136,7 +136,8 @@ options:
             new File(dir).mkdirs()
         }
 
-        for( (msgId,msgName) <- codec.msgIdToNameMap ) {
+        for( msgId <- codec.msgIds ) {
+            val msgName = codec.msgIdToNameMap.getOrElse(msgId,"unknown")
             generateFile(dir,codec.serviceId.toString,codec.serviceName,msgId.toString,msgName,params,codec.msgAttributes.getOrElse(msgId,null))
         }
     }
