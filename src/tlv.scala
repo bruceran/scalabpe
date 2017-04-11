@@ -155,7 +155,7 @@ class TlvCodec(val configFile:String) extends Logging {
     var serviceId:Int = _
     var serviceName:String = _
     var serviceOrigName:String = _
-    var enableExtendTlv = false
+    var enableExtendTlv = true
 
     init
 
@@ -396,7 +396,8 @@ class TlvCodec(val configFile:String) extends Logging {
         val enableExtendTlvStr = (cfgXml \ "@enableExtendTlv").toString.toLowerCase
         enableExtendTlvStr match {
             case "1" | "y"  | "t" | "yes" | "true" => enableExtendTlv = true
-            case _ => enableExtendTlv = false
+            case "0" | "n"  | "f" | "no" | "false" => enableExtendTlv = false
+            case _ => enableExtendTlv = true
         }
         val metadatas = cfgXml.attributes.filter(  _.key != "id").filter( _.key != "name").filter( _.key != "IsTreeStruct").filter( _.key != "enableExtendTlv")
         for( m <- metadatas ) {

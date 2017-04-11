@@ -18,6 +18,7 @@
         e) 将原来compose_conf下所有.scala后缀文件里的jvmdbbroker换成scalabpe
         f) 将原来的logback.xml里的jvmdbbroker替换成scalabpe
         h) 删除原来的temp下的所有文件以免不必要的错误
+        i) 服务描述文件enableExtendTlv默认值从false改为true, 对超过64k的内容默认会采用t0lv方案，如果不希望可在服务描述文件里加 enableExtendTlv="false" 关闭
 
 # 核心
 
