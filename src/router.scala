@@ -17,6 +17,7 @@ import scala.reflect.runtime.universe
 object Router {
     val DO_NOT_REPLY:String = ""
     var configXml = "config.xml"
+    var parameterXml = "parameter.xml"
     var dataDir = ""
     var tempDir = ""
     var main:Router = null
@@ -62,6 +63,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
     var asyncLogActor  : Actor = _
     var mustReachActor : MustReachActor = _
     var sos:Sos = _
+    var regdishooks : ArrayBuffer[RegDisHook]=_
 
     val parameters = new HashMapStringString()
 
@@ -141,6 +143,11 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
         shutdown.set(true)
 
+        if( regdishooks != null ) {
+            for(t <- regdishooks if t.isInstanceOf[Closable] ) {
+                t.asInstanceOf[Closable].close()
+            }
+        }
         for(t <- allBeans if t.isInstanceOf[Closable] ) {
             t.asInstanceOf[Closable].close()
         }
@@ -223,7 +230,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
             loadParameter(pxml,pmap,"assign")
             loadParameter(pxml,pmap,"Assign")
         }
-        val pfile = "config_parameter/parameter.xml"
+        val pfile = "config_parameter/"+Router.parameterXml
         if( new File(rootDir+"/"+pfile).exists() ) {
             val in = new InputStreamReader(new FileInputStream(rootDir+"/"+pfile),"UTF-8")
             val pxml = XML.load(in)
@@ -323,11 +330,46 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
         ns
     }
 
+    def updateXml(xml:String):String = {
+
+        val in = new StringReader(xml)
+        val tXml = XML.load(in)
+        in.close()
+
+        var outputXml = xml
+
+        val pluginMap = readPluginsByType("regdishook")
+        if( pluginMap.size > 0 ) {
+            regdishooks = new ArrayBuffer[RegDisHook]()
+            for( (clsName,typeNode) <- pluginMap ) {
+
+                val nodeList = ( tXml \ typeNode ).toList
+
+                if( nodeList.size > 0 ) {
+                    try {
+                        val hook = Class.forName(clsName).getConstructors()(0).newInstance(this,nodeList(0)).asInstanceOf[RegDisHook]
+                        regdishooks += hook
+                        outputXml = hook.updateXml(outputXml)
+                    } catch {
+                        case e:Throwable =>
+                            log.error("plugin {} cannot be loaded", clsName)
+                            throw e
+                    }
+                }
+
+            }
+        }
+
+//println("old="+xml)
+//println("new="+outputXml)
+        outputXml
+    }
+
     def initInternal() {
 
-        val str = prepareConfigFile()
-        //println(str)
-        val in = new StringReader(str)
+        val str1 = prepareConfigFile()
+        val str2 = updateXml(str1)
+        val in = new StringReader(str2)
         cfgXml = XML.load(in)
         in.close()
 

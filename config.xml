@@ -9,6 +9,8 @@
 
     <!--<InstallMock>testcase/t4.txt</InstallMock>-->
 
+    <!--<RegDisHook name="abc"/>-->
+
     <!--
     <assign>@user2=testabc</assign>
     <assign>@user=222testabc</assign>

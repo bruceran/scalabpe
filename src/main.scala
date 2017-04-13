@@ -24,8 +24,10 @@ object Main extends Logging with SignalHandler {
         val profile = System.getProperty("scalabpe.profile")
         if( profile != null && profile != "") {
            val filename = "config_"+profile+".xml"
-           if( new File(rootDir+File.separator+filename).exists )
+           if( new File(rootDir+File.separator+filename).exists ) {
                Router.configXml = filename
+               Router.parameterXml = "parameter_"+profile+".xml"
+           }
         }
         log.info("use config file="+Router.configXml)
     }
@@ -81,7 +83,7 @@ object Main extends Logging with SignalHandler {
         val t2 = System.currentTimeMillis
         log.info("scalabpe started, ts=%s[ms]".format(t2-t1))
 
-        if( installMock != "" ) {
+        if( installMock != "" && !testMode ) {
             TestCaseRunner.installMock(installMock)
         }
 

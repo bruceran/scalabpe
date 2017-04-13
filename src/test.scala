@@ -1857,8 +1857,24 @@ object TestCaseRunnerV1 {
     val lock = new ReentrantLock(false)
     val replied = lock.newCondition()
 
+    def initProfile(rootDir:String) {
+        val profile = System.getProperty("scalabpe.profile")
+        if( profile != null && profile != "") {
+           val filename = "config_"+profile+".xml"
+           if( new File(rootDir+File.separator+filename).exists ) {
+               Router.configXml = filename
+               Router.parameterXml = "parameter_"+profile+".xml"
+           }
+        }
+        println("use config file="+Router.configXml)
+    }
+
     def loadTestServerAddr():String= {
-        val in = new InputStreamReader(new FileInputStream("."+File.separator+"config.xml"),"UTF-8")
+        val rootDir = "."
+
+        initProfile(rootDir)
+
+        val in = new InputStreamReader(new FileInputStream("."+File.separator+Router.configXml),"UTF-8")
         val cfgXml = XML.load(in)
         val port = (cfgXml \ "SapPort").text.toInt
         var serverAddr = "127.0.0.1:"+port

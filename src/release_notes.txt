@@ -3,6 +3,9 @@
 
 * (0410)enableExtendTlv默认值由false改为true
 * (0412)netty client支持reconfig方法可以动态配置目标地址
+* (0412)parameter.xml文件也支持profile
+* (0412)router支持regdishook插件类型以便支持注册与发现
+* (0413)测试框架远程测试模式也支持profile查找不同的配置文件
 
 1.2.1 (20170408)
 ================

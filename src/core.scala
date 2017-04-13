@@ -147,6 +147,9 @@ trait BeforeClose {
 trait InitHook {
     def loadParameter(pmap:HashMapStringString): Unit;
 }
+trait RegDisHook {
+    def updateXml(xml:String): String;
+}
 
 // doesnot receive request, but can generate new request
 trait Bean {}
