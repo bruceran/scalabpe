@@ -33,6 +33,7 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
 
     var reverseServiceIds = "0"
     var hasReverseServiceIds = false
+    var spsDisconnectNotifyTo = "55605:111"
     var reverseIps: HashSet[String] = null
     var pushToIpPort: Boolean = false
     val connsAddrMap = new HashMap[String,String]()
@@ -103,7 +104,7 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
 
         s = (cfgNode \ "@spsDisconnectNotifyTo").text
         if( s != "" ) { 
-            router.parameters.put("spsDisconnectNotifyTo",s)
+            spsDisconnectNotifyTo = s
         } 
 
         s = (cfgNode \ "@pushToIpPort").text
@@ -289,10 +290,9 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
     }
 
     def notifyDisconnected(connId:String) {
-        val notifyTo = router.getConfig("spsDisconnectNotifyTo","55605:111")
-        if( notifyTo == "0:0" ) return
+        if( spsDisconnectNotifyTo == "0:0" ) return
         val sequence = generateSequence()
-        val notifyInfo = notifyTo.split(":")
+        val notifyInfo = spsDisconnectNotifyTo.split(":")
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
             notifyInfo(0).toInt,
@@ -433,9 +433,12 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
 
             case rawRes: RawResponse =>
 
-                reply(rawRes.data,rawRes.connId)
+                val serviceIdMsgId = rawRes.data.serviceId + ":" + rawRes.data.msgId
+                if( !in(spsDisconnectNotifyTo,serviceIdMsgId) ) { // sent by sos itself
+                    reply(rawRes.data,rawRes.connId)
+                }
 
-                //case t: RawRequestErrorResponse =>
+            //case t: RawRequestErrorResponse =>
 
                 //replyWithErrorCode(t.code,t.rawReq.data,t.rawReq.connId)
 

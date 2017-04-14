@@ -21,6 +21,8 @@ import org.jboss.netty.util._;
 
 // used by netty
 trait Soc4Netty {
+    def connected(connId:String,addr:String,connidx:Int):Unit; 
+    def disconnected(connId:String,addr:String,connidx:Int):Unit; 
     def receive(res:ByteBuffer,connId:String):Tuple2[Boolean,Int]; // (true,sequence) or (false,0)
     def networkError(sequence:Int,connId:String):Unit;
     def timeoutError(sequence:Int,connId:String):Unit;
@@ -273,6 +275,9 @@ class NettyClient(
         for( connidx <- 0 until connSizePerAddr ) 
             guids(connidx) = java.util.UUID.randomUUID().toString().replaceAll("-", "").toUpperCase
 
+    }
+
+    def start() : Unit  = {
         for(hostidx <- 0 until addrs.size ) {
 
             val addr = addrs(hostidx).addr
@@ -563,6 +568,8 @@ class NettyClient(
                 if( ignore_ch != null ) ignore_ch.close()
             } else {
 
+                soc.connected(connInfo.connId,connInfo.addr,connInfo.connidx)
+
                 val ladr = ch.getLocalAddress.toString
                 if( NettyClient.localAddrsMap.contains(ladr) ) {
                     log.warn("client addr duplicated, " + ladr )
@@ -579,6 +586,47 @@ class NettyClient(
                     }
                 }
             }
+        }
+
+    }
+
+    def closeChannelFromOutside(theConnId:String) {
+
+        lock.lock()
+
+        try {
+            val channel = channelsMap.getOrElse(theConnId,null)
+            if( channel != null && channel.isOpen ) {
+                channel.close()
+                return 
+            }
+
+        } finally {
+            lock.unlock()
+        }
+    }
+
+    def addChannelToMap(theConnId:String) {
+
+        lock.lock()
+
+        try {
+            var i = 0
+
+            while( i < allConns.size ) {
+
+                val channel = allConns(i).ch
+                val connId = allConns(i).connId
+                if( channel != null && channel.isOpen && connId == theConnId ) {
+                    channelsMap.put(connId,channel)
+                    return 
+                }
+
+                i+=1
+            }
+
+        } finally {
+            lock.unlock()
         }
 
     }
@@ -701,9 +749,10 @@ class NettyClient(
                 val channel = allConns(i).ch
                 val theConnId = allConns(i).connId
                 if( channel != null && theConnId == connId ) {
-                    allConns(i).ch = null
-                    allConns(i).connId = null
                     connInfo = allConns(i)
+                    soc.disconnected(connInfo.connId,connInfo.addr,connInfo.connidx)
+                    connInfo.ch = null
+                    connInfo.connId = null
                 }
 
                 i+=1
