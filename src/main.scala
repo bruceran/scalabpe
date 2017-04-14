@@ -25,11 +25,13 @@ object Main extends Logging with SignalHandler {
         if( profile != null && profile != "") {
            val filename = "config_"+profile+".xml"
            if( new File(rootDir+File.separator+filename).exists ) {
+               Router.profile = profile
                Router.configXml = filename
                Router.parameterXml = "parameter_"+profile+".xml"
            }
         }
         log.info("use config file="+Router.configXml)
+        log.info("current profile="+Router.profile)
     }
 
     def main(args:Array[String]) {

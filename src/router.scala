@@ -16,6 +16,7 @@ import scala.reflect.runtime.universe
 
 object Router {
     val DO_NOT_REPLY:String = ""
+    var profile = "default"
     var configXml = "config.xml"
     var parameterXml = "parameter.xml"
     var dataDir = ""

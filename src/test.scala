@@ -1848,7 +1848,7 @@ options:
 
 class TestCaseV1(val serviceId:Int,val msgId:Int,val body:HashMapStringAny,val repeat:Int = 1,val xhead:HashMapStringAny = new HashMapStringAny() )
 
-object TestCaseRunnerV1 {
+object TestCaseRunnerV1 extends Logging {
 
     var requestCount = 1
     var replyCount = 0
@@ -1862,11 +1862,13 @@ object TestCaseRunnerV1 {
         if( profile != null && profile != "") {
            val filename = "config_"+profile+".xml"
            if( new File(rootDir+File.separator+filename).exists ) {
+               Router.profile = profile
                Router.configXml = filename
                Router.parameterXml = "parameter_"+profile+".xml"
            }
         }
-        println("use config file="+Router.configXml)
+        log.info("use config file="+Router.configXml)
+        log.info("current profile="+Router.profile)
     }
 
     def loadTestServerAddr():String= {
