@@ -222,6 +222,7 @@ class NettyClient(
 
         buff.append("connectedCount=").append(connectedCount).append(",")
         buff.append("dataMap.size=").append(dataMap.size).append(",")
+        buff.append("channelsMap.size=").append(channelsMap.size).append(",")
 
         log.info(buff.toString)
 

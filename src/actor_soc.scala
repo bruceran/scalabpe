@@ -276,6 +276,10 @@ class SocImpl(
         val buff = new StringBuilder
 
         buff.append("dataMap.size=").append(dataMap.size).append(",")
+        buff.append("keyMap.size=").append(keyMap.size).append(",");
+        buff.append("shakeHandsKeyMap.size=").append(shakeHandsKeyMap.size).append(",");
+        buff.append("addrMap.size=").append(addrMap.size).append(",");
+        buff.append("addrIdxMap.size=").append(addrIdxMap.size).append(",");
 
         log.info(buff.toString)
 

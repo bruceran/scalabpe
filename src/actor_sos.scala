@@ -93,13 +93,13 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             s = (cfgNode \ "@reverseServiceIds").text
             if( s != "" ) { 
                 reverseServiceIds = s
-        } 
-        hasReverseServiceIds = ( reverseServiceIds != "0" )
-        router.parameters.put("reverseServiceIds",reverseServiceIds)
+            } 
+            hasReverseServiceIds = ( reverseServiceIds != "0" )
+            router.parameters.put("reverseServiceIds",reverseServiceIds)
 
-        s = (cfgNode \ "@spsReportTo").text
-        if( s != "" ) { 
-            router.parameters.put("spsReportTo",s)
+            s = (cfgNode \ "@spsReportTo").text
+            if( s != "" ) { 
+                router.parameters.put("spsReportTo",s)
         } 
 
         s = (cfgNode \ "@spsDisconnectNotifyTo").text
@@ -437,10 +437,6 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
                 if( !in(spsDisconnectNotifyTo,serviceIdMsgId) ) { // sent by sos itself
                     reply(rawRes.data,rawRes.connId)
                 }
-
-            //case t: RawRequestErrorResponse =>
-
-                //replyWithErrorCode(t.code,t.rawReq.data,t.rawReq.connId)
 
             case ackInfo: RawRequestAckInfo =>
 
