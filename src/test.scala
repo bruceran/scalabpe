@@ -88,6 +88,8 @@ object ValueParser {
         val s = s0
         var ns = escape4(escape3(escape1(s)))
         if( ns.indexOf("$") >= 0 ) {
+            val vt = parseInternal(s,localCtx,glbCtx)
+            if( vt != null && !vt.isInstanceOf[String] ) return vt
             if( debug ) {
                 println("***"+s)            
                 println("###"+ns)            
@@ -1037,7 +1039,7 @@ options:
         var files = params.nls("files")
         if( params.ns("all_files") == "1" ) {
             files.clear()
-            for( f <- new File("./testcase/").listFiles ) {
+            for( f <- new File("./testcase/").listFiles if f.getName().endsWith(".txt") ) {
                 files += f.getName()
             }
         }
@@ -1459,11 +1461,15 @@ options:
                 val requestId = "TEST"+RequestIdGenerator.nextId()
                 val map = HashMapStringAny()
                 res_body = map
+                var connId = "127.0.0.1:1000:1000"
+                if( params.ns("connId") != "" ) connId = params.ns("connId")
+                else if( context.ns("$connId") != "" ) connId = context.ns("$connId")
+
                 lock.lock();
                 try {
                     val req = new Request (
                         requestId,
-                        "test:0",
+                        connId,
                         generateSequence(),
                         1,
                         serviceId,

@@ -1,4 +1,4 @@
-1.2.2 (20170414)
+1.2.2 (20170418)
 ================
 
 * (0410)enableExtendTlv默认值由false改为true
@@ -8,6 +8,8 @@
 * (0413)测试框架远程测试模式也支持profile查找不同的配置文件
 * (0414)soc组件支持连接需要的加密服务器
 * (0414)增加Router.profile,默认为default,对应config.xml; 加载的是config_xxx.xml，profile值就是xxx
+* (0418)测试组件特殊的connId参数，用于指定用例中的connId,通过req.remoteAddr可以取到这个值,避免对取对端地址的地方做硬编码
+* (0418)修改test中右值无法引用非String对象的bug
 
 1.2.1 (20170408)
 ================

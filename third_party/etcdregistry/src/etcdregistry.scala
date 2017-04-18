@@ -59,6 +59,7 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
 
     def close():Unit = {
         timer.cancel()
+        etcdClient.close()
         log.info("etcdreg plugin closed")
     }
 
