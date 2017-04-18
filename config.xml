@@ -24,9 +24,21 @@
 
 <!-- 以下是常用插件的最简配置示例，更多配置参数参考配置指南 -->
 
+    <EtcdRegistry interval="10">
+        <Hosts>192.168.28.25:2379</Hosts>
+    </EtcdRegistry>
+
+   <SosList discoverFor="userservice">
+        <ServiceId>998</ServiceId>
+        <ServerAddr>192.168.30.100:1111</ServerAddr>
+        <ServerAddr>192.168.30.101:1111</ServerAddr>
+        <ServerAddr>192.168.30.102:1111</ServerAddr>
+    </SosList>
+
+    <Server registerAs="demo"/>
 
 <!-- http server 配置 -->
-    <HttpServerCfg port="8088" devMode="1">
+    <HttpServerCfg  registerAs2="demoservicehttp" port="8088" devMode="1">
 
         <UrlMapping>
             <Item>test/queryUserInfo,999,1</Item>

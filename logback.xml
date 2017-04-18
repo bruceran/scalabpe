@@ -132,6 +132,7 @@
 <logger name="scalabpe.core.NettyServer" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>
 <logger name="scalabpe.core.FlowCompiler" level="info" additivity="false"><appender-ref ref="ALL" /><appender-ref ref="STDOUT" /></logger>
 <logger name="scalabpe.core.NettyClient" level="info" additivity="false"><appender-ref ref="SOC" /></logger>
+<!--<logger name="scalabpe.plugin.etcdreg" level="debug" additivity="false"><appender-ref ref="SOC" /></logger>-->
 
 <logger name="scalabpe.ReqStatLog" level="info" additivity="false"><appender-ref ref="REQSTATLOG" /></logger>
 <logger name="scalabpe.ReqSummaryLog" level="info" additivity="false"><appender-ref ref="REQSUMMARYLOG" /></logger>
