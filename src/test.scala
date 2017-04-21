@@ -1876,15 +1876,16 @@ object TestCaseRunnerV1 extends Logging {
     def initProfile(rootDir:String) {
         val profile = System.getProperty("scalabpe.profile")
         if( profile != null && profile != "") {
+           Router.profile = profile
+           Router.parameterXml = "parameter_"+profile+".xml"
            val filename = "config_"+profile+".xml"
            if( new File(rootDir+File.separator+filename).exists ) {
-               Router.profile = profile
                Router.configXml = filename
-               Router.parameterXml = "parameter_"+profile+".xml"
            }
         }
-        log.info("use config file="+Router.configXml)
         log.info("current profile="+Router.profile)
+        log.info("use config file="+Router.configXml)
+        log.info("use config paramter file="+Router.parameterXml)
     }
 
     def loadTestServerAddr():String= {

@@ -37,7 +37,8 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
     val pluginConfFile = "scalabpe.plugins.conf"
     val EMPTY_BUFFER = ByteBuffer.allocate(0)
 
-    val pReg = """@[0-9a-zA-Z_-]+[ <\]]""".r // allowed: @xxx< @xxx]]> @xxx[SPACE]
+    val pReg = """@[0-9a-zA-Z_-]+[ <\]"]""".r // allowed: @xxx< @xxx]]> @xxx[SPACE]
+    val pReg2 = """@[0-9a-zA-Z_-]+$""".r // allowed: @xxx
     val pRegName = """^(@[0-9a-zA-Z_-]+).*$""".r
 
     val actorMap = HashMap[String,Actor]()
@@ -275,7 +276,8 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
             val p = str.indexOf("=")
             if( p > 0 ) {
                 val key = str.substring(0,p).trim()
-                val value = Utility.escape( str.substring(p+1).trim() )
+                //val value = Utility.escape( str.substring(p+1).trim() ) // 不再向下兼容，特殊字符可通过cdata避免转义
+                val value = str.substring(p+1).trim()
 
                 pmap.put(key,value)
             }
@@ -310,20 +312,22 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
     def replaceParameter(s:String,pmap:HashMapStringString):String = {
 
-        val matchlist = pReg.findAllMatchIn(s)
-        if( matchlist == null ) {
+        var matchlist = pReg.findAllMatchIn(s).toBuffer
+        if( matchlist.size == 0 ) {
+            matchlist = pReg2.findAllMatchIn(s).toBuffer
+        }
+        if( matchlist.size == 0 ) {
             return s
         }
 
         var ns = s 
-        val tags = matchlist.toList
-        for(tag <- tags ) {
+        for(tag <- matchlist ) {
 
             tag.matched match {
                 case pRegName(name) =>
-                    val v = pmap.getOrElse(name,"").toString
-                    if( v != "" ) {
-                        ns = ns.replace(name,v)
+                    val v = pmap.getOrElse(name,null)
+                    if( v != null ) {
+                        ns = ns.replace(name,v.toString)
                     }
                 case _ =>
             }
@@ -361,8 +365,6 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
             }
         }
 
-//println("old="+xml)
-//println("new="+outputXml)
         outputXml
     }
 
@@ -370,6 +372,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
         val str1 = prepareConfigFile()
         val str2 = updateXml(str1)
+//println("final xml="+str2)        
         val in = new StringReader(str2)
         cfgXml = XML.load(in)
         in.close()
