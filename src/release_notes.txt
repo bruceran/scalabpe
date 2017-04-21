@@ -1,4 +1,4 @@
-1.2.2 (20170418)
+1.2.2 (20170421)
 ================
 
 * (0410)enableExtendTlv默认值由false改为true
@@ -10,6 +10,7 @@
 * (0414)增加Router.profile,默认为default,对应config.xml; 加载的是config_xxx.xml，profile值就是xxx
 * (0418)测试组件特殊的connId参数，用于指定用例中的connId,通过req.remoteAddr可以取到这个值,避免对取对端地址的地方做硬编码
 * (0418)修改test中右值无法引用非String对象的bug
+* (0421)修改runtest如果有测试用例失败或异常，进程退出码设置为1
 
 1.2.1 (20170408)
 ================

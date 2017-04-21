@@ -83,9 +83,9 @@ start_app()
 		done
 
 		pid=`ps -ef|grep 'scalabpe.core.Main' | awk '{print $2}' | grep "$parentpid" | awk '{print $1}'`
-    echo $pid > $pidfile
+        echo $pid > $pidfile
 
-    echo " done, pid=$pid"
+        echo " done, pid=$pid"
 }
 
 stop_app()
@@ -176,6 +176,7 @@ case "$1" in
 		;;
 	runtest)
 		java -Dapplication.name=${APPLICATION_NAME} -Dscalabpe.profile=$SCALABPE_PROFILE -Dscalabpe.tempdirroot=$SCALABPE_TEMPDIRROOT -Dfile.encoding=UTF-8 -cp "$CLASSPATH" scalabpe.core.TestCaseRunner $2 $3 $4 $5 $6 $7
+        exit $?
 		;;
 	runscala)
 		env JAVA_OPTS="-Dfile.encoding=UTF-8"  scala -cp "classes:$tempdir/classes:lib/*:."

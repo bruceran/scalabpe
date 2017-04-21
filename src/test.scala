@@ -927,6 +927,7 @@ object TestCaseRunner extends Logging {
     var soc : SocImpl = _
     var remoteReqRes: SocRequestResponseInfo = _
 
+    var hasError = false
     var total = 0
     var success = 0
     var failed = 0
@@ -1047,18 +1048,25 @@ options:
             files += "default.txt"
         }
 
-        for( f <- files ) {
-            runTest(f,params,args)
-        }
+        try {
+            for( f <- files ) {
+                runTest(f,params,args)
+            }
 
-        if( Main.testMode ) {
-            Main.close()
-        } 
-        if( soc != null ) {
-            soc.close()
-            log.asInstanceOf[ch.qos.logback.classic.Logger].getLoggerContext().stop
-            soc = null
+            if( Main.testMode ) {
+                Main.close()
+            } 
+            if( soc != null ) {
+                soc.close()
+                log.asInstanceOf[ch.qos.logback.classic.Logger].getLoggerContext().stop
+                soc = null
+            }
+        } catch {
+            case e:Throwable =>
+                hasError = true
         }
+        if( hasError ) System.exit(1)
+        else System.exit(0)
     }
 
     def resetGlobal() {
@@ -1190,8 +1198,10 @@ options:
                     throw e
         }
 
+        if( failed > 0 ) hasError = true
+
         println("-------------------------------------------")
-        println("testcase total:%d, success:%d, failed:%d".format(total,success,failed))
+        println("testcase result, file:%s total:%d, success:%d, failed:%d".format(file,total,success,failed))
         println("-------------------------------------------")
     }
 
