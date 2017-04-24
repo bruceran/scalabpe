@@ -13,7 +13,7 @@ import javax.crypto.spec._
 import java.io.File
 import org.apache.commons.io.FileUtils
 
-object IpUtils {
+object IpUtils extends Logging {
 
     val localips  = ArrayBufferString()
     val netips = ArrayBufferString()
@@ -57,6 +57,20 @@ object IpUtils {
     }
 
     def localIp() : String = {
+
+        if( true ) {
+            val envhost = System.getenv("SCALABPE_HOST")
+            if( envhost != null && envhost != "" ) {
+                try {
+                    val addr = InetAddress.getByName(envhost)
+                    val s = addr.getHostAddress()
+                    return s
+                } catch {
+                    case e: Exception => 
+                        log.error("cannot get host address, use local ip")
+                }
+            }
+        }
 
         val ip0 = localIp0()
 
