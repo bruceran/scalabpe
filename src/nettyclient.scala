@@ -367,12 +367,14 @@ class NettyClient(
 
         } else {
 
-            val maxWait = connectTimeout.min(2000)
-            val now = System.currentTimeMillis
-            var t = 0L
-            while(!connected.get() && (t - now ) < maxWait){
-                Thread.sleep(50)
-                t = System.currentTimeMillis
+            if( addrs.size > 0 ) {
+                val maxWait = connectTimeout.min(2000)
+                val now = System.currentTimeMillis
+                var t = 0L
+                while(!connected.get() && (t - now ) < maxWait){
+                    Thread.sleep(50)
+                    t = System.currentTimeMillis
+                }
             }
 
         }

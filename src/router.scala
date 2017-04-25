@@ -69,6 +69,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
     val parameters = new HashMapStringString()
 
+    val started = new AtomicBoolean()
     val shutdown = new AtomicBoolean()
 
     init
@@ -107,6 +108,8 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
             initInternal()
 
             sos.start()
+
+            started.set(true)
 
         } catch {
             case e:Exception =>

@@ -30,6 +30,7 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
     var addrsMap = HashMap[String,String]() // serviceId->addrs
     var regMap = HashMap[String,String]() // registerAs->ip:port
     var etcdClient:EtcdHttpClient = _
+    var waitForRouterTask:TimerTask = _
 
     def uuid(): String = {
         return java.util.UUID.randomUUID().toString().replaceAll("-", "")
@@ -59,6 +60,7 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
 
     def close():Unit = {
         timer.cancel()
+        doUnRegister() 
         etcdClient.close()
         log.info("etcdreg plugin closed")
     }
@@ -129,11 +131,13 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
         }
         log.info("etcd registry plugin, regMap="+regMap.mkString(","))        
 
-        timer.schedule( new TimerTask() {
+        waitForRouterTask = new TimerTask() {
             def run() {
-                refresh()
+                waitForRouter()
             }
-        }, interval*1000,interval*1000)
+        }
+
+        timer.schedule(waitForRouterTask, 1*1000,1*1000)
 
         log.info("etcdreg plugin inited")
 
@@ -189,8 +193,19 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
         }
     }
 
+    def waitForRouter() {
+        if(!Router.main.started.get()) return
+        waitForRouterTask.cancel()
+        doRegister()
+        timer.schedule( new TimerTask() {
+            def run() {
+                refresh()
+            }
+        }, interval*1000,interval*1000)
+    }
+
     def refresh() {
-        doRegister()  // todo 检查sos端口确实开了再进行注册
+        doRegister()
         doDiscover()
     }
 
@@ -216,6 +231,15 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
             val ok = registerToEtcd(profile,registerAs,addr)
             if( !ok ) {
                 log.error("cannot register service to etcd, name="+registerAs)
+            }
+        }
+    }
+
+    def doUnRegister() {
+        for( (registerAs,addr) <- regMap ) {
+            val ok = unRegisterToEtcd(profile,registerAs,addr)
+            if( !ok ) {
+                log.error("cannot unregister service to etcd, name="+registerAs)
             }
         }
     }
@@ -281,6 +305,27 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
         true
     }
 
+    def unRegisterToEtcd(profile:String,registerAs:String,addr:String):Boolean = {
+        val path = basePath +"/"+profile+"/"+registerAs+"/"+instanceId
+        val value = ""
+        val (errorCode,content) = etcdClient.sendWithReturn("delete",path,value)
+
+        if( errorCode != 0 || log.isDebugEnabled() ) {
+            log.info("etcd req: path="+path+",value="+value+" res: errorCode="+errorCode+",content="+content)
+        }
+
+        if(errorCode!=0) return false
+        val m = JsonCodec.parseObjectNotNull(content)
+        if( m.size == 0 ) return false
+        if( m.ns("errorCode") != "" || m.ns("action") != "delete" ) return false
+
+        /*
+        $curl http://192.168.28.25:2379/v2/keys/services/prd/userservice/113  -XDELETE 
+
+        */
+
+        true
+    }
 }
 
 class EtcdHttpClient(

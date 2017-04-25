@@ -4,6 +4,7 @@ import java.io._
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 import scala.xml._
+import org.apache.commons.io.FileUtils
 
 object Main extends Logging with SignalHandler {
 
@@ -74,7 +75,16 @@ object Main extends Logging with SignalHandler {
         }
 
         val startSos = !testMode 
-        val installMock = (cfgXml \ "InstallMock").text
+        var installMock = (cfgXml \ "InstallMock").text
+        if( installMock == "" ) {
+            val alllines = FileUtils.readFileToString(new File(rootDir+File.separator+Router.configXml),"UTF-8")
+            if( alllines.indexOf("@installmock") >= 0 ) {
+                val paramfilelines = FileUtils.readFileToString(new File(rootDir+File.separator+"config_parameter"+File.separator+Router.parameterXml),"UTF-8")
+                if( paramfilelines.indexOf("@installmock=") >= 0 ) {
+                    installMock = "true"
+                }
+            }
+        }
         router = new Router(rootDir,startSos,testMode||(installMock!=""))
 
         val selfCheckPort = (cfgXml \ "CohPort").text.toInt
@@ -86,6 +96,7 @@ object Main extends Logging with SignalHandler {
         val t2 = System.currentTimeMillis
         log.info("scalabpe started, ts=%s[ms]".format(t2-t1))
 
+        installMock = (router.cfgXml \ "InstallMock").text // 使用参数替换后的config.xml
         if( installMock != "" && !testMode ) {
             TestCaseRunner.installMock(installMock)
         }
