@@ -59,7 +59,7 @@ object IpUtils extends Logging {
     def localIp() : String = {
 
         if( true ) {
-            val envhost = System.getenv("SCALABPE_HOST")
+            val envhost = System.getenv("SCALABPE_HOST") // used in docker
             if( envhost != null && envhost != "" ) {
                 try {
                     val addr = InetAddress.getByName(envhost)
@@ -72,7 +72,10 @@ object IpUtils extends Logging {
             }
         }
 
-        val ip0 = localIp0()
+        val docker0 = "172.17.0.1"
+        localips -= docker0
+
+        val ip0 = localIp0() // 此ip可通过调整/etc/hosts文件改变
 
         if ( localips.size > 0  ) {
             if( localips.contains(ip0)) return ip0

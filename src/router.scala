@@ -389,11 +389,6 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
             parameters.put(key,value)
         }
 
-        val appName = System.getProperty("application.name")
-        Router.dataDir = rootDir+File.separator+"data"
-        val dataDirRoot = (cfgXml \ "DataDirRoot" ).text
-        if( dataDirRoot != "" ) Router.dataDir = dataDirRoot+File.separator+appName
-
         var s = getConfig("globalCls","")
         if( s != "" ) globalCls = s
 

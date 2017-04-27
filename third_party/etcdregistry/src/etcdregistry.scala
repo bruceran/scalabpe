@@ -25,12 +25,17 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
 
     var profile = "default"
     val timer = new Timer("etcdregtimer")
-    val instanceId = uuid()
+    var instanceId = ""
     var sosMap = HashMap[String,String]() // serviceId->discoverFor
     var addrsMap = HashMap[String,String]() // serviceId->addrs
     var regMap = HashMap[String,String]() // registerAs->ip:port
+    var unRegOnCloseMap = HashMap[String,Boolean]() // registerAs->unregisterOnClose  flag
     var etcdClient:EtcdHttpClient = _
     var waitForRouterTask:TimerTask = _
+
+    def isTrue(s:String):Boolean = {
+        s == "1"  || s == "t"  || s == "T" || s == "true"  || s == "TRUE" || s == "y"  || s == "Y" || s == "yes" || s == "YES" 
+    }
 
     def uuid(): String = {
         return java.util.UUID.randomUUID().toString().replaceAll("-", "")
@@ -40,8 +45,21 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
 
     def init() {
         profile = Router.profile
+        var s = ""
 
-        var s = (cfgNode \ "Hosts").text
+        val instanceIdFile = new File(Router.dataDir + "/instance_id")
+        if( instanceIdFile.exists ) {
+            s = FileUtils.readFileToString(instanceIdFile) 
+        }
+
+        if( s != "" )
+            instanceId = s
+        else {
+            instanceId = uuid()
+            FileUtils.writeStringToFile(instanceIdFile,instanceId) 
+        }
+
+        s = (cfgNode \ "Hosts").text
         if( s == "" )
             throw new Exception("ETCD hosts not configed")
         hosts = s
@@ -118,7 +136,9 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
         if( sapPort != "" ) {
             var registerAs = (cfgXml \ "Server" \ "@registerAs").text
             if( registerAs != ""){
-                regMap.put(registerAs,getHost()+":"+sapPort)
+                regMap.put(registerAs,getHost()+":"+getTcpPort(sapPort))
+                val s = ( cfgXml \ "Server" \ "@unregisterOnClose").text
+                unRegOnCloseMap.put(registerAs,isTrue(s))
             }
         }
         var httpservers = (cfgXml \ "HttpServerCfg")
@@ -126,7 +146,9 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
             var registerAs = (httpserver_node \ "@registerAs").text
             if( registerAs != ""){
                 var port = (httpserver_node \ "@port").text
-                regMap.put(registerAs,getHost()+":"+sapPort)
+                regMap.put(registerAs,getHost()+":"+getHttpPort(port))
+                val s = ( httpserver_node \ "@unregisterOnClose").text
+                unRegOnCloseMap.put(registerAs,isTrue(s))
             }
         }
         log.info("etcd registry plugin, regMap="+regMap.mkString(","))        
@@ -236,7 +258,7 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
     }
 
     def doUnRegister() {
-        for( (registerAs,addr) <- regMap ) {
+        for( (registerAs,addr) <- regMap if unRegOnCloseMap.getOrElse(registerAs,false) ) {
             val ok = unRegisterToEtcd(profile,registerAs,addr)
             if( !ok ) {
                 log.error("cannot unregister service to etcd, name="+registerAs)
@@ -246,6 +268,21 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
 
     def getHost():String = {
         IpUtils.localIp()
+    }
+
+    def getTcpPort(port:String):String = {
+        val env_port = System.getenv("SCALABPE_TCP_PORT") // used in docker
+        if( env_port != null && env_port != "" ) {
+            return env_port
+        }
+        port
+    }
+    def getHttpPort(port:String):String = {
+        val env_port = System.getenv("SCALABPE_HTTP_PORT") // used in docker
+        if( env_port != null && env_port != "" ) {
+            return env_port
+        }
+        port
     }
 
     def getEtcdAddrs(profile:String,discoverFor:String):Tuple2[Boolean,String] = {

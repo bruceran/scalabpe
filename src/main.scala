@@ -57,8 +57,12 @@ object Main extends Logging with SignalHandler {
         val cfgXml = XML.load(in)
         in.close()
 
-        Router.tempDir = rootDir+File.separator+"temp"
         val appName = System.getProperty("application.name")
+        Router.dataDir = rootDir+File.separator+"data"
+        val dataDirRoot = (cfgXml \ "DataDirRoot" ).text
+        if( dataDirRoot != "" ) Router.dataDir = dataDirRoot+File.separator+appName
+
+        Router.tempDir = rootDir+File.separator+"temp"
         val tempDirRoot = System.getProperty("scalabpe.tempdirroot")
         if( tempDirRoot != null && tempDirRoot != "" ) Router.tempDir = tempDirRoot+File.separator+appName
 
