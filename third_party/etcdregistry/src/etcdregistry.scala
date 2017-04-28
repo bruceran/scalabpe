@@ -216,6 +216,7 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
     }
 
     def waitForRouter() {
+        if(Router.main == null) return
         if(!Router.main.started.get()) return
         waitForRouterTask.cancel()
         doRegister()
