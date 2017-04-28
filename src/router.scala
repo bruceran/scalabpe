@@ -21,6 +21,7 @@ object Router {
     var parameterXml = "parameter.xml"
     var dataDir = ""
     var tempDir = ""
+    var testMode = false // 单元测试模式下运行
     var main:Router = null
 }
 

@@ -12,7 +12,6 @@ object Main extends Logging with SignalHandler {
     var mainThread : Thread = _
     var shutdown = false
     var selfCheckServer : SelfCheckServer = _
-    var testMode = false
     var stopFile = ""
 
     def handle(signal:Signal) {
@@ -78,7 +77,7 @@ object Main extends Logging with SignalHandler {
             }
         }
 
-        val startSos = !testMode 
+        val startSos = !Router.testMode 
         var installMock = (cfgXml \ "InstallMock").text
         if( installMock == "" ) {
             val alllines = FileUtils.readFileToString(new File(rootDir+File.separator+Router.configXml),"UTF-8")
@@ -89,7 +88,7 @@ object Main extends Logging with SignalHandler {
                 }
             }
         }
-        router = new Router(rootDir,startSos,testMode||(installMock!=""))
+        router = new Router(rootDir,startSos,Router.testMode||(installMock!=""))
 
         val selfCheckPort = (cfgXml \ "CohPort").text.toInt
 
@@ -101,11 +100,11 @@ object Main extends Logging with SignalHandler {
         log.info("scalabpe started, ts=%s[ms]".format(t2-t1))
 
         installMock = (router.cfgXml \ "InstallMock").text // 使用参数替换后的config.xml
-        if( installMock != "" && !testMode ) {
+        if( installMock != "" && !Router.testMode ) {
             TestCaseRunner.installMock(installMock)
         }
 
-        if( testMode ) {
+        if( Router.testMode ) {
             return
         }
 

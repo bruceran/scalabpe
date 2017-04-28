@@ -1053,7 +1053,7 @@ options:
                 runTest(f,params,args)
             }
 
-            if( Main.testMode ) {
+            if( Router.testMode ) {
                 Main.close()
             } 
             if( soc != null ) {
@@ -1173,8 +1173,8 @@ options:
             soc = new SocImpl(remote,codecs,socCallback,connSizePerAddr=1)
         }
 
-        if( !Main.testMode && remote == "") {
-            Main.testMode = true
+        if( !Router.testMode && remote == "") {
+            Router.testMode = true
             Main.main(Array[String]())
             Router.main.mockActor = new MockActor()
         }

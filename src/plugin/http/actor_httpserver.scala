@@ -563,6 +563,8 @@ image/x-icon ico
 
         }
 
+        if( Router.testMode ) return
+
         nettyHttpServer = new NettyHttpServer(this, port, host, idleTimeout, maxContentLength,maxInitialLineLength,maxHeaderSize,maxChunkSize)
 
         threadFactory = new NamedThreadFactory("httpserver")
@@ -573,6 +575,8 @@ image/x-icon ico
     }
 
     def close() {
+
+        if( Router.testMode ) return
 
         if( timer != null) {
             timer.cancel()
@@ -600,6 +604,8 @@ image/x-icon ico
 
     def afterInit() {
 
+        if( Router.testMode ) return
+
         if( osapDb ) {
             timer = new Timer("httpserverrefreshtimer")
             doRefresh()
@@ -612,14 +618,19 @@ image/x-icon ico
     }
 
     def beforeClose() {
+        if( Router.testMode ) return
         nettyHttpServer.closeReadChannel()
     }
 
     def stats() : Array[Int] = {
+        if( Router.testMode ) return new Array[Int](0)
+
         nettyHttpServer.stats
     }
 
     def dump() {
+        if( Router.testMode ) return
+
         val buff = new StringBuilder
 
         buff.append("pool.size=").append(pool.getPoolSize).append(",")

@@ -1,8 +1,9 @@
-1.2.1 (20170410)
+1.2.1 (20170428)
 ================
 
-* httpserver 插件增加 removeReturnMessageInBody，将body中的return_message,fail_reason等错误提示去掉，避免和顶层的return_message重复
-* db插件支持按行(传入ArrayBufferMap)批量更新
+* (0408)httpserver 插件增加 removeReturnMessageInBody，将body中的return_message,fail_reason等错误提示去掉，避免和顶层的return_message重复
+* (0410)db插件支持按行(传入ArrayBufferMap)批量更新
+* (0428)单元测试模式下不绑定http端口
 
 1.2.0 (20170330)
 ================
