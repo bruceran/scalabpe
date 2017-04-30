@@ -19,6 +19,7 @@
         f) 将原来的logback.xml里的jvmdbbroker替换成scalabpe
         h) 删除原来的temp下的所有文件以免不必要的错误
         i) 服务描述文件enableExtendTlv默认值从false改为true, 对超过64k的内容默认会采用t0lv方案，如果不希望可在服务描述文件里加 enableExtendTlv="false" 关闭
+        j) parameter xml中值如果包含&这样的特殊字符，新版本的处理不向下兼容，有特殊字符，如 & <> 需要都修改成使用CDATA方式 <assign><![CDATA[@xxx=yyyy]]></assign>
 
 # 核心
 

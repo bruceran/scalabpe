@@ -1605,9 +1605,11 @@ class TlvCodecs(val dir:String) extends Logging {
             }
         }
 
-        log.info("validator size="+Validator.cache.size)
-        log.info("encoder size="+Encoder.cache.size)
-        log.info("tlvfieldinfo size="+TlvFieldInfo.cache.size)
+        if( log.isDebugEnabled()) {
+            log.debug("validator size="+Validator.cache.size)
+            log.debug("encoder size="+Encoder.cache.size)
+            log.debug("tlvfieldinfo size="+TlvFieldInfo.cache.size)
+        }
     }
 
     def findTlvCodec(serviceId:Int):TlvCodec = {

@@ -19,8 +19,7 @@
 
 	* 安装
 
-	安装Sun JDK1.6或以上版本, 根据机器是32位还是64位选择正确的jdk版本
-	此框架未在JDK 7或以上版本下编译测试过, 如有需要可自行解决兼容性问题
+	安装Sun JDK1.8或以上版本, 使用64位jdk版本
 
 	* 设置好JAVA_HOME和PATH环境变量
 
@@ -29,19 +28,21 @@
 
 	linux下示例：
 	编辑.bash_profile
-	    export JAVA_HOME=/usr/local/jdk1.6.0_43
+	    export JAVA_HOME=/usr/local/jdk1.8.0_101
 	    export PATH=$JAVA_HOME/bin:$PATH
 
 	在命令行下运行java -version, 若配置正确会显示版本信息
 
 ## 安装scala
 
+	scalabpe框架的lib目录下已包括scala 2.12.1的运行所需的jar包，不安装scala就可以运行scalabpe框架
+    只在开发人员需要独立启动scala程序做学习或其它开发才需要单独安装scala
+
 	* 下载 
 
 	官网下载地址: http://www.scala-lang.org/download/all.html
 
-	建议下载 2.10.x(x>=2)的版本, 此框架仅在2.10.2版本下做过完整测试
-	此框架未在scala 2.11.x或更高版本下测试过, 如有需要可自行解决兼容性问题
+	建议下载 scala-2.12.x(x>=1)的版本, 不能使用低于此版本的scala
 
 	* 安装
 
@@ -54,11 +55,11 @@
 
 	linux下示例：
 	编辑.bash_profile
-	    export SCALA_HOME=/usr/local/scala-2.10.2
+	    export SCALA_HOME=/usr/local/scala-2.12.1
 	    export PATH=$SCALA_HOME/bin:$PATH
 
 	为脚本增加可执行权限: 
-	cd /usr/local/scala-2.10.2/bin && chmod 755 *
+	cd /usr/local/scala-2.12.1/bin && chmod 755 *
 
 	在命令行下运行scala -version, 若配置正确会显示版本信息
 
@@ -73,7 +74,7 @@
 	data/  数据文件目录
 	doc/ 文档目录
 	lib/ 依赖的jar包
-	src/ 框架核心和插件代码目录，scalabpe-core-1.1.x.jar 和 scalabpe-plugins-1.1.x.jar 的源码 
+	src/ 框架核心和插件代码目录，scalabpe-core-1.2.x.jar 和 scalabpe-plugins-1.2.x.jar 的源码 
 	temp/ 运行时临时目录
 	testcase/ 接口测试指令文件, 用于开发人员或测试人员测试接口
 	third_party/ 第三方插件目录
@@ -112,7 +113,7 @@
 ## 编译src/目录下的源码
 
 	运行 build 脚本进行编译, build脚本只用于编译src/目录下的源代码, compose_conf下的在每次启动时编译
-	编译后会生成2个jar包：lib/scalabpe-core-1.1.x.jar 和 lib/scalabpe-plugins-1.1.jar 
+	编译后会生成2个jar包：lib/scalabpe-core-1.2.x.jar 和 lib/scalabpe-plugins-1.2.x.jar 
 	每次修改src下的代码后需要重新编译再运行service脚本才能看到最新效果
 
 [返回](#toc)
@@ -126,7 +127,6 @@
 	lib/
 	webapp/    对外提供http服务才需要此目录，否则可删除
 	config.xml
-	LICENSE
 	logback.xml
 	service
 	service.bat
@@ -144,20 +144,29 @@
 
 ## 必须包含的jar包
 
+	* scala 2.12.1 版本运行jar包
+
+    scala-compiler.jar
+    scala-library.jar
+    scala-reflect.jar
+    scala-xml_2.12-1.0.6.jar
+
 	* scalabpe核心包和插件包
 
-	scalabpe-core-1.1.x.jar
-	scalabpe-plugins-1.1.x.jar
+	scalabpe-core-1.2.x.jar
+	scalabpe-plugins-1.2.x.jar
 
 	* 基于文件的队列实现
 
-	billing-queue-1.1.1.jar  源码地址：https://github.com/bruceran/billing-queue
+	billing-queue-1.1.2.jar  源码地址：https://github.com/bruceran/billing-queue
 
 	* 核心依赖包
 
 	slf4j-api-1.6.6.jar
 	logback-core-1.0.13.jar
 	logback-classic-1.0.13.jar
+    jcl-over-slf4j-1.6.6.jar
+    log4j-over-slf4j-1.6.6.jar
 	commons-logging-1.1.1.jar
 	commons-logging-api-1.1.jar
 	commons-lang3-3.1.jar
@@ -207,9 +216,5 @@
 
 	activation.jar
 	mail-1.4.5.jar
-
-	* mq插件
-
-	activemq-all-5.9.0.jar  从包中删除了logback和log4j，否则和本框架使用的版本有冲突
 
 [返回](#toc)

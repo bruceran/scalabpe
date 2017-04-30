@@ -108,9 +108,7 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
             var s = (sos_node \ "@discoverFor").text
             if( s != "" ) {
                 var serviceId = (sos_node \ "ServiceId").text.split(",")(0)
-                if( s != "" ) {
-                    sosMap.put(serviceId,s)
-                }
+                sosMap.put(serviceId,s)
             }
         }
         log.info("etcd discovery: sosMap="+sosMap.mkString(","))        
@@ -126,7 +124,7 @@ class EtcdRegPlugin(val router:Router,val cfgNode: Node)
                     addrsMap.put(serviceId,addrs)
                     log.warn("cannot get addrs from etcd,use local cache")
                 } else {
-                    log.warn("cannot get addrs from etcd,use "+Router.configXml)
+                    log.warn("cannot get addrs from etcd,use config in config.xml")
                 }
             }
         }
