@@ -111,6 +111,8 @@ options:
             }
         }
         
+        println("process file: "+p0)
+
         if( p0.endsWith(".xml") ) {
             var p2 = p0.replace(".xml",".txt")
             if( params.ns("output") != "" ) p2 = params.ns("output")

@@ -24,7 +24,7 @@
     scala>Thread.sleep(50)
     scala>scalabpe.flow.Utils.checkInclude(s,"123") 测试自己写的辅助类object Utils里的checkInclude方法
 
-## 使用service runtest测试工具，简单版本
+## 使用service runtest测试工具，简单版本, 简单版本目前不推荐再使用
 
     runtest工具会自动判断格式，若文件中包含 global: testcase:, 则认为是集成测试工具版本, 否则是简单版本
 
@@ -53,6 +53,7 @@
 
     输入./service runtest -a -d testcasefile1 testcasefile2 ... 
         -a 忽略enabled标志，运行所有测试用例
+        --all_files        对testcase下所有txt文件运行测试
         -d 参数表示输出解析后的文本到标准输出，可不传
         testcasefile 不传则默认为 testcase/default.txt文件
 

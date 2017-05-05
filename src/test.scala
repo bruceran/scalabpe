@@ -1040,8 +1040,14 @@ options:
         var files = params.nls("files")
         if( params.ns("all_files") == "1" ) {
             files.clear()
-            for( f <- new File("./testcase/").listFiles if f.getName().endsWith(".txt") ) {
-                files += f.getName()
+            for( f <- new File("./testcase/").listFiles ) {
+                if( f.getName().endsWith(".txt") ) {
+                    files += f.getName()
+                } else if( f.isDirectory ) {
+                    for( f2 <- new File("./testcase/"+f.getName()).listFiles if f2.getName().endsWith(".txt")) {
+                        files += f.getName()+"/"+f2.getName()
+                    }
+                }
             }
         }
         if( files.length == 0 ) {
@@ -1144,6 +1150,7 @@ options:
                 return
             }
         } 
+        file = file.replace("\\","/")
 
         if(!isNewFormat(file)) {
             TestCaseRunnerV1.main(args)
