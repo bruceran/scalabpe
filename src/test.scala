@@ -1069,6 +1069,7 @@ options:
             }
         } catch {
             case e:Throwable =>
+                log.error("exception e="+e.getMessage,e)
                 hasError = true
         }
         if( hasError ) System.exit(1)

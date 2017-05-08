@@ -21,6 +21,7 @@
 * (0427)支持从环境变量SCALABPE_TCP_PORT/SCALABPE_HTTP_PORT获得外部端口，用于docker环境下获取到外部绑定的端口
 * (0428)单元测试模式下不绑定http端口
 * (0505)runtest all_files支持2级子目录
+* (0508)修改linux下runtest初次运行报错的bug
 
 1.2.1 (20170408)
 ================
