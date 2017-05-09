@@ -22,6 +22,7 @@
 * (0428)单元测试模式下不绑定http端口
 * (0505)runtest all_files支持2级子目录
 * (0508)修改linux下runtest初次运行报错的bug
+* (0509)runtest工具支持http调用，增加了3个指令：setup_http, assert_http, teardown_http; 支持cookie
 
 1.2.1 (20170408)
 ================

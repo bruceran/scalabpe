@@ -59,8 +59,6 @@
 
     新的集成测试工具不需要单独先启动待测试的服务，测试工具本身会启动服务，完成测试，再关闭服务
 
-    使用runtest的时候，日志目录设置是  set JAVA_OPTS="-Dapplication.name=%APPLICATION_NAME%test" 
-    程序目录名后面带一个 test， 请到test目录下查看所有日志
     testcase运行的所有请求响应日志都在csos_audit.log中，request_audit.log中没有日志
 
     testcasefile 文件格式定义:

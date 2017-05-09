@@ -521,7 +521,7 @@ class HttpClientImpl(
         for( (key,value) <- outBody ) {
             if(!first) bodyStr.append("&")
             bodyStr.append(key+"="+URLEncoder.encode(value,msg.charSet))
-        first = false
+            first = false
         }
 
         bodyStr.toString
