@@ -108,6 +108,7 @@ with BeforeClose  with Refreshable with AfterInit with HttpServer4Netty with Log
     val MIMETYPE_MULTIPART = "multipart/form-data"
 
     val errorFormat = """{"return_code":%d,"return_message":"%s","data":{}}"""
+    val errorFormatCodeMessageNoData = """{"code":%d,"message":"%s"}"""
     val rpcFormat = """{"jsonrpc":"2.0","id":"%s","result":%s}"""
 
     val HTTP_DATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss zzz";
@@ -130,6 +131,7 @@ with BeforeClose  with Refreshable with AfterInit with HttpServer4Netty with Log
     var idleTimeout = 45000
     var timerInterval:Int = 50
     var removeReturnMessageInBody = false
+    var jsonStyle = ""
     var returnMessageFieldNames = ArrayBufferString("return_message","resultMsg","failReason","resultMessage","result_msg","fail_reason","result_message")
     var defaultVerify = "false"
     var osapDb = false
@@ -261,6 +263,8 @@ image/x-icon ico
         if( s != "" ) {
             removeReturnMessageInBody = isTrue(s)
         }
+        s = (cfgNode \ "@jsonStyle").text
+        if( s != "" ) jsonStyle = s
 
         s = (cfgNode \ "@sessionFieldName").text
         if( s != "" ) sessionFieldName = s
@@ -1230,7 +1234,8 @@ image/x-icon ico
 
         val isRpc = requestId.startsWith("rpc")
 
-        var content = errorFormat.format(errorCode,convertErrorMessage(errorCode))
+        var f = if( jsonStyle == "codeMessageNoData") errorFormatCodeMessageNoData else errorFormat
+        var content = f.format(errorCode,convertErrorMessage(errorCode))
 
         val clientIpPort = parseClientIp(httpReq,connId)
         val remoteIpPort = parseRemoteIp(connId)
@@ -1427,9 +1432,16 @@ image/x-icon ico
 
             } else {
                 val map = HashMapStringAny()
-                map.put("return_code",errorCode)
-                map.put("return_message",errorMessage)
-                map.put("data",jsonTypeProcess(req.serviceId,req.msgId,body))
+                if( jsonStyle == "codeMessageNoData" ) {
+                    map ++= jsonTypeProcess(req.serviceId,req.msgId,body)
+                    map.put("code",errorCode)
+                    if( !map.contains("message") )
+                        map.put("message",errorMessage)
+                } else {
+                    map.put("return_code",errorCode)
+                    map.put("return_message",errorMessage)
+                    map.put("data",jsonTypeProcess(req.serviceId,req.msgId,body))
+                }
                 content = JsonCodec.mkString(map)
             }
         }

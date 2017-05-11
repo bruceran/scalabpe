@@ -1,9 +1,10 @@
-1.2.1 (20170428)
+1.2.1 (20170512)
 ================
 
 * (0408)httpserver 插件增加 removeReturnMessageInBody，将body中的return_message,fail_reason等错误提示去掉，避免和顶层的return_message重复
 * (0410)db插件支持按行(传入ArrayBufferMap)批量更新
 * (0428)单元测试模式下不绑定http端口
+* (0512)httpserver插件，新增jsonStyle参数，控制输出的json串风格，jsonStyle=codeMessageNoData 表示输出 code, message, body里的数据，无额外的data节点
 
 1.2.0 (20170330)
 ================
