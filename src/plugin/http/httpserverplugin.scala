@@ -26,6 +26,10 @@ trait HttpServerRawOutputPlugin {
     def generateRawContent(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String,headers:HashMap[String,String]):Array[Byte]
 }
 
+trait HttpServerStaticFilePlugin {
+    def generateStaticFile(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String,headers:HashMap[String,String]):String
+}
+
 trait HttpServerVerifyPlugin {
     def verify(serviceId:Int,msgId:Int,xhead:HashMapStringAny,body:HashMapStringAny,httpReq:HttpRequest):Boolean
 }

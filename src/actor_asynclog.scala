@@ -871,10 +871,12 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                         length = content.length
                     } else {
                         if( content.startsWith("raw_content:"))
-                            length = content.substring(12).toInt
+                            length = content.substring(content.lastIndexOf(":")+1).toInt
+                        else if( content.startsWith("static_file:"))
+                            length = content.substring(content.lastIndexOf(":")+1).toInt
                         else
                             length = content.length
-                        content = """{"contentType":"%s","contentLength":%d}""".format(contentType,length)
+                        content = """{"content":"%s","contentType":"%s"}""".format(content,contentType)
                     }
                 } else {
                     length = req.xhead.i("contentLength",0)
@@ -899,8 +901,8 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                         buff.append(ts).append(httpSplitter)
                         buff.append(res.code).append(httpSplitter)
                         buff.append(content).append(httpSplitter)
-                        buff.append("tmstamp:0").append(httpSplitter)
-                        buff.append("sigstat:"+req.xhead.s("sigstat","0")).append(httpSplitter)
+                        buff.append("0").append(httpSplitter)
+                        buff.append("0").append(httpSplitter)
                         buff.append(req.requestId).append(httpSplitter)
                         buff.append(req.xhead.s("host","unknown_host"))
 

@@ -155,6 +155,8 @@ with BeforeClose  with Refreshable with AfterInit with HttpServer4Netty with Log
     var maxInitialLineLength = 16000
     var maxHeaderSize = 16000
     var maxChunkSize = 16000
+    var uploadDir = "webapp/upload"
+    var maxUploadLength = 5000000
     var sessionEncKey = CryptHelper.toHexString("9*cbd35w".getBytes());
     var accessControlAllowOriginGlobal = ""
 
@@ -186,6 +188,10 @@ image/jpeg jpeg jpg jpe
 image/tiff tiff tif
 image/png png
 image/x-icon ico
+application/x-rar-compressed rar
+application/zip zip
+application/x-7z-compressed 7z
+application/x-gzip gz
     """
     var mimeTypeMap = new HashMapStringString
 
@@ -292,6 +298,10 @@ image/x-icon ico
 
         s = (cfgNode \ "@maxContentLength").text
         if( s != "" ) maxContentLength = s.toInt
+        s = (cfgNode \ "@uploadDir").text
+        if( s != "" ) uploadDir = s
+        s = (cfgNode \ "@maxUploadLength").text
+        if( s != "" ) maxUploadLength = s.toInt
         s = (cfgNode \ "@maxInitialLineLength").text
         if( s != "" ) maxInitialLineLength = s.toInt
         s = (cfgNode \ "@maxHeaderSize").text
@@ -455,6 +465,7 @@ image/x-icon ico
                 if(s == "plain") s = "scalabpe.plugin.http.PlainTextPlugin"
                 if(s == "redirect") s = "scalabpe.plugin.http.RedirectPlugin"
                 if(s == "download") s = "scalabpe.plugin.http.DownloadPlugin"
+                if(s == "static_file") s = "scalabpe.plugin.http.StaticFilePlugin"
                 if(s == "template") s = "scalabpe.plugin.http.TemplatePlugin"
 
                 if( s.indexOf(".") < 0 ) s = "scalabpe.flow."+s
@@ -569,7 +580,9 @@ image/x-icon ico
 
         if( Router.testMode ) return
 
-        nettyHttpServer = new NettyHttpServer(this, port, host, idleTimeout, maxContentLength,maxInitialLineLength,maxHeaderSize,maxChunkSize)
+        nettyHttpServer = new NettyHttpServer(this, port, host, idleTimeout, 
+            maxContentLength,maxInitialLineLength,maxHeaderSize,maxChunkSize,
+            uploadDir,maxUploadLength)
 
         threadFactory = new NamedThreadFactory("httpserver")
         pool = new ThreadPoolExecutor(threadNum, threadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
@@ -1389,15 +1402,16 @@ image/x-icon ico
         }
 
         var rawContent:Array[Byte] = null
+        var staticFile:String = null
 
         if( pluginObj != null && pluginObj.isInstanceOf[HttpServerRawOutputPlugin]) {
 
             if( errorCode == 0 ) {
-                val domainName = getDomainName(req.xhead.s("host",""))
-                if( !body.contains(domainNameFieldName) ) body.put(domainNameFieldName,domainName)
-                val contextPath = getContextPath(params)
-                if( contextPath != "" && !body.contains("contextPath") ) body.put("contextPath",contextPath)
-                if( urlArgs != "" && !body.contains("urlArgs") ) body.put("urlArgs",urlArgs)
+                //val domainName = getDomainName(req.xhead.s("host",""))
+                //if( !body.contains(domainNameFieldName) ) body.put(domainNameFieldName,domainName)
+                //val contextPath = getContextPath(params)
+                //if( contextPath != "" && !body.contains("contextPath") ) body.put("contextPath",contextPath)
+                //if( urlArgs != "" && !body.contains("urlArgs") ) body.put("urlArgs",urlArgs)
                 rawContent = pluginObj.asInstanceOf[HttpServerRawOutputPlugin].generateRawContent(serviceId,msgId,errorCode,errorMessage,body,pluginParam,headers)
                 content = "raw_content:"+ ( if(rawContent == null ) 0 else rawContent.length )
                 
@@ -1407,6 +1421,27 @@ image/x-icon ico
                 }
             }
             if( rawContent == null ) {
+                write404InReply(req,errorCode)
+                return null
+            }
+
+        } else if( pluginObj != null && pluginObj.isInstanceOf[HttpServerStaticFilePlugin]) {
+
+            if( errorCode == 0 ) {
+                //val domainName = getDomainName(req.xhead.s("host",""))
+                //if( !body.contains(domainNameFieldName) ) body.put(domainNameFieldName,domainName)
+                //val contextPath = getContextPath(params)
+                //if( contextPath != "" && !body.contains("contextPath") ) body.put("contextPath",contextPath)
+                //if( urlArgs != "" && !body.contains("urlArgs") ) body.put("urlArgs",urlArgs)
+                staticFile = pluginObj.asInstanceOf[HttpServerStaticFilePlugin].generateStaticFile(serviceId,msgId,errorCode,errorMessage,body,pluginParam,headers)
+                content = "static_file:"+ ( if(staticFile == null ) "not found" else staticFile+":"+new File(staticFile).length() )
+
+                val ext = body.remove("__file_ext__")
+                if( !ext.isEmpty) {
+                    contentType = mimeTypeMap.getOrElse(ext.get.toString,contentType)
+                }
+            }
+            if( staticFile == null ) {
                 write404InReply(req,errorCode)
                 return null
             }
@@ -1456,6 +1491,11 @@ image/x-icon ico
         req.xhead.put("charset",charset)
 
         if( !isRpc ) {
+            if( staticFile != null ) {
+                writeStaticFileInReply(connId, staticFile, req.xhead, cookies, headers, reqResInfo)
+                return null
+            }
+
             if( rawContent != null )
                 writeRaw(connId, rawContent, req.xhead, cookies, headers)
             else
@@ -1621,6 +1661,51 @@ image/x-icon ico
         false
     }
 
+    def writeStaticFileInReply(connId:String, staticFile:String, xhead:HashMapStringAny, cookies: HashMap[String,Cookie], headers: HashMap[String,String],reqResInfo:HttpSosRequestResponseInfo){
+
+        val method = xhead.s("method","POST")
+        val keepAlive = xhead.s("keepAlive","true") == "true"
+        val contentType = xhead.s("contentType","")
+
+        val response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK)
+
+        response.setHeader(HttpHeaders.Names.SERVER, "scalabpe httpserver/1.1.0")
+
+        val f = new File(staticFile)
+        val time = new GregorianCalendar();
+        response.setHeader(HttpHeaders.Names.DATE, df_tl.get().format(time.getTime()));
+        response.setHeader(HttpHeaders.Names.LAST_MODIFIED, df_tl.get.format(new Date(f.lastModified())));
+
+        if( !keepAlive ) response.setHeader(HttpHeaders.Names.CONNECTION, "close")
+
+        if( cookies != null && cookies.size > 0 ) {
+            val encoder = new CookieEncoder(true)
+            for( (dummy,c) <- cookies ) {
+                encoder.addCookie(c)
+            }
+            response.setHeader(HttpHeaders.Names.SET_COOKIE, encoder.encode())
+        }
+
+        if( headers != null ) {
+            for( (key,value) <- headers ) {
+                response.setHeader(key,value)
+            }
+        }
+
+        response.setHeader(HttpHeaders.Names.CONTENT_TYPE, contentType )
+
+        val fileLength = f.length()
+        response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(fileLength));
+
+        if ( method == "HEAD" ) {
+            nettyHttpServer.write(connId,response,keepAlive)
+            router.asyncLogActor.receive(reqResInfo)
+            return
+        }
+
+        nettyHttpServer.writeFileZeroCopy(connId,response,keepAlive,f,fileLength,reqResInfo)
+    }
+
     def writeStaticFile(httpReq:HttpRequest,connId:String,xhead:HashMapStringAny,requestId:String,uri:String,f:File) {
 
         val keepAlive =  HttpHeaders.isKeepAlive(httpReq)
@@ -1690,7 +1775,19 @@ image/x-icon ico
 
     def parseBody(isRpc:Boolean,requestId:String,serviceId:Int,msgId:Int,httpReq:HttpRequest,bodyParams:HashMapStringAny,host:String,clientIp:String):Tuple2[HashMapStringAny,Boolean] = {
 
-        val contentType = msgAttrs.getOrElse(serviceId+"-"+msgId+"-requestContentType",MIMETYPE_FORM)
+        var contentType = msgAttrs.getOrElse(serviceId+"-"+msgId+"-requestContentType","")
+        if(contentType == "") {
+            var s = httpReq.getHeader(HttpHeaders.Names.CONTENT_TYPE)
+            if( s == null ) s = ""
+            if( s.indexOf(MIMETYPE_FORM) >=  0 ) contentType = MIMETYPE_FORM
+            else if( s.indexOf(MIMETYPE_JSON) >=  0 ) contentType = MIMETYPE_JSON
+            else if( s.indexOf(MIMETYPE_XML) >=  0 ||  s.indexOf(MIMETYPE_XML2) >=  0 ) contentType = MIMETYPE_XML
+            else if( s.indexOf(MIMETYPE_MULTIPART) >=  0 ) contentType = MIMETYPE_MULTIPART
+        }
+        if(contentType == "") {
+            contentType = MIMETYPE_FORM
+        }
+
         val charset = msgAttrs.getOrElse(serviceId+"-"+msgId+"-charset","UTF-8")
         val method = httpReq.getMethod()
 
@@ -1711,15 +1808,24 @@ image/x-icon ico
 
             val pluginObj = msgPlugins.getOrElse(serviceId+"-"+msgId,null)
             if( method == HttpMethod.POST && contentType == MIMETYPE_MULTIPART ) {
-
+                
                 if( log.isDebugEnabled) {
                     log.debug("http file upload, headers: "+toHeaders(httpReq))
                 }
-                // upload file 
-                // upload file to temp dir and put filename to body
-                val content = httpReq.getContent()
-                //println("content="+content.toString(Charset.forName(charset)))
-                parseFileUploadContent(charset,content,map)
+
+                val x_upload_processed = httpReq.getHeader("X_UPLOAD_PROCESSED")
+                if( x_upload_processed != null && x_upload_processed != "" ) {
+                    val in = new BufferedInputStream(new FileInputStream(x_upload_processed),5000000)
+                    parseFileUploadContent(charset,in,map)
+                    in.close()
+                    new File(x_upload_processed).delete()
+                } else {
+                    // upload file 
+                    // upload file to temp dir and put filename to body
+                    val content = httpReq.getContent()
+                    val in = new ChannelBufferInputStream(content) 
+                    parseFileUploadContent(charset,in,map)
+                }
 
             } else if( method == HttpMethod.POST ) {
                 val content = httpReq.getContent()
@@ -2426,22 +2532,26 @@ image/x-icon ico
         s == "1"  || s == "t"  || s == "T" || s == "true"  || s == "TRUE" || s == "y"  || s == "Y" || s == "yes" || s == "YES"
     }
 
-    def parseFileUploadContent(charset:String,buffer:ChannelBuffer,map:HashMapStringAny) {
-        var delimeter = parseDelimeter(charset,buffer)
+    def parseFileUploadContent(charset:String,in:InputStream,map:HashMapStringAny) {
+        var delimeter = parseDelimeter(charset,in)
         if( delimeter == "" ) return
         val db = delimeter.getBytes()
 
         var over = false	
         val params = ArrayBufferMap()
-        while(buffer.readable() && !over ) { 
-            val m = parsePartAttrs(charset,buffer)
+
+        while( in.available()>0 && !over ) { 
+            val m = parsePartAttrs(charset,in)
             if( m.contains("filename") ) {
-                val (filename,finished) = readMultiPartFile(charset,buffer,db)
+                val t1 = System.currentTimeMillis()
+                val (filename,finished) = readMultiPartFile(charset,in,db)
+                val t2 = System.currentTimeMillis()
                 if( filename != "")
                     m.put("file",filename)
+                m.put("parseSeconds",(t2-t1)/1000)
                 over = finished	
             } else {
-                val (v,finished) = readMultiPartValue(charset,buffer,db)
+                val (v,finished) = readMultiPartValue(charset,in,db)
                 m.put("value",v)
                 over = finished	
             }
@@ -2472,7 +2582,7 @@ image/x-icon ico
         map.put("files",files)
     }
 
-    def readMultiPartFile(charset:String,buffer:ChannelBuffer,db:Array[Byte]):Tuple2[String,Boolean] = {
+    def readMultiPartFile(charset:String,in:InputStream,db:Array[Byte]):Tuple2[String,Boolean] = {
 
         val webappUploadDirExisted = new File(webappUploadDir).exists()
         if( !webappUploadDirExisted ) {
@@ -2481,103 +2591,127 @@ image/x-icon ico
         val filename = webappUploadDir + File.separator+uuid()+".tmp"
 
         var writed = 0
-        val buf = new FileOutputStream(filename); 
-        while(buffer.readable()) { 
-            val b = buffer.readByte()
-            if ( b == '\r' && buffer.readable() )	 {
-                val b2 = buffer.readByte()
-                if( b2 == '\n' && buffer.readableBytes >= db.size + 2 ) {
-                    buffer.markReaderIndex()
-                    val (matched,finished) = cmp(buffer,db)
+        val out = new BufferedOutputStream(new FileOutputStream(filename),5000000); 
+        var n = in.read()
+        while(n != -1) { 
+            val b = n.toByte
+            if ( b == '\r' ) {
+                n = in.read()
+                if( n == -1 ) {
+                    out.close()
+                    new File(filename).delete()	
+                    return new Tuple2("",true)
+                }
+                val b2 = n.toByte
+                if( b2 == '\n' ) {
+                    in.mark( db.length + 2 )
+                    val (matched,finished) = cmp(in,db)
                     if( matched ) {
-                        buf.close()
+                        out.close()
                         if( writed > 0 ) {
                             return new Tuple2(filename,finished)
                         } else {
                             new File(filename).delete()	
                             return new Tuple2("",finished)
                         }
-                        } else {
-                            buf.write(b)
-                            buf.write(b2)
-                            writed += 2
-                            buffer.resetReaderIndex()
-                        } 
-                        } else {
-                            buf.write(b)
-                            buf.write(b2)
-                            writed += 2
-                        }
-                        } else {
-                            buf.write(b)
-                            writed += 1
-                        }
+                    } else {
+                        out.write(b)
+                        out.write(b2)
+                        writed += 2
+                        in.reset()
+                    } 
+                } else {
+                    out.write(b)
+                    out.write(b2)
+                    writed += 2
+                }
+            } else {
+                out.write(b)
+                writed += 1
+            }
+            n = in.read()
         } 
 
-        buf.close()
+        out.close()
+        new File(filename).delete()	
         ("",true)
     }
 
-    def readMultiPartValue(charset:String,buffer:ChannelBuffer,db:Array[Byte]):Tuple2[String,Boolean] = {
-        val buf = new ByteArrayOutputStream(); 
-        while(buffer.readable()) { 
-            val b = buffer.readByte()
-            if ( b == '\r' && buffer.readable() )	 {
-                val b2 = buffer.readByte()
-                if( b2 == '\n' && buffer.readableBytes >= db.size + 2 ) {
-                    buffer.markReaderIndex()
-                    val (matched,finished) = cmp(buffer,db)
+    def readMultiPartValue(charset:String,in:InputStream,db:Array[Byte]):Tuple2[String,Boolean] = {
+        val out = new ByteArrayOutputStream(); 
+        var n = in.read()
+        while(n != -1) { 
+            val b = n.toByte
+            if ( b == '\r' )	 {
+                n = in.read()
+                if( n == -1 ) {
+                    return new Tuple2("",true)
+                }
+                val b2 = n.toByte
+                if( b2 == '\n' ) {
+                    in.mark( db.length + 2 )
+                    val (matched,finished) = cmp(in,db)
                     if( matched ) {
-                        val v = buf.toString(charset)
+                        val v = out.toString(charset)
                         return new Tuple2(v,finished)
                     } else {
-                        buf.write(b)
-                        buf.write(b2)
-                        buffer.resetReaderIndex()
+                        out.write(b)
+                        out.write(b2)
+                        in.reset()
                     } 
-                    } else {
-                        buf.write(b)
-                        buf.write(b2)
-                    }
-                    } else {
-                        buf.write(b)
-                    }
+                } else {
+                    out.write(b)
+                    out.write(b2)
+                }
+            } else {
+                out.write(b)
+            }
+            n = in.read()
         } 
 
         ("",true)
     }
 
-    def cmp(buffer:ChannelBuffer, db:Array[Byte]):Tuple2[Boolean,Boolean] = {
+    def cmp(in:InputStream, db:Array[Byte]):Tuple2[Boolean,Boolean] = {
         var i = 0
-        while( i < db.size) {
-            val b = buffer.readByte()
+        var n = 0
+        while( i < db.size ) {
+            n = in.read()
+            if( n == -1 ) return new Tuple2(false,false)
+            val b = n.toByte
             if( b != db(i) ) return new Tuple2(false,false)
             i += 1
         }
-        val b1 = buffer.readByte()
-        val b2 = buffer.readByte()
+        n = in.read()
+        if( n == -1 ) return new Tuple2(false,false)
+        val b1 = n.toByte
+        n = in.read()
+        if( n == -1 ) return new Tuple2(false,false)
+        val b2 = n.toByte
 
         val finished = ( b1 == '-' && b2 == '-' )
         (true,finished)
     }
 
-    def parseDelimeter(charset:String,buffer:ChannelBuffer):String = {
+    def parseDelimeter(charset:String,in:InputStream):String = {
         val buf = new ByteArrayOutputStream(); 
-        while(buffer.readable()) { 
-            val b = buffer.readByte()
+        var n = in.read()
+        while(n != -1) { 
+            val b = n.toByte
             buf.write(b)
             if ( b == '\n')	 {
                 val line = buf.toString(charset);  
                 return line.trim
             }
+            n = in.read()
         } 
 
         ""
     }
 
-    def parsePartAttrs(charset:String,buffer:ChannelBuffer):HashMapStringAny = {
+    def parsePartAttrs(charset:String,in:InputStream):HashMapStringAny = {
         val map = HashMapStringAny()
-        val str = parsePart(charset,buffer)
+        val str = parsePart(charset,in)
         if( str == "" ) return map
         val lines = str.split("\r\n")
         for(line <- lines) {
@@ -2604,20 +2738,21 @@ image/x-icon ico
                                 case _ =>
                             }
                         }
-                                case "Content-Type" => 
-                                    val contentType = line.substring(p+1).trim()
-                                    map.put("contentType",contentType)
-                                case _ =>
+                    case "Content-Type" => 
+                        val contentType = line.substring(p+1).trim()
+                        map.put("contentType",contentType)
+                    case _ =>
                 }
             }
         }
         map
     }	
 
-    def parsePart(charset:String,buffer:ChannelBuffer):String = {
+    def parsePart(charset:String,in:InputStream):String = {
         val buf = new ByteArrayOutputStream(); 
-        while(buffer.readable()) { 
-            val b = buffer.readByte()
+        var n = in.read()
+        while(n != -1) { 
+            val b = n.toByte
             buf.write(b)
             if ( b == '\n' ) {
                 val line = buf.toString(charset)
@@ -2625,6 +2760,7 @@ image/x-icon ico
                     return line
                 }
             } 
+            n = in.read()
         } 
 
         ""
