@@ -4,7 +4,7 @@ global: http_base_url:http://job.gcloud.com.cn/ http_method:post http_ok_field:c
 testcase: 
     assert_http:webapi/login
         req: ticket=sndatest1
-        res:
+        res: 
 
     assert_http:webapi/allproj_list
         req: 

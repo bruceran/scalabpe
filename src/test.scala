@@ -1532,7 +1532,7 @@ options:
                 val header = HashMapStringString()
                 val body = HashMapStringAny()
                 for( (k,v) <- params if k.startsWith("header.") ) {
-                    header.put(k.substring(6),v.toString)
+                    header.put(k.substring(7),v.toString)
                 }
                 for( (k,v) <- params if !k.startsWith("header.") ) {
                     body.put(k,v)

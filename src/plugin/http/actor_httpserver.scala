@@ -1851,6 +1851,8 @@ application/x-gzip gz
             }
         }
 
+        map.remove(sessionFieldName) // 总是从cookie中取值
+
         val sessionIdSupport = msgAttrs.getOrElse(serviceId+"-"+msgId+"-sessionId-req","0")
         if( sessionIdSupport == "1" ) {
             var sessionId = ""
