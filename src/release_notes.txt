@@ -1,4 +1,4 @@
-1.2.2 (20170519)
+1.2.2 (20170522)
 ================
 
 * (0410)enableExtendTlv默认值由false改为true
@@ -24,6 +24,7 @@
 * (0508)修改linux下runtest初次运行报错的bug
 * (0509)runtest工具支持http调用，增加了3个指令：setup_http, assert_http, teardown_http; 支持cookie
 * (0519)修改runtest工具对设置header属性的一个bug
+* (0522)runtest工具支持http上传和下载; 命令行支持*通配符来匹配要测试的文件;不同域名cookie分开保存
 
 1.2.1 (20170408)
 ================

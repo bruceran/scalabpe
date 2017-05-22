@@ -945,7 +945,7 @@ object TestCaseRunner extends Logging {
     var g_http_rest = ""
     var g_http_ok_field = ""
     var g_http_ok_value = ""
-    var g_cookies = ""
+    var g_cookies = HashMapStringString()
 
     val timeout = 15000
     var codecs:TlvCodecs = _
@@ -1055,6 +1055,14 @@ options:
         map
     }
 
+    def matchFile(file:String,patterns:ArrayBufferString):Boolean = {
+        for( p <- patterns ) {
+            if( file.matches(p) ) return true
+            if( file.matches("testcase/"+p) ) return true
+        }
+        false
+    }
+
     def main(args:Array[String]) {
 
         var params = parseArgs(args)
@@ -1064,6 +1072,11 @@ options:
         }
 
         var files = params.nls("files")
+
+        if( files.length == 0 ) {
+            files += "default.txt"
+        }
+
         if( params.ns("all_files") == "1" ) {
             files.clear()
             for( f <- new File("./testcase/").listFiles ) {
@@ -1076,10 +1089,34 @@ options:
                 }
             }
         }
-        if( files.length == 0 ) {
-            files += "default.txt"
-        }
 
+        if( files.filter( _.indexOf("*") > 0 ).size > 0 ) { // support xxx/*.txt
+            val patternfiles = ArrayBufferString()
+            patternfiles ++= files
+            for( i <- 0 until patternfiles.size ) {
+                patternfiles(i) = patternfiles(i).replace("\\","/").replace(".","\\.").replace("*",".*")
+            }
+            files.clear()
+            val allfiles = ArrayBufferString()
+            for( f <- new File("./testcase/").listFiles ) {
+                if( f.getName().endsWith(".txt") ) {
+                    allfiles += f.getName()
+                } else if( f.isDirectory ) {
+                    for( f2 <- new File("./testcase/"+f.getName()).listFiles if f2.getName().endsWith(".txt")) {
+                        allfiles += f.getName()+"/"+f2.getName()
+                    }
+                }
+            }
+
+            for(i <- 0 until allfiles.size ) {
+                if( matchFile(allfiles(i),patternfiles ) ) {
+                    files += allfiles(i)
+                }
+            }
+        }
+        if(true) {
+            println("testcase files:" + files.mkString(","))
+        }
         try {
             for( f <- files ) {
                 runTest(f,params,args)
@@ -1210,7 +1247,7 @@ options:
             codecs = new TlvCodecs("."+File.separator+"avenue_conf")
             soc = new SocImpl(remote,codecs,socCallback,connSizePerAddr=1)
         }
-        g_cookies = ""
+        g_cookies.clear()
         if( global != null ) {
             g_http_base_url = global.http_base_url
             g_http_method = global.http_method
@@ -1437,7 +1474,6 @@ options:
             val left = ValueParser.anyToString(ValueParser.parseLeftValue(k,ret,context))
             val right = ValueParser.anyToString(ValueParser.parseRightValue(v,null,context))
             val op = i.res.getOrElse(k+ValueParser.OP_PREFIX,"=")
-
             if( op == "=" ) {
                 if( right == ValueParser.NULL && left != null )
                     return (false,"["+k+"] not match, required:null, actual:not null",req.toString,ret.toString)
@@ -1520,8 +1556,6 @@ options:
                 if( http_ok_value == "" ) http_ok_value = g_http_ok_value
                 if( http_ok_value == "" ) http_ok_value = "0"
 
-                i.res.put(codeTag,http_ok_value)
-
                 val map = HashMapStringAny()
                 req_body = params
                 res_body = map
@@ -1541,9 +1575,8 @@ options:
                 val (code,res) = callHttp(requestId,url,http_method,http_rest,
                     header,body,http_ok_field,http_ok_value,i.timeout)
 
-                map.put("$code",code)
                 map ++= res
-
+                map.put(codeTag,code)
             } else if( remote == "" ) {
                 val (serviceId,msgId) = Flow.router.serviceNameToId(i.service)
                 if( serviceId == 0 || msgId == 0 ) {
@@ -1651,6 +1684,13 @@ options:
             return tp
     }
 
+    def hasUploadField(body:HashMapStringAny):Boolean = {
+        for( (k,v) <- body if v != null) {
+            if( v.toString.startsWith("upload_file:") ) return true
+        }
+        false
+    }
+
     def callHttp(requestId:String,url:String,http_method:String,http_rest:String,
         headers:HashMapStringString,body:HashMapStringAny,
         http_ok_field:String,http_ok_value:String,timeout:Int):Tuple2[String,HashMapStringAny] = {
@@ -1658,29 +1698,53 @@ options:
         val (ssl,host,path) = parseHostPath(url)
         var bodyStr = ""
         var contentType = ""
+        var bodyData:ChannelBuffer = null
+        var download_field:Tuple2[String,String] = null
 
         var real_path = path
         if( http_rest == "true" ) {
             contentType = "application/json"
             bodyStr = genJsonData(body)
         } else {
-            contentType = "application/x-www-form-urlencoded"
-            bodyStr = genFormData(body)
+            if( hasUploadField(body) ) {
 
-            if( http_method == "get" ) {
+                val boundary = "----WebKitFormBoundarywzMkGqJZUrg4hAxZ"
+                contentType = "multipart/form-data; boundary="+boundary
+                bodyStr = genFormData(body)
                 if( real_path.indexOf("?") < 0 ) 
                     real_path += "?"
                 real_path += "&" + bodyStr
                 bodyStr = ""
+                bodyData = genFormDataForUpload(boundary,body)
+
+            } else {
+                contentType = "application/x-www-form-urlencoded"
+                bodyStr = genFormData(body)
+                download_field = getDownloadField(body)
+
+                if( http_method == "get" ) {
+                    if( real_path.indexOf("?") < 0 ) 
+                        real_path += "?"
+                    real_path += "&" + bodyStr
+                    bodyStr = ""
+                }
             }
         }
 
-        val (code,res,cookies) = httpClient.sendWithReturn(http_method,timeout,ssl,host,real_path,bodyStr,headers,contentType,g_cookies)
+        val (code,res,cookies) = httpClient.sendWithReturn(http_method,timeout,ssl,host,real_path,
+            bodyStr,bodyData,download_field,headers,contentType,g_cookies)
         val map = JsonCodec.parseObjectNotNull(res)
         if( code != 0 ) return (code.toString,map)
+        if( download_field != null ) {
+            if( map.contains(download_field._1) ) {
+                map.put(http_ok_field,http_ok_value)
+            } else {
+                map.put(http_ok_field,"-10242404")
+            }
+        }
         val v = map.ns(http_ok_field)
         if( v == http_ok_value) {
-            if( cookies != "" ) g_cookies = cookies
+            if( cookies != "" ) g_cookies.put(host,cookies)
             return ("0",map)
         } else {
             return (v,map)
@@ -1711,11 +1775,64 @@ options:
         JsonCodec.mkString(newmap)
     }
 
+    def genFormDataForUpload(boundary:String,body:HashMapStringAny):ChannelBuffer = {
+        val b = ChannelBuffers.dynamicBuffer()
+
+        val splitter = ""
+        val nl = "\r\n".getBytes()
+
+        for( (key,value) <- body if value != null &&  ( value.toString.startsWith("upload_value:") || value.toString.startsWith("upload_file:") ) ) {
+           if( value.toString.startsWith("upload_value:") ) {
+               val vs = value.toString
+               val v = vs.substring(vs.indexOf(":")+1)
+               b.writeBytes(boundary.getBytes())
+               b.writeBytes(nl)
+               val k = """Content-Disposition: form-data; name="%s"""".format(key)
+               b.writeBytes(k.getBytes())
+               b.writeBytes(nl)
+               b.writeBytes(nl)
+               b.writeBytes(v.getBytes("utf-8"))
+               b.writeBytes(nl)
+           }
+           if( value.toString.startsWith("upload_file:") ) {
+               val vs = value.toString
+               val f = vs.substring(vs.indexOf(":")+1)
+
+               b.writeBytes(boundary.getBytes())
+               b.writeBytes(nl)
+               val k = """Content-Disposition: form-data; name="%s"; filename="%s"""".format(key,f)
+               b.writeBytes(k.getBytes())
+               b.writeBytes(nl)
+               b.writeBytes("Content-Type: application/octet-stream".getBytes())
+               b.writeBytes(nl)
+               b.writeBytes(nl)
+               val len = new File(f).length.toInt
+               val in = new FileInputStream(f)
+               b.writeBytes(in,len)
+               in.close()
+               b.writeBytes(nl)
+           }
+        }
+
+        b.writeBytes(boundary.getBytes())
+        b.writeBytes("--".getBytes())
+        b
+    }
+
+    def getDownloadField(body:HashMapStringAny):Tuple2[String,String] = {
+        for( (key,value) <- body if value != null && value.toString.startsWith("download_file:") ) {
+           val vs = value.toString
+           val f = vs.substring(vs.indexOf(":")+1)
+           return (key,f)
+        }
+        null
+    }
+
     def genFormData(body:HashMapStringAny):String = {
         val bodyStr = new StringBuilder()
         var first = true
 
-        for( (key,value) <- body if key != "$requestId") {
+        for( (key,value) <- body if key != "$requestId" && !value.toString.startsWith("download_file:") && !value.toString.startsWith("upload_value:") && !value.toString.startsWith("upload_file:")) {
             if(!first) bodyStr.append("&")
             bodyStr.append(key+"="+URLEncoder.encode(value.toString,"utf-8"))
             first = false
@@ -2265,7 +2382,7 @@ class RunTestHttpClient(
     init
 
     def init() {
-        nettyHttpClient = new NettyHttpClient(this, connectTimeout, timerInterval )
+        nettyHttpClient = new NettyHttpClient(this, connectTimeout, timerInterval, 5000000 )
         log.info("RunTestHttpClient started")
     }
 
@@ -2274,7 +2391,9 @@ class RunTestHttpClient(
         log.info("RunTestHttpClient stopped")
     }
 
-    def sendWithReturn(method:String, timeout:Int,ssl:Boolean,host:String, path: String, body:String,headers:HashMapStringString = null,contentType:String="application/x-www-form-urlencoded", cookies:String = "" ):Tuple3[Int,String,String] = {
+    def sendWithReturn(method:String, timeout:Int,ssl:Boolean,host:String, path: String, body:String,bodyData:ChannelBuffer,download_field:Tuple2[String,String],
+        headers:HashMapStringString = null,contentType:String="application/x-www-form-urlencoded", 
+        cookies:HashMapStringString = HashMapStringString() ):Tuple3[Int,String,String] = {
 		val lock = new ReentrantLock();
 		val cond = lock.newCondition(); 
 		val r = new AtomicReference[Tuple3[Int,String,String]](); 
@@ -2290,7 +2409,7 @@ class RunTestHttpClient(
 
 		lock.lock();
 		try {
-            send(callback,method,timeout,ssl,host,path,body,headers,contentType,cookies)
+            send(callback,method,timeout,ssl,host,path,body,bodyData,download_field,headers,contentType,cookies)
 			try {
 				val ok = cond.await(timeout,TimeUnit.MILLISECONDS);
 				if( ok ) {
@@ -2307,10 +2426,12 @@ class RunTestHttpClient(
 
     }
 
-    def send(callback:(Tuple3[Int,String,String])=>Unit, method:String, timeout:Int,ssl:Boolean, host:String, path: String, body:String, headers:HashMapStringString = null,contentType:String="application/x-www-form-urlencoded" , cookies:String = "" ):Unit = {
-        var httpReq = generateRequest(host,path,method,body,headers,contentType,cookies)
+    def send(callback:(Tuple3[Int,String,String])=>Unit, method:String, timeout:Int,ssl:Boolean, 
+        host:String, path: String, body:String, bodyData:ChannelBuffer, download_field:Tuple2[String,String],
+        headers:HashMapStringString = null,contentType:String="application/x-www-form-urlencoded", cookies:HashMapStringString = HashMapStringString() ):Unit = {
+        var httpReq = generateRequest(host,path,method,body,bodyData,headers,contentType,cookies)
         val sequence = generateSequence()
-        dataMap.put(sequence,new CacheData(callback))
+        dataMap.put(sequence,new CacheData(download_field,callback))
 
         nettyHttpClient.send(sequence,ssl,host,httpReq,timeout)
     }
@@ -2318,7 +2439,7 @@ class RunTestHttpClient(
     def receive(sequence:Int,httpRes:HttpResponse):Unit = {
         val saved = dataMap.remove(sequence)
         if( saved == null ) return
-        val tpl = parseResult(httpRes)
+        val tpl = parseResult(saved.download_field,httpRes)
         saved.callback(tpl)   
     }
 
@@ -2340,7 +2461,8 @@ class RunTestHttpClient(
         generator.getAndIncrement()
     }
 
-    def generateRequest(host:String,path:String,method:String,body:String,headers:HashMapStringString = null,contentType:String="application/x-www-form-urlencoded", cookies:String = "" ):HttpRequest = {
+    def generateRequest(host:String,path:String,method:String,body:String,bodyData:ChannelBuffer,
+        headers:HashMapStringString = null,contentType:String="application/x-www-form-urlencoded", cookies:HashMapStringString = HashMapStringString() ):HttpRequest = {
 
         val m = method.toLowerCase match {
             case "get" => HttpMethod.GET
@@ -2360,7 +2482,7 @@ class RunTestHttpClient(
             }
         }
 
-        val cookiesMap = JsonCodec.parseObjectNotNull(cookies)
+        val cookiesMap = JsonCodec.parseObjectNotNull(cookies.getOrElse(host,""))
         if( cookiesMap.size > 0 ) {
             val encoder = new CookieEncoder(false);
             for( (k,v) <- cookiesMap ) {
@@ -2369,14 +2491,23 @@ class RunTestHttpClient(
             httpReq.setHeader("Cookie", encoder.encode());
         }
 
-        if( log.isDebugEnabled() ) {
-            log.debug("method="+method+", path="+path+", content="+body)
-        }
-
         if( body.length > 0 ) {
+            if( log.isDebugEnabled() ) {
+                log.debug("method="+method+", path="+path+", content="+body)
+            }
+
             val buffer= new DynamicChannelBuffer(512);
             buffer.writeBytes(body.getBytes("UTF-8"))
             httpReq.setContent(buffer);
+            httpReq.setHeader("Content-Type", contentType)
+            httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
+        }
+        if( bodyData != null ) {
+            if( log.isDebugEnabled() ) {
+                log.debug("method="+method+", path="+path+", file upload")
+            }
+
+            httpReq.setContent(bodyData);
             httpReq.setHeader("Content-Type", contentType)
             httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
         }
@@ -2384,7 +2515,7 @@ class RunTestHttpClient(
         httpReq
     }
 
-    def parseResult(httpRes:HttpResponse):Tuple3[Int,String,String] = {
+    def parseResult(download_field:Tuple2[String,String],httpRes:HttpResponse):Tuple3[Int,String,String] = {
 
         val status = httpRes.getStatus
         if( status.getCode() != 200 && status.getCode() != 201 ) {
@@ -2398,7 +2529,22 @@ class RunTestHttpClient(
 
         val contentTypeStr = httpRes.getHeader("Content-Type")
         val content = httpRes.getContent()
-        val contentStr = content.toString(Charset.forName("UTF-8"))
+        var contentStr = ""
+        if( download_field == null ) {
+            contentStr = content.toString(Charset.forName("UTF-8"))
+        } else {
+            try {
+                val out = new FileOutputStream(download_field._2)
+                val buff = content.toByteBuffer()
+                out.write(buff.array(),0,buff.limit())
+                out.close()
+                contentStr = """{"%s":"%s"}""".format(download_field._1,download_field._2)
+            } catch {
+                case e:Throwable =>
+                    log.error("cannot save to file "+download_field._2)
+                    return (ResultCodes.SOC_NETWORKERROR,"","")
+            }
+        }
 
         if( log.isDebugEnabled() ) {
             log.debug("contentType={},contentStr={}",contentTypeStr,contentStr)
@@ -2421,7 +2567,7 @@ class RunTestHttpClient(
         (0,contentStr,cookie_json)
     }
 
-    class CacheData(val callback:(Tuple3[Int,String,String])=>Unit)
+    class CacheData(val download_field:Tuple2[String,String],val callback:(Tuple3[Int,String,String])=>Unit)
 
 }
 
