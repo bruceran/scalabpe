@@ -197,7 +197,7 @@ class AvenueCodec {
         b.putInt(res.msgId) // msgId
         b.putInt(res.sequence) // sequence
         b.put(ZERO) // context
-        b.put(ZERO) // mustReach
+        b.put(res.mustReach.toByte) // mustReach
         b.put(ZERO) // format
         b.put(res.encoding.toByte) // encoding
 
