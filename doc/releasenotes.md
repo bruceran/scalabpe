@@ -1,9 +1,9 @@
 
-# 从1.1.x升级到1.2.x说明
+# 从1.1.x升级到1.2.x(master分支)说明
 
     需要将jdk从1.6换成1.8
     需要将scala从2.10.2换成2.12.1
-    1.2.x的scalabpe的lib/目录下已经包括了scala 2.12.1的运行依赖的库，在服务器上只需安装jdk1.8就可以运行scalabpe 1.2.x
+    1.2.x的scalabpe的lib/目录下已经包括了scala 2.12.1的运行依赖的jar文件，在服务器上只需安装jdk1.8就可以运行scalabpe 1.2.x
     1.2.x的scalabpe的顶层包名从jvmdbbroker改成了scalabpe,不再完全向下兼容
     老的1.1.x版本要升级1.2.x需要做以下事情：
 
@@ -32,16 +32,4 @@
 [release notes for scalabpe-plugins](../src/plugin/release_notes.txt)
 
 此release notes文件会打包在每个 scalabpe-core jar文件中, 通过查看jar包内的release notes就可清楚了解当前版本信息
-
-# hadoop插件
-
-[release notes for hbase plugin](../third_party/hadoop/src/release_notes.txt)
-
-# kafka插件
-
-[release notes for kafka plugin](../third_party/kafka/src/release_notes.txt)
-
-# activemq插件
-
-[release notes for activemq plugin](../third_party/activemq/src/release_notes.txt)
 
