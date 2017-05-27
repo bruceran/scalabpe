@@ -13,10 +13,12 @@ class FlowCompiler(val rootDir:String) extends Logging {
     val tempDir = Router.tempDir
 
     val flowTsFile = tempDir+File.separator+"flowts"
+    val scalaflowTsFile = tempDir+File.separator+"scalaflowts"
     val scalaTsFile = tempDir+File.separator+"scalats"
     val libTsFile = tempDir+File.separator+"libts"
 
     val flowTsMap = new LinkedHashMap[String,Long]()
+    val scalaflowTsMap = new LinkedHashMap[String,Long]()
     val scalaTsMap = new LinkedHashMap[String,Long]()
     val libTsMap = new LinkedHashMap[String,Long]()
 
@@ -65,7 +67,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
         changed
     }
 
-    def listfiles(dir:String, suffix:String) :List[String] = {
+    def listfiles(dir:String, suffix:String, exclude:String = "_") :List[String] = {
         var dirs = ArrayBuffer[File](new File(dir))
         var newdirs = ArrayBuffer[File]()
         val files = ArrayBuffer[File]()
@@ -79,13 +81,13 @@ class FlowCompiler(val rootDir:String) extends Logging {
             dirs = newdirs
             newdirs = ArrayBuffer[File]()
         }
-        val allfiles = files.map( _.getPath ).filter( name => name.endsWith(suffix) ).toList
+        val allfiles = files.map( _.getPath ).filter( name => name.endsWith(suffix) && !name.endsWith(exclude) ).toList
         allfiles
     }
 
     def checkScalaFilesChanged() : ArrayBufferString = {
 
-        val allscalafiles = listfiles(composeDir,".scala")
+        val allscalafiles = listfiles(composeDir,".scala",".flow.scala")
 
         val scalafiles = new ArrayBufferString()
         for( f <- allscalafiles ) {
@@ -119,6 +121,24 @@ class FlowCompiler(val rootDir:String) extends Logging {
         flowfiles
     }
 
+    def checkScalaFlowFilesChanged() : ArrayBufferString = {
+
+        val allscalaflowfiles = listfiles(composeDir,".flow.scala")
+
+        val flowfiles = new ArrayBufferString()
+        for( f <- allscalaflowfiles ) {
+            val file = new File(f)
+            val lmt = scalaflowTsMap.getOrElse(f,0)
+            if( lmt == 0 || lmt != file.lastModified ) {
+                flowfiles += f
+                scalaflowTsMap.put(f,file.lastModified)
+            }
+
+        }
+
+        flowfiles
+    }
+
     def compile():Boolean = {
 
         val t1 = System.currentTimeMillis
@@ -134,6 +154,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
         new File(tempDir+File.separator+"core").delete
 
         initTsMap(flowTsFile,flowTsMap)
+        initTsMap(scalaflowTsFile,scalaflowTsMap)
         initTsMap(scalaTsFile,scalaTsMap)
         initTsMap(libTsFile,libTsMap)
 
@@ -141,6 +162,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
         if( libChanged ) {  // need compile all files
             scalaTsMap.clear()
             flowTsMap.clear()
+            scalaflowTsMap.clear()
             classesFile.listFiles.foreach( _.delete )
             srcFile.listFiles.foreach( _.delete )
         }
@@ -149,15 +171,17 @@ class FlowCompiler(val rootDir:String) extends Logging {
         if( scalafiles.size > 0 ) {  // need compile all files
             scalaTsMap.clear()
             flowTsMap.clear()
+            scalaflowTsMap.clear()
             classesFile.listFiles.foreach( _.delete )
             srcFile.listFiles.foreach( _.delete )
             scalafiles = checkScalaFilesChanged() // reload all scala timestamp
         }
         val flowfiles = checkFlowFilesChanged
+        val scalaflowfiles = checkScalaFlowFilesChanged
 
         if( libChanged || scalafiles.size > 0 )
             log.info("compiling all ...")
-        else if( flowfiles.size > 0 )
+        else if( flowfiles.size > 0 || scalaflowfiles.size > 0 )
             log.info("compiling changed flows ...")
         else
             log.info("no files need to be compiled ...")
@@ -186,6 +210,14 @@ class FlowCompiler(val rootDir:String) extends Logging {
             }
         }
 
+        if( scalaflowfiles.size > 0 ) {
+            (new compiler.Run).compile(scalaflowfiles.toList)
+            reporter.printSummary
+            if (reporter.hasErrors || reporter.WARNING.count > 0 ) {
+                return false
+            }
+        }
+
         if( flowfiles.size > 0 ) {
             val tmpsrcfiles = flowfiles.map(generateTempSrcFile)
             (new compiler.Run).compile(tmpsrcfiles.toList)
@@ -197,6 +229,9 @@ class FlowCompiler(val rootDir:String) extends Logging {
 
         if( flowfiles.size > 0 ) {
             saveTsMap(flowTsFile,flowTsMap)
+        }
+        if( scalaflowfiles.size > 0 ) {
+            saveTsMap(scalaflowTsFile,scalaflowTsMap)
         }
         if( scalafiles.size > 0 ) {
             saveTsMap(scalaTsFile,scalaTsMap)
@@ -211,7 +246,6 @@ class FlowCompiler(val rootDir:String) extends Logging {
     }
 
     val package_template = "package scalabpe.flow;import scalabpe.core._;"
-    val class_template = "class Flow_%s extends %s { def receive() {"
     val class2_template = "class Flow_%s extends %s { "
 
     val flow_class = "Flow"
@@ -233,7 +267,6 @@ class FlowCompiler(val rootDir:String) extends Logging {
         val tmpfile = tempDir+File.separator+"src"+File.separator+filepath.replace(".flow",".scala")
         val lines = Source.fromFile(filename,"UTF-8").getLines.toList
         val writer = new PrintWriter(new File(tmpfile),"UTF-8")
-        val hasReceive = lines.filter( _.startsWith(tag_def+tag_receive) ).size > 0
         writer.print(package_template) // not println!
 
         for( line <- lines ) {
@@ -242,7 +275,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
                 val ss = s.split("###")
                 val classname = ss(0)+"_"+ss(1)
                 val baseclassname = parseBaseClass( line )
-                val newline = if(hasReceive) class2_template.format(classname,baseclassname) else class_template.format(classname,baseclassname)
+                val newline = class2_template.format(classname,baseclassname)
                 writer.println(newline)
             } else if( line.startsWith(tag_def) ) {
                 val funname = line.substring(3)
@@ -283,6 +316,7 @@ class FlowCompiler(val rootDir:String) extends Logging {
         srcFile.mkdirs()
 
         initTsMap(flowTsFile,flowTsMap)
+        initTsMap(scalaflowTsFile,scalaflowTsMap)
         initTsMap(scalaTsFile,scalaTsMap)
 
         var scalafiles = checkScalaFilesChanged()
@@ -293,10 +327,11 @@ class FlowCompiler(val rootDir:String) extends Logging {
             scalafiles = checkScalaFilesChanged() // reload all scala timestamp
         }
         val flowfiles = checkFlowFilesChanged
+        val scalaflowfiles = checkScalaFlowFilesChanged
 
         if( scalafiles.size > 0 )
             log.info("generating all ...")
-        else if( flowfiles.size > 0 )
+        else if( flowfiles.size > 0 || scalaflowfiles.size > 0 )
             log.info("generating changed flows ...")
         else
             log.info("no files need to be generating ...")
@@ -308,7 +343,9 @@ class FlowCompiler(val rootDir:String) extends Logging {
         if( flowfiles.size > 0 ) {
             saveTsMap(flowTsFile,flowTsMap)
         }
-
+        if( scalaflowfiles.size > 0 ) {
+            saveTsMap(scalaflowTsFile,scalaflowTsMap)
+        }
         if( scalafiles.size > 0 ) {
             saveTsMap(scalaTsFile,scalaTsMap)
         }
