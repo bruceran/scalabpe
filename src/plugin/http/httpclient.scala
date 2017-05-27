@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
@@ -13,7 +13,7 @@ import org.jboss.netty.handler.codec.http._;
 import com.fasterxml.jackson.databind._
 import com.fasterxml.jackson.databind.node._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 
 // used by user
@@ -521,7 +521,7 @@ class HttpClientImpl(
         for( (key,value) <- outBody ) {
             if(!first) bodyStr.append("&")
             bodyStr.append(key+"="+URLEncoder.encode(value,msg.charSet))
-        first = false
+            first = false
         }
 
         bodyStr.toString

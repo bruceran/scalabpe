@@ -1,8 +1,18 @@
+mem=1024M
+newsize=256M
+if [ "$SCALABPE_PROFILE" != "prd" -a "$SCALABPE_PROFILE" != "vrf"  ]; then
+    mem=256M
+    newsize=64M
+fi
 
 pidfile="scalabpe.pid"
 cd `dirname $0`
 pid=`cat $pidfile 2>/dev/null`
 APPLICATION_NAME=`pwd | sed 's,^\(.*/\)\?\([^/]*\),\2,'`
+tempdir=temp
+if [ "$SCALABPE_TEMPDIRROOT" != "" ]; then
+    tempdir=$SCALABPE_TEMPDIRROOT/$APPLICATION_NAME
+fi
 
 consolelog="/opt/logs/$APPLICATION_NAME/log/console.log"
 mkdir -p /opt/logs/$APPLICATION_NAME/log/
@@ -18,7 +28,7 @@ chmod +x ./lib/linux-jdk32/*
 fi
 
 CLASSPATH=`find lib -type d ! -name linux-jdk* | sed -e 's/$/\/*'/ | tr '\n' ':'`
-CLASSPATH=${CLASSPATH}temp/classes:.
+CLASSPATH=${CLASSPATH}$tempdir/classes:.
 
 check_running()
 {
@@ -26,7 +36,7 @@ check_running()
 		return 0
 	fi
 
-	fid=`ps aux|grep 'jvmdbbroker.core.Main' | grep MainGenericRunner  | awk '{print $2}' | grep "^$pid$"`
+	fid=`ps aux|grep 'scalabpe.core.Main' | awk '{print $2}' | grep "^$pid$"`
 
 	if [ -z "$fid" ]; then
 		return 0
@@ -37,13 +47,6 @@ check_running()
 
 start_app()
 {
-		if [ -f dev_mode ]; then
-			echo "---- dev mode, running in console, press CTRL+C to stop ----"
-			mkdir -p temp/classes
-			env JAVA_OPTS="-Xmx256M -Xms128M -Dfile.encoding=UTF-8 -Dapplication.name=$APPLICATION_NAME" scala -encoding UTF8 -classpath "$CLASSPATH" jvmdbbroker.core.Main
-			exit 0
-		fi
-
 		check_running
 		running=$?
 
@@ -54,13 +57,12 @@ start_app()
 
 		rm -f $pidfile
 		rm -f $consolelog
-		mkdir -p temp/classes
+		mkdir -p $tempdir/classes
 
 		echo -n "starting scalabpe"
 
-		env JAVA_OPTS=" -Dapplication.name=$APPLICATION_NAME -server -Xms1024m -Xmx1024m -XX:+UseConcMarkSweepGC -XX:NewSize=256m -XX:MaxNewSize=256m -XX:PermSize=96m -Dfile.encoding=UTF-8" scala -encoding UTF8 -classpath "$CLASSPATH" jvmdbbroker.core.Main 1>$consolelog 2>&1 &
+		java -Dapplication.name=$APPLICATION_NAME -Dscalabpe.profile=$SCALABPE_PROFILE -Dscalabpe.tempdirroot=$SCALABPE_TEMPDIRROOT -server -Xms$mem -Xmx$mem -XX:+UseConcMarkSweepGC -XX:NewSize=$newsize -XX:MaxNewSize=$newsize -cp "$CLASSPATH" scalabpe.core.Main 1>$consolelog 2>&1 &
 		parentpid=$!
-
 		echo -n " ."
 
 		succmsg="scalabpe started"
@@ -79,18 +81,15 @@ start_app()
 			found=`tail -n 1 $consolelog | grep -c "$succmsg"`
 		done
 
-		pid=`ps -ef|grep 'jvmdbbroker.core.Main' | grep MainGenericRunner  | awk '{print $2 " " $3}' | grep "$parentpid" | awk '{print $1}'`
+		pid=`ps -ef|grep 'scalabpe.core.Main' | awk '{print $2}' | grep "$parentpid" | awk '{print $1}'`
     echo $pid > $pidfile
 
     echo " done, pid=$pid"
+
 }
 
 stop_app()
 {
-		if [ -f dev_mode ]; then
-			exit 0
-		fi
-
 		check_running
 		running=$?
 
@@ -124,20 +123,12 @@ stop_app()
 
 restart_app()
 {
-		if [ -f dev_mode ]; then
-			exit 0
-		fi
-
 		stop_app
 		start_app
 }
 
 check_status()
 {
-		if [ -f dev_mode ]; then
-			exit 0
-		fi
-
 		check_running
 		running=$?
 
@@ -166,9 +157,22 @@ usage:
 EOF
 }
 
+function shut_down() {
+    stop_app
+    exit
+}
+ 
+trap "shut_down" SIGTERM SIGINT 
+
 case "$1" in
 	start)
 		start_app
+		;;
+	startindocker)
+		start_app
+		while true; do 
+		    sleep 1
+		done
 		;;
 	stop)
 		stop_app
@@ -180,15 +184,18 @@ case "$1" in
 		check_status
 		;;
 	forcecompile)
-		rm -f temp/*ts
+		rm -f $tempdir/*ts
 		echo "scalabpe compile timestamp file removed"
 		;;
 	runtest)
-		env JAVA_OPTS="-Dfile.encoding=UTF-8 -Dapplication.name=${APPLICATION_NAME}test"  scala -cp "$CLASSPATH" jvmdbbroker.core.TestCaseRunner $2 $3 $4 $5 $6 $7
+		mkdir -p $tempdir/classes
+		java -Dapplication.name=${APPLICATION_NAME} -Dscalabpe.profile=$SCALABPE_PROFILE -Dscalabpe.tempdirroot=$SCALABPE_TEMPDIRROOT -Dfile.encoding=UTF-8 -cp "$CLASSPATH" scalabpe.core.TestCaseRunner $2 $3 $4 $5 $6 $7
+	    exit $?
 		;;
 	runscala)
-		env JAVA_OPTS="-Dfile.encoding=UTF-8"  scala -cp "classes:temp/classes:lib/*:."
+		env JAVA_OPTS="-Dfile.encoding=UTF-8"  scala -cp "classes:$tempdir/classes:lib/*:."
 		;;
+
 	help)
 		show_help
 		;;

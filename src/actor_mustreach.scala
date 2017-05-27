@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -13,7 +13,7 @@ import scala.collection.mutable.{ArrayBuffer,HashMap,HashSet}
 import com.sdo.billing.queue._
 import com.sdo.billing.queue.impl._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 case class MustReachReqCommitInfo(req:Request,code:Int)
 case class MustReachRawReqCommitInfo(rawReq:RawRequest,code:Int)
@@ -53,12 +53,11 @@ class MustReachRetryConfig(val retryTimes:Int,val retryInterval:Int)
 class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Logging with Closable
         with SelfCheckLike with Dumpable with BeforeClose with AfterInit {
 
-    import jvmdbbroker.core.PersistData._
+    import scalabpe.core.PersistData._
 
     val mustReachMsgMap = new HashMap[String,MustReachRetryConfig]()   // serviceId:msgId
 
     val queueTypeName = "mustreach"
-    val localDir = "data" + File.separator + queueTypeName
 
     var persistQueueManager : PersistQueueManagerImpl = _
 
@@ -139,7 +138,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
 
         }
 
-        val dataDir = router.rootDir + File.separator + localDir
+        val dataDir = Router.dataDir + File.separator + queueTypeName
         new File(dataDir).mkdirs()
         persistQueueManager = new PersistQueueManagerImpl()
         persistQueueManager.setDataDir(dataDir)
@@ -192,7 +191,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
 
         if( hasIOException.get() ) {
             val msg = "local persistqueue has io error"
-            buff += new SelfCheckResult("JVMDBBRK.IO",ioErrorId,true,msg)
+            buff += new SelfCheckResult("SCALABPE.IO",ioErrorId,true,msg)
         }
 
         buff

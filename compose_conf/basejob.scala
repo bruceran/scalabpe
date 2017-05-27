@@ -1,7 +1,7 @@
-package jvmdbbroker.flow
+package scalabpe.flow
 
-import jvmdbbroker.core._
-import jvmdbbroker.flow.FlowHelper._
+import scalabpe.core._
+import scalabpe.flow.FlowHelper._
 
 abstract class BaseJobFlow extends Flow {
 

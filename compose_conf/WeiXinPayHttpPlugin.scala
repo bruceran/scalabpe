@@ -1,7 +1,7 @@
-package jvmdbbroker.flow
+package scalabpe.flow
 
-import jvmdbbroker.core._
-import jvmdbbroker.plugin.http._
+import scalabpe.core._
+import scalabpe.plugin.http._
 import java.util.TreeMap
 
 class WeiXinPayHttpPlugin extends HttpPlugin with HttpRequestPlugin with Logging {

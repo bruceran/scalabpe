@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.concurrent._
 import java.sql._
@@ -6,16 +6,17 @@ import javax.sql.DataSource
 import scala.collection.mutable.{HashMap,ArrayBuffer,HashSet}
 import scala.xml._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object MsgDefine{
 
     val SQLTYPE_SELECT = 1
     val SQLTYPE_UPDATE = 2
     val SQLTYPE_MULTIUPDATE = 3
-    val SQLTYPE_BATCHUPDATE = 4
+    val SQLTYPE_BATCHUPDATEBYCOL = 4
     val SQLTYPE_TRANSACTION = 5
     val SQLTYPE_UNKNOWN = 6
+    val SQLTYPE_BATCHUPDATEBYROW = 7
 
     val REPLACE_TYPE_UNKNOWN = 0
     val REPLACE_TYPE_PREPARE = 1
@@ -453,7 +454,8 @@ class RequestDefineOriginal(
     val defaultValue:String = null,
     val columnType:String = null,
     val tableIdx:String = null, // used to replace $hashNum or $tableIdx
-    val replaceType:Int = MsgDefine.REPLACE_TYPE_UNKNOWN 
+    val replaceType:Int = MsgDefine.REPLACE_TYPE_UNKNOWN,
+    var structTlvType:TlvType = null
 ) {
     override def toString() = {
         "key=%s,idx=%s,defaultValue=%s,columnType=%s,tableIdx=%s,replaceType=%d".format(key,idx,defaultValue,columnType,tableIdx,replaceType)
@@ -462,10 +464,12 @@ class RequestDefineOriginal(
 
 class RequestDefine(
     val key:String,
-    val defaultValue:String = null
+    val defaultValue:String = null,
+    var keyInMap:String = null,
+    var defaultValueInMap:String = null
 ) {
     override def toString() = {
-        "key=%s,defaultValue=%s".format(key,defaultValue)
+        "key=%s,defaultValue=%s,keyInMap=%s,defaultValueInMap=%s".format(key,defaultValue,keyInMap,defaultValueInMap)
     }
 }
 
@@ -572,7 +576,7 @@ class DbClient(
     val dbActor: BaseDbActor,
     val dbMode: Int) extends DbLike  with Dumpable {
 
-    import jvmdbbroker.plugin.DbClient._
+    import scalabpe.plugin.DbClient._
 
     mode = dbMode
 
@@ -711,6 +715,8 @@ class DbClient(
                     val reqMapOrigBuff = new ArrayBuffer[RequestDefineOriginal]()
 
                     var hasArrayReqFields = false
+                    var hasArrayReqFieldsByRow = false
+                    var hasArrayReqFieldsByCol = false
 
                     for(f<-reqFields) {
 
@@ -725,13 +731,29 @@ class DbClient(
                         if( tlvType.cls != TlvCodec.CLS_STRING &&
                             tlvType.cls != TlvCodec.CLS_STRINGARRAY &&
                             tlvType.cls != TlvCodec.CLS_INT &&
-                            tlvType.cls != TlvCodec.CLS_INTARRAY )
+                            tlvType.cls != TlvCodec.CLS_INTARRAY && 
+                            tlvType.cls != TlvCodec.CLS_STRUCTARRAY 
+                            )
                         throw new RuntimeException("type not supported in request parameter, serviceId=%d,msgId=%d,key=%s".format(serviceId,msgId,f))
 
                         if( tlvType.cls == TlvCodec.CLS_STRINGARRAY ||
-                            tlvType.cls == TlvCodec.CLS_INTARRAY )
+                            tlvType.cls == TlvCodec.CLS_INTARRAY ||
+                            tlvType.cls == TlvCodec.CLS_STRUCTARRAY )
                             hasArrayReqFields = true
 
+                        if( tlvType.cls == TlvCodec.CLS_STRUCTARRAY ) {
+                            if( hasArrayReqFieldsByCol || hasArrayReqFieldsByRow )  {
+                                throw new RuntimeException("msg define error in request parameter, serviceId=%d,msgId=%d,key=%s".format(serviceId,msgId,f))
+                            }
+                            hasArrayReqFieldsByRow = true
+                        }
+                        else if( tlvType.cls == TlvCodec.CLS_STRINGARRAY || tlvType.cls == TlvCodec.CLS_INTARRAY ) {
+                            if( hasArrayReqFieldsByRow )  {
+                                throw new RuntimeException("msg define error in request parameter, serviceId=%d,msgId=%d,key=%s".format(serviceId,msgId,f))
+                            }
+                            hasArrayReqFieldsByCol = true
+                        }
+                            
                         val defaultValue = map.getOrElse("req-"+f+"-default",null)
                         val columnType = map.getOrElse("req-"+f+"-columnType","string")
                         val toValue = map.getOrElse("req-"+f+"-to",null)
@@ -762,6 +784,9 @@ class DbClient(
                             }
                         } else {
                             val reqdef = new RequestDefineOriginal(f,f,defaultValue,columnType)
+                            if( tlvType.cls == TlvCodec.CLS_STRUCTARRAY ) {
+                                reqdef.structTlvType = tlvType
+                            }
                             reqMapOrigBuff += reqdef
                         }
                     }
@@ -921,7 +946,11 @@ class DbClient(
                     if( hasArrayReqFields ) {
 
                         if( sqlType == MsgDefine.SQLTYPE_UPDATE ) {
-                            sqlType = MsgDefine.SQLTYPE_BATCHUPDATE
+                            if( hasArrayReqFieldsByRow ) {
+                                sqlType = MsgDefine.SQLTYPE_BATCHUPDATEBYROW
+                            } else {
+                                sqlType = MsgDefine.SQLTYPE_BATCHUPDATEBYCOL
+                            }
                         } else {
                             throw new RuntimeException("array parameter not allowed as request parameter for serviceId=%d,msgId=%d".format(serviceId,msgId))
                         }
@@ -931,7 +960,7 @@ class DbClient(
                     val msgSqls = new ArrayBuffer[MsgSql]
 
                     for(sql <- sqls) {
-                        val (newsql, keys, keytypes, tableIdx, tableIdxField, overwriteBuff) = prepareSql(sql,sqlType,reqMapOrigBuff)
+                        val (newsql, keys, keytypes, tableIdx, tableIdxField, overwriteBuff) = prepareSql(sql,sqlType,reqMapOrigBuff,serviceId)
                         msgSqls += new MsgSql(newsql, keys, keytypes, tableIdx, tableIdxField, overwriteBuff)
                     }
 
@@ -1108,7 +1137,7 @@ class DbClient(
         for( ds <- masterList ) {
             if( hasError(ds) ) {
                 val msg = "master db ["+DbLike.getUrl(ds)+"] has error"
-                buff += new SelfCheckResult("JVMDBBRK.DB",errorId,true,msg)
+                buff += new SelfCheckResult("SCALABPE.DB",errorId,true,msg)
             }
         }
         if( slaveList != null ) {
@@ -1116,14 +1145,14 @@ class DbClient(
             for( ds <- slaveList ) {
                 if( hasError(ds) ) {
                     val msg = "slave db ["+DbLike.getUrl(ds)+"] has error"
-                    buff += new SelfCheckResult("JVMDBBRK.DB",errorId,true,msg)
+                    buff += new SelfCheckResult("SCALABPE.DB",errorId,true,msg)
                 }
             }
 
         }
 
         if( buff.size == 0 ) {
-            buff += new SelfCheckResult("JVMDBBRK.DB",errorId)
+            buff += new SelfCheckResult("SCALABPE.DB",errorId)
         }
 
         buff
@@ -1147,7 +1176,7 @@ class DbClient(
         dslist
     }
 
-    def prepareSql(sql:String, sqlType:Int, params: ArrayBuffer[RequestDefineOriginal]) : Tuple6[String,ArrayBuffer[RequestDefine],ArrayBuffer[Int],String,String,ArrayBuffer[RequestDefineOverwrite] ]= {
+    def prepareSql(sql:String, sqlType:Int, params: ArrayBuffer[RequestDefineOriginal],serviceId:Int) : Tuple6[String,ArrayBuffer[RequestDefine],ArrayBuffer[Int],String,String,ArrayBuffer[RequestDefineOverwrite] ]= {
 
         val keys = new ArrayBuffer[RequestDefine]()
         val keytypes = new ArrayBuffer[Int]()
@@ -1195,7 +1224,7 @@ class DbClient(
                             if( ss.size != 1 )
                                 throw new RuntimeException("msg define error, sql="+sql+",tag="+tag)
                             val ss0 = ss(0)
-                        overwriteBuff += new RequestDefineOverwrite(ss0.key,idx,ss0.defaultValue)
+                            overwriteBuff += new RequestDefineOverwrite(ss0.key,idx,ss0.defaultValue)
                         case _ =>
                             log.error("unknown match string {}",tag.matched)
                             throw new RuntimeException("sql define error")
@@ -1211,6 +1240,7 @@ class DbClient(
             val tp = (sql,keys,keytypes,tableIdx,tableIdxField,overwriteBuff)
             return tp
         }
+        val codec = router.codecs.findTlvCodec(serviceId)
         val tags = matchlist.toList
         for(tag <- tags ) {
 
@@ -1218,27 +1248,58 @@ class DbClient(
                 case sqlReg3(idx) =>
                     var ss : ArrayBuffer[RequestDefineOriginal] = null
 
-                    if( sqlType == MsgDefine.SQLTYPE_BATCHUPDATE ) {
-                        ss = params.filter(p => p.idx.toLowerCase == idx.toLowerCase) // compare placeholder and request key
-                        if( ss.size == 0 )
-                            ss = params.filter(p => p.idx.toLowerCase == idx.toLowerCase + "s")
-                        if( ss.size == 0 )
-                            ss = params.filter(p => p.idx.toLowerCase == idx.toLowerCase + "array")
-                        if( ss.size == 0 )
-                            ss = params.filter(p => p.idx.toLowerCase == idx.toLowerCase + "_array")
-                        if( ss.size == 0 )
-                            ss = params.filter(p => p.idx.toLowerCase == idx.toLowerCase + "list")
-                        if( ss.size == 0 )
-                            ss = params.filter(p => p.idx.toLowerCase == idx.toLowerCase + "_list")
-                        } else {
-                            ss = params.filter(p => p.idx.toLowerCase == idx.toLowerCase) // compare placeholder and request key
-                        }
+                    val loweredIdx = idx.toLowerCase
+                    var keyInMap:String = null
+                    var columnTypeInMap = ""
+                    var defaultValueInMap:String  = null
 
-                        if( ss.size != 1 )
-                            throw new RuntimeException("msg define error, sql="+sql+",tag="+tag)
-                        val ss0 = ss(0)
-                    keys += new RequestDefine(ss0.key,ss0.defaultValue)
-                    keytypes += ColumnType.toColumnType(ss0.columnType)
+                    if( sqlType == MsgDefine.SQLTYPE_BATCHUPDATEBYCOL ) {
+                        ss = params.filter(p => p.idx.toLowerCase == loweredIdx ) // compare placeholder and request key
+                        if( ss.size == 0 )
+                            ss = params.filter(p => p.idx.toLowerCase == loweredIdx + "s")
+                        if( ss.size == 0 )
+                            ss = params.filter(p => p.idx.toLowerCase == loweredIdx + "array")
+                        if( ss.size == 0 )
+                            ss = params.filter(p => p.idx.toLowerCase == loweredIdx + "_array")
+                        if( ss.size == 0 )
+                            ss = params.filter(p => p.idx.toLowerCase == loweredIdx + "list")
+                        if( ss.size == 0 )
+                            ss = params.filter(p => p.idx.toLowerCase == loweredIdx + "_list")
+                    } else if( sqlType == MsgDefine.SQLTYPE_BATCHUPDATEBYROW ) {
+                        ss = params.filter(p => p.structTlvType == null && p.idx.toLowerCase == loweredIdx) // compare placeholder and request key
+                        if( ss.size == 0 ) {
+                            ss = params.filter(p => p.structTlvType != null )
+                            if( ss.size != 1 )
+                                throw new RuntimeException("msg define error, sql="+sql+",tag="+tag)
+                            val tlvType = ss(0).structTlvType
+                            for(kk <- 0 until tlvType.structNames.length ) {
+                                if( tlvType.structNames(kk).toLowerCase == loweredIdx ) {
+                                    keyInMap = tlvType.structNames(kk)
+                                    columnTypeInMap = codec.codecAttributes.getOrElse("type-"+tlvType.itemType.name+"-"+keyInMap+"-columnType","")
+                                    val tlvinfo = tlvType.structFieldInfos(kk)
+                                    if( tlvinfo != null && tlvinfo.defaultValue != null ) defaultValueInMap = tlvinfo.defaultValue
+                                }
+                            }
+                            if( keyInMap == null ) {
+                                throw new RuntimeException("msg define error, sql="+sql+",tag="+tag)
+                            }
+                        }
+                    } else {
+                        ss = params.filter(p => p.idx.toLowerCase == loweredIdx) // compare placeholder and request key
+                    }
+
+                    if( ss.size != 1 )
+                        throw new RuntimeException("msg define error, sql="+sql+",tag="+tag)
+                    val ss0 = ss(0)
+                    val rd = new RequestDefine(ss0.key,ss0.defaultValue)
+                    var tp = ColumnType.toColumnType(ss0.columnType)
+                    if( keyInMap != null ) {
+                        rd.keyInMap = keyInMap
+                        rd.defaultValueInMap = defaultValueInMap
+                        tp = ColumnType.toColumnType(columnTypeInMap)
+                    }
+                    keys += rd
+                    keytypes += tp 
                 case _ =>
                     log.error("unknown match string {}",tag.matched)
                     throw new RuntimeException("sql define error")
@@ -1478,6 +1539,50 @@ class DbClient(
         (sql,batchparams)
     }
 
+    def replaceSqlBatchByRow(msqlSql:MsgSql,req:Request,splitTableType:Int) : Tuple2[String,ArrayBuffer[ ArrayBufferString] ]= {
+
+        val sql = generateSql(msqlSql,req,splitTableType)
+
+        val batchparams = new ArrayBuffer[ ArrayBufferString ] ()
+
+        var dataMap :ArrayBufferMap = null
+        var maxRows = 0
+        for( (k,v) <- req.body ) {
+           if( v.isInstanceOf[ArrayBufferMap] ) {
+                dataMap = v.asInstanceOf[ArrayBufferMap]
+                maxRows = dataMap.size
+           } 
+        }
+        if( maxRows == 0 )
+            throw new RuntimeException("no rows found in request parameter")
+
+        var kk = 0
+
+        while( kk < maxRows ) {
+            val values = new ArrayBufferString()
+
+            for( keydef <- msqlSql.keys ) {
+              
+                var v:Any = null
+                if( keydef.keyInMap != null ) {
+                    v = dataMap(kk).getOrElse(keydef.keyInMap,keydef.defaultValueInMap)
+                } else {
+                    v = req.body.getOrElse(keydef.key,keydef.defaultValue)
+                }
+                v match  {
+                    case null => values += null
+                    case s:String => values += s
+                    case i:Int => values += i.toString
+                }
+            }
+
+            kk += 1
+            batchparams += values
+        }
+
+        (sql,batchparams)
+    }
+
     def process(req:Request):Unit = {
 
         val msgDefine = msgMap.getOrElse(req.serviceId+"-"+req.msgId,null)
@@ -1575,9 +1680,18 @@ class DbClient(
                 for( resdef <- msgDefine.resdefs if resdef.fieldType == MsgDefine.RESULTTYPE_INSERT_ID || resdef.fieldType == MsgDefine.RESULTTYPE_INSERT_IDS ) { insert_id_flag = true }
                 results = update_db_multi(sql_buff,params_buff,keytypes_buff,masterList,dbIdx,insert_id_flag)
 
-            case MsgDefine.SQLTYPE_BATCHUPDATE =>
+            case MsgDefine.SQLTYPE_BATCHUPDATEBYCOL =>
 
                 val (sql,batchparams) = replaceSqlBatch(msgDefine.sqls(0),req,splitTableType)
+                val keyTypes = msgDefine.sqls(0).keyTypes
+
+                var insert_id_flag = false
+                for( resdef <- msgDefine.resdefs if resdef.fieldType == MsgDefine.RESULTTYPE_INSERT_ID || resdef.fieldType == MsgDefine.RESULTTYPE_INSERT_IDS ) { insert_id_flag = true }
+                results = update_db_batch(sql,batchparams,keyTypes,masterList,dbIdx,insert_id_flag)
+
+            case MsgDefine.SQLTYPE_BATCHUPDATEBYROW =>
+
+                val (sql,batchparams) = replaceSqlBatchByRow(msgDefine.sqls(0),req,splitTableType)
                 val keyTypes = msgDefine.sqls(0).keyTypes
 
                 var insert_id_flag = false

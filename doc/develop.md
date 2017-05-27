@@ -136,10 +136,10 @@ __而内部使用的服务描述文件则放在子目录下__
         int             scala.Int
         bytes           scala.Array[scala.Byte]
         string          java.lang.String
-        struct          jvmdbbroker.core.HashMapStringAny 继承自 scala.collection.mutable.HashMap[String,Any]
-        int array       jvmdbbroker.core.ArrayBufferInt 继承自 scala.collection.mutable.ArrayBuffer[Int]
-        string array    jvmdbbroker.core.ArrayBufferString 继承自 scala.collection.mutable.ArrayBuffer[String]        
-        struct array    jvmdbbroker.core.ArrayBufferMap 继承自 scala.collection.mutable.ArrayBuffer[jvmdbbroker.core.HashMapStringAny]
+        struct          scalabpe.core.HashMapStringAny 继承自 scala.collection.mutable.HashMap[String,Any]
+        int array       scalabpe.core.ArrayBufferInt 继承自 scala.collection.mutable.ArrayBuffer[Int]
+        string array    scalabpe.core.ArrayBufferString 继承自 scala.collection.mutable.ArrayBuffer[String]        
+        struct array    scalabpe.core.ArrayBufferMap 继承自 scala.collection.mutable.ArrayBuffer[scalabpe.core.HashMapStringAny]
 
 ## message 定义
 
@@ -232,7 +232,7 @@ __而内部使用的服务描述文件则放在子目录下__
 
     必达消息可以在任何服务描述文件中定义，而不仅仅在对外的服务的描述文件。
     可以定义在一个子流程上，也可以在某个db的消息上。由业务根据实际情况使用。
-    在接收到客户端的必达消息时，只要一完成消息的持久化，就会先回一个ACK消息给客户端，jvmdbbroker自己会重试，不需要客户端再重试。
+    在接收到客户端的必达消息时，只要一完成消息的持久化，就会先回一个ACK消息给客户端，scalabpe自己会重试，不需要客户端再重试。
 
     为兼容老版本，如果发现avenue包头设置了"必达消息位"，即使服务描述文件中未申明也会作为必达消息处理
 
@@ -255,12 +255,12 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 ## 文件类型
 
     .scala后缀的纯scala文件, 一般是一些辅助类，轻量级插件类等, 也可以直接写流程
-    对.scala后缀的类文件，包名建议统一用jvmdbbroker.flow，简化import语句
+    对.scala后缀的类文件，包名建议统一用scalabpe.flow，简化import语句
 
     .flow结尾的流程文件, 每个flow就是服务描述文件中的一个消息的实现
     每个flow文件在编译时会自动转换成scala类，编写flow文件，实际就是写scala类
     所以scala的语法在flow里可以没有限制的使用
-    所有flow文件的包名会自动设置为jvmdbbroker.flow, 并自动加上对jvmdbbroker.core的import
+    所有flow文件的包名会自动设置为scalabpe.flow, 并自动加上对scalabpe.core的import
 
 ## flow文件内的特殊标记
 
@@ -289,10 +289,10 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
 ## 流程的基类
 
-      默认流程都继承类jvmdbbroker.core.Flow, 使用特殊语法可以修改继承的基类
+      默认流程都继承类scalabpe.core.Flow, 使用特殊语法可以修改继承的基类
 
       使用//$xxx.xxx.with(baseclass)语法可以让流程继承一个用户自定义的基类baseclass,
-      baseclass必须继承jvmdbbroker.core.Flow, 用户可以在基类中做一些特殊处理，
+      baseclass必须继承scalabpe.core.Flow, 用户可以在基类中做一些特殊处理，
       如在每个流程开始前自动从redis中加载http的session信息到内存中的session变量中，
       流程中只要操作session变量就能读写会话信息
 
@@ -669,7 +669,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
     用法：
 
-        package jvmdbbroker.flow
+        package scalabpe.flow
 
         object Global {
             def init() {
@@ -680,7 +680,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
             }
         }
 
-        要求类名： object jvmdbbroker.flow.Global
+        要求类名： object scalabpe.flow.Global
         函数：init 启动时调用
         函数：close 关闭时调用
 

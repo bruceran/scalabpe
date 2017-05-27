@@ -1,14 +1,19 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent.atomic.{AtomicBoolean,AtomicInteger}
 import java.io._
 import scala.collection.mutable.{HashMap,ArrayBuffer,Buffer}
 import scala.io.Source
 import scala.xml._
+import java.nio.charset.Charset
+import java.net._
 import java.util.concurrent._
 import java.util.concurrent.locks.ReentrantLock
+import java.util.concurrent.atomic._
 import java.text.SimpleDateFormat
 import scala.reflect.runtime.universe
+import org.jboss.netty.buffer._;
+import org.jboss.netty.handler.codec.http._;
 
 object ValueParser {
 
@@ -17,7 +22,7 @@ object ValueParser {
 
     var debug = false
 
-    var pluginObjectName = "jvmdbbroker.flow.FlowHelper"
+    var pluginObjectName = "scalabpe.flow.FlowHelper"
     var pluginobj:universe.ModuleMirror = null
 
     val g_context = HashMapStringAny()
@@ -88,6 +93,8 @@ object ValueParser {
         val s = s0
         var ns = escape4(escape3(escape1(s)))
         if( ns.indexOf("$") >= 0 ) {
+            val vt = parseInternal(s,localCtx,glbCtx)
+            if( vt != null && !vt.isInstanceOf[String] ) return vt
             if( debug ) {
                 println("***"+s)            
                 println("###"+ns)            
@@ -864,6 +871,12 @@ class TestCaseV2Define(val defines:LinkedHashMapStringAny) extends TestCaseV2Com
 }
 class TestCaseV2Invoke(val tp:String, val service:String, val timeout:Int, val req:LinkedHashMapStringAny,val res:LinkedHashMapStringAny,val id:String = "") extends TestCaseV2Command {
     var lineNo = 0
+
+    var http_method = ""
+    var http_rest = ""
+    var http_ok_field = ""
+    var http_ok_value = ""
+
     def toString(m:LinkedHashMapStringAny):String = {
         val b = new StringBuilder()
         for( (k,v) <- m if !k.endsWith(ValueParser.OP_PREFIX) ) {
@@ -887,6 +900,12 @@ class TestCaseV2(val tp:String,val name:String,val commands:ArrayBuffer[TestCase
     var extendsFrom = ""
     var pluginObjectName = ""
     var remote = ""
+
+    var http_base_url = ""
+    var http_method = ""
+    var http_rest = ""
+    var http_ok_field = ""
+    var http_ok_value = ""
 
     override def toString():String = {
 
@@ -920,16 +939,26 @@ object TestCaseRunner extends Logging {
     var runAll = false
 
     var remote = ""
+
+    var g_http_base_url = ""
+    var g_http_method = ""
+    var g_http_rest = ""
+    var g_http_ok_field = ""
+    var g_http_ok_value = ""
+    var g_cookies = HashMapStringString()
+
     val timeout = 15000
     var codecs:TlvCodecs = _
     var soc : SocImpl = _
     var remoteReqRes: SocRequestResponseInfo = _
 
+    var hasError = false
     var total = 0
     var success = 0
     var failed = 0
 
     var lineNoCnt = 0
+    var httpClient = new RunTestHttpClient()
 
     object TestActor extends Actor {
         def receive(v:Any) {
@@ -985,10 +1014,11 @@ object TestCaseRunner extends Logging {
     def help() {
         println(
 """
-usage: jvmdbbroker.core.TestCaseRunner [options] path_to_testcasefile(txt)
+usage: scalabpe.core.TestCaseRunner [options] path_to_testcasefile(txt)
 options:
     -h|--help             帮助信息
     -a|--all              忽略enabled标志运行所有testcase
+       --all_files        对testcase下所有txt文件运行测试
     -d|--dump             输出解析后的testcase到控制台
 """)
    }
@@ -1003,6 +1033,9 @@ options:
                     return null
                 case "-a" | "--all" => 
                     map.put("all","1")
+                    i += 1
+                case "--all_files" => 
+                    map.put("all_files","1")
                     i += 1
                 case "-d" | "--dump" => 
                     map.put("dump","1")
@@ -1022,6 +1055,14 @@ options:
         map
     }
 
+    def matchFile(file:String,patterns:ArrayBufferString):Boolean = {
+        for( p <- patterns ) {
+            if( file.matches(p) ) return true
+            if( file.matches("testcase/"+p) ) return true
+        }
+        false
+    }
+
     def main(args:Array[String]) {
 
         var params = parseArgs(args)
@@ -1031,26 +1072,79 @@ options:
         }
 
         var files = params.nls("files")
+
         if( files.length == 0 ) {
             files += "default.txt"
         }
 
-        for( f <- files ) {
-            runTest(f,params,args)
+        if( params.ns("all_files") == "1" ) {
+            files.clear()
+            for( f <- new File("./testcase/").listFiles ) {
+                if( f.getName().endsWith(".txt") ) {
+                    files += f.getName()
+                } else if( f.isDirectory ) {
+                    for( f2 <- new File("./testcase/"+f.getName()).listFiles if f2.getName().endsWith(".txt")) {
+                        files += f.getName()+"/"+f2.getName()
+                    }
+                }
+            }
         }
 
-        if( Main.testMode ) {
-            Main.close()
-        } 
-        if( soc != null ) {
-            soc.close()
-            log.asInstanceOf[ch.qos.logback.classic.Logger].getLoggerContext().stop
-            soc = null
+        if( files.filter( _.indexOf("*") > 0 ).size > 0 ) { // support xxx/*.txt
+            val patternfiles = ArrayBufferString()
+            patternfiles ++= files
+            for( i <- 0 until patternfiles.size ) {
+                patternfiles(i) = patternfiles(i).replace("\\","/").replace(".","\\.").replace("*",".*")
+            }
+            files.clear()
+            val allfiles = ArrayBufferString()
+            for( f <- new File("./testcase/").listFiles ) {
+                if( f.getName().endsWith(".txt") ) {
+                    allfiles += f.getName()
+                } else if( f.isDirectory ) {
+                    for( f2 <- new File("./testcase/"+f.getName()).listFiles if f2.getName().endsWith(".txt")) {
+                        allfiles += f.getName()+"/"+f2.getName()
+                    }
+                }
+            }
+
+            for(i <- 0 until allfiles.size ) {
+                if( matchFile(allfiles(i),patternfiles ) ) {
+                    files += allfiles(i)
+                }
+            }
         }
+        if(true) {
+            println("testcase files:" + files.mkString(","))
+        }
+        try {
+            for( f <- files ) {
+                runTest(f,params,args)
+            }
+
+            if( Router.testMode ) {
+                Main.close()
+            } 
+            if( soc != null ) {
+                soc.close()
+                log.asInstanceOf[ch.qos.logback.classic.Logger].getLoggerContext().stop
+                soc = null
+            }
+        } catch {
+            case e:Throwable =>
+                log.error("exception e="+e.getMessage,e)
+                e.printStackTrace()
+                hasError = true
+        }
+
+        httpClient.close()
+
+        if( hasError ) System.exit(1)
+        else System.exit(0)
     }
 
     def resetGlobal() {
-        ValueParser.pluginObjectName = "jvmdbbroker.flow.FlowHelper"
+        ValueParser.pluginObjectName = "scalabpe.flow.FlowHelper"
         ValueParser.pluginobj = null
         ValueParser.g_context.clear()
 
@@ -1062,7 +1156,7 @@ options:
         lineNoCnt = 0
     }
 
-    // called only by jvmdbbroker.core.main, 在正常启动时安装mock
+    // called only by scalabpe.core.main, 在正常启动时安装mock
     def installMock(f:String) {
         try {
             installMockInternal(f)
@@ -1124,6 +1218,7 @@ options:
                 return
             }
         } 
+        file = file.replace("\\","/")
 
         if(!isNewFormat(file)) {
             TestCaseRunnerV1.main(args)
@@ -1152,9 +1247,23 @@ options:
             codecs = new TlvCodecs("."+File.separator+"avenue_conf")
             soc = new SocImpl(remote,codecs,socCallback,connSizePerAddr=1)
         }
+        g_cookies.clear()
+        if( global != null ) {
+            g_http_base_url = global.http_base_url
+            g_http_method = global.http_method
+            g_http_rest = global.http_rest
+            g_http_ok_field = global.http_ok_field
+            g_http_ok_value = global.http_ok_value
+        } else {
+            g_http_base_url = ""
+            g_http_method = ""
+            g_http_rest = ""
+            g_http_ok_field = ""
+            g_http_ok_value = ""
+        }
 
-        if( !Main.testMode && remote == "") {
-            Main.testMode = true
+        if( !Router.testMode && remote == "") {
+            Router.testMode = true
             Main.main(Array[String]())
             Router.main.mockActor = new MockActor()
         }
@@ -1178,8 +1287,10 @@ options:
                     throw e
         }
 
+        if( failed > 0 ) hasError = true
+
         println("-------------------------------------------")
-        println("testcase total:%d, success:%d, failed:%d".format(total,success,failed))
+        println("testcase result, file:%s total:%d, success:%d, failed:%d".format(file,total,success,failed))
         println("-------------------------------------------")
     }
 
@@ -1209,7 +1320,7 @@ options:
                                     println("<<< global mock install failed, stop test! service="+i.service+", reason="+msg)
                                     return
                                 }
-                            case "setup" =>
+                            case "setup" | "setup_http" =>
                                 val (ok,msg,req,res) = callServiceMustOk(i,context)
                                 if( !ok ) {
                                     println(">>> LINE#"+i.lineNo+" "+i.toString(""))
@@ -1237,7 +1348,7 @@ options:
                 c match {
                     case i:TestCaseV2Invoke =>
                         i.tp match {
-                            case "teardown" =>
+                            case "teardown" | "teardown_http" =>
                                 callServiceIgnoreResult(i,context)
                             case _ => // ignore mock,setup,assert
                         }
@@ -1301,7 +1412,7 @@ options:
                                     println("<<< testcase mock failed, testcase=%s, service=%s, reason=%s".format(t.name,i.service,msg))
                                     return
                                 }
-                            case "setup" =>
+                            case "setup" | "setup_http" =>
                                 val (ok,msg,req,res) = callServiceMustOk(i,context)
                                 if( !ok ) {
                                     failed += 1
@@ -1312,7 +1423,7 @@ options:
                                     println("<<< testcase setup failed, testcase=%s, service=%s, reason=%s".format(t.name,i.service,msg))
                                     return
                                 }
-                            case "assert" =>
+                            case "assert" | "assert_http" =>
                                 val (ok,msg,req,res) = callServiceWithAssert(i,context)
                                 if( !ok ) {
                                     failed += 1
@@ -1340,7 +1451,7 @@ options:
                 c match {
                     case i:TestCaseV2Invoke =>
                         i.tp match {
-                            case "teardown" =>
+                            case "teardown" | "teardown_http" =>
                                 callServiceIgnoreResult(i,context)
                             case _ => // ignore mock,setup,assert
                         }
@@ -1363,7 +1474,6 @@ options:
             val left = ValueParser.anyToString(ValueParser.parseLeftValue(k,ret,context))
             val right = ValueParser.anyToString(ValueParser.parseRightValue(v,null,context))
             val op = i.res.getOrElse(k+ValueParser.OP_PREFIX,"=")
-
             if( op == "=" ) {
                 if( right == ValueParser.NULL && left != null )
                     return (false,"["+k+"] not match, required:null, actual:not null",req.toString,ret.toString)
@@ -1425,7 +1535,49 @@ options:
             var req_body = HashMapStringAny()
             var res_body = HashMapStringAny() 
 
-            if( remote == "" ) {
+            if( i.tp.endsWith("_http") ) {
+                var url = ValueParser.parseRightValue(i.service,null,context).toString
+                if( !url.startsWith("http://") && g_http_base_url != "" ) {
+                    url = g_http_base_url + url
+                }
+                var http_method = i.http_method
+                if( http_method == "" ) http_method = g_http_method
+                if( http_method == "" ) http_method = "post"
+
+                var http_rest = i.http_rest
+                if( http_rest == "" ) http_rest = g_http_rest
+                if( http_rest == "" ) http_rest = "false"
+
+                var http_ok_field = i.http_ok_field
+                if( http_ok_field == "" ) http_ok_field = g_http_ok_field
+                if( http_ok_field == "" ) http_ok_field = "return_code"
+
+                var http_ok_value = i.http_ok_value
+                if( http_ok_value == "" ) http_ok_value = g_http_ok_value
+                if( http_ok_value == "" ) http_ok_value = "0"
+
+                val map = HashMapStringAny()
+                req_body = params
+                res_body = map
+
+                val requestId = generateSequence().toString
+                req_body.put("$requestId",requestId)
+
+                val header = HashMapStringString()
+                val body = HashMapStringAny()
+                for( (k,v) <- params if k.startsWith("header.") ) {
+                    header.put(k.substring(7),v.toString)
+                }
+                for( (k,v) <- params if !k.startsWith("header.") ) {
+                    body.put(k,v)
+                }
+
+                val (code,res) = callHttp(requestId,url,http_method,http_rest,
+                    header,body,http_ok_field,http_ok_value,i.timeout)
+
+                map ++= res
+                map.put(codeTag,code)
+            } else if( remote == "" ) {
                 val (serviceId,msgId) = Flow.router.serviceNameToId(i.service)
                 if( serviceId == 0 || msgId == 0 ) {
                     val tp = (params,HashMapStringAny("$code"-> (-10242405)))
@@ -1449,11 +1601,15 @@ options:
                 val requestId = "TEST"+RequestIdGenerator.nextId()
                 val map = HashMapStringAny()
                 res_body = map
+                var connId = "127.0.0.1:1000:1000"
+                if( params.ns("connId") != "" ) connId = params.ns("connId")
+                else if( context.ns("$connId") != "" ) connId = context.ns("$connId")
+
                 lock.lock();
                 try {
                     val req = new Request (
                         requestId,
-                        "test:0",
+                        connId,
                         generateSequence(),
                         1,
                         serviceId,
@@ -1526,6 +1682,163 @@ options:
             val tp = (req_body,res_body)
             saveInvokeToContext(i.id,tp,context)
             return tp
+    }
+
+    def hasUploadField(body:HashMapStringAny):Boolean = {
+        for( (k,v) <- body if v != null) {
+            if( v.toString.startsWith("upload_file:") ) return true
+        }
+        false
+    }
+
+    def callHttp(requestId:String,url:String,http_method:String,http_rest:String,
+        headers:HashMapStringString,body:HashMapStringAny,
+        http_ok_field:String,http_ok_value:String,timeout:Int):Tuple2[String,HashMapStringAny] = {
+
+        val (ssl,host,path) = parseHostPath(url)
+        var bodyStr = ""
+        var contentType = ""
+        var bodyData:ChannelBuffer = null
+        var download_field:Tuple2[String,String] = null
+
+        var real_path = path
+        if( http_rest == "true" ) {
+            contentType = "application/json"
+            bodyStr = genJsonData(body)
+        } else {
+            if( hasUploadField(body) ) {
+
+                val boundary = "----WebKitFormBoundarywzMkGqJZUrg4hAxZ"
+                contentType = "multipart/form-data; boundary="+boundary
+                bodyStr = genFormData(body)
+                if( real_path.indexOf("?") < 0 ) 
+                    real_path += "?"
+                real_path += "&" + bodyStr
+                bodyStr = ""
+                bodyData = genFormDataForUpload(boundary,body)
+
+            } else {
+                contentType = "application/x-www-form-urlencoded"
+                bodyStr = genFormData(body)
+                download_field = getDownloadField(body)
+
+                if( http_method == "get" ) {
+                    if( real_path.indexOf("?") < 0 ) 
+                        real_path += "?"
+                    real_path += "&" + bodyStr
+                    bodyStr = ""
+                }
+            }
+        }
+
+        val (code,res,cookies) = httpClient.sendWithReturn(http_method,timeout,ssl,host,real_path,
+            bodyStr,bodyData,download_field,headers,contentType,g_cookies)
+        val map = JsonCodec.parseObjectNotNull(res)
+        if( code != 0 ) return (code.toString,map)
+        if( download_field != null ) {
+            if( map.contains(download_field._1) ) {
+                map.put(http_ok_field,http_ok_value)
+            } else {
+                map.put(http_ok_field,"-10242404")
+            }
+        }
+        val v = map.ns(http_ok_field)
+        if( v == http_ok_value) {
+            if( cookies != "" ) g_cookies.put(host,cookies)
+            return ("0",map)
+        } else {
+            return (v,map)
+        }
+    }
+
+    def parseHostPath(url:String):Tuple3[Boolean,String,String] = {
+        var v = (false,"","")
+        val p1 = url.indexOf("//");
+        if( p1 < 0 ) return v
+        val p2 = url.indexOf("/",p1+2);
+        if( p2 < 0 ) return v
+        var host = url.substring(p1+2,p2)
+        val path = url.substring(p2)
+
+        if( url.startsWith("https://") && host.indexOf(":") < 0 )
+            host = host+":443"
+
+        val ssl = url.startsWith("https://")
+        (ssl,host,path)
+    }
+
+    def genJsonData(body:HashMapStringAny):String = {
+        if( body.contains("body") ) return body.ns("body")
+        val newmap = HashMapStringAny()
+        newmap ++= body
+        newmap.remove("$requestId")
+        JsonCodec.mkString(newmap)
+    }
+
+    def genFormDataForUpload(boundary:String,body:HashMapStringAny):ChannelBuffer = {
+        val b = ChannelBuffers.dynamicBuffer()
+
+        val splitter = ""
+        val nl = "\r\n".getBytes()
+
+        for( (key,value) <- body if value != null &&  ( value.toString.startsWith("upload_value:") || value.toString.startsWith("upload_file:") ) ) {
+           if( value.toString.startsWith("upload_value:") ) {
+               val vs = value.toString
+               val v = vs.substring(vs.indexOf(":")+1)
+               b.writeBytes(boundary.getBytes())
+               b.writeBytes(nl)
+               val k = """Content-Disposition: form-data; name="%s"""".format(key)
+               b.writeBytes(k.getBytes())
+               b.writeBytes(nl)
+               b.writeBytes(nl)
+               b.writeBytes(v.getBytes("utf-8"))
+               b.writeBytes(nl)
+           }
+           if( value.toString.startsWith("upload_file:") ) {
+               val vs = value.toString
+               val f = vs.substring(vs.indexOf(":")+1)
+
+               b.writeBytes(boundary.getBytes())
+               b.writeBytes(nl)
+               val k = """Content-Disposition: form-data; name="%s"; filename="%s"""".format(key,f)
+               b.writeBytes(k.getBytes())
+               b.writeBytes(nl)
+               b.writeBytes("Content-Type: application/octet-stream".getBytes())
+               b.writeBytes(nl)
+               b.writeBytes(nl)
+               val len = new File(f).length.toInt
+               val in = new FileInputStream(f)
+               b.writeBytes(in,len)
+               in.close()
+               b.writeBytes(nl)
+           }
+        }
+
+        b.writeBytes(boundary.getBytes())
+        b.writeBytes("--".getBytes())
+        b
+    }
+
+    def getDownloadField(body:HashMapStringAny):Tuple2[String,String] = {
+        for( (key,value) <- body if value != null && value.toString.startsWith("download_file:") ) {
+           val vs = value.toString
+           val f = vs.substring(vs.indexOf(":")+1)
+           return (key,f)
+        }
+        null
+    }
+
+    def genFormData(body:HashMapStringAny):String = {
+        val bodyStr = new StringBuilder()
+        var first = true
+
+        for( (key,value) <- body if key != "$requestId" && !value.toString.startsWith("download_file:") && !value.toString.startsWith("upload_value:") && !value.toString.startsWith("upload_file:")) {
+            if(!first) bodyStr.append("&")
+            bodyStr.append(key+"="+URLEncoder.encode(value.toString,"utf-8"))
+            first = false
+        }
+
+        bodyStr.toString
     }
 
     def saveGlobalMock() {
@@ -1622,6 +1935,12 @@ options:
         var remote = parseAttr(lines(start),"remote")
         if( remote == "0" ) remote = ""
 
+        var http_base_url = parseAttr(lines(start),"http_base_url")
+        var http_method = parseAttr(lines(start),"http_method")
+        var http_rest = parseAttr(lines(start),"http_rest")
+        var http_ok_field = parseAttr(lines(start),"http_ok_field")
+        var http_ok_value = parseAttr(lines(start),"http_ok_value")
+
         if( name == "" ) name = "testcase_"+testCaseCount
         if( tp == "global" ) name = "global"
         var i = start + 1
@@ -1641,11 +1960,20 @@ options:
                 case t if t.startsWith("setup:") =>
                     commands += parseInvoke("setup",lines,i)
                     i += 1
+                case t if t.startsWith("setup_http:") =>
+                    commands += parseInvoke("setup_http",lines,i)
+                    i += 1
                 case t if t.startsWith("teardown:") =>
                     commands += parseInvoke("teardown",lines,i)
                     i += 1
+                case t if t.startsWith("teardown_http:") =>
+                    commands += parseInvoke("teardown_http",lines,i)
+                    i += 1
                 case t if t.startsWith("assert:") =>
                     commands += parseInvoke("assert",lines,i)
+                    i += 1
+                case t if t.startsWith("assert_http:") =>
+                    commands += parseInvoke("assert_http",lines,i)
                     i += 1
                 case t if t.startsWith("testcase:") =>
                     over = true
@@ -1662,6 +1990,11 @@ options:
         o.extendsFrom = extendsFrom
         o.pluginObjectName = pluginObjectName
         o.remote = remote
+        o.http_base_url = http_base_url
+        o.http_method = http_method
+        o.http_rest = http_rest
+        o.http_ok_field = http_ok_field
+        o.http_ok_value = http_ok_value
         (o,i)
     }
 
@@ -1697,6 +2030,12 @@ options:
         if( tp != "mock" && !resMap.contains(codeTag) ) resMap.put(codeTag,0)
         val t = new TestCaseV2Invoke(tp,service,timeout.toInt,reqMap,resMap,id)
         if( lineNo != "" ) t.lineNo = lineNo.toInt
+        if( tp.endsWith("_http") ) {
+            t.http_method = parseAttr(line,"http_method")
+            t.http_rest = parseAttr(line,"http_rest")
+            t.http_ok_field = parseAttr(line,"http_ok_field")
+            t.http_ok_value = parseAttr(line,"http_ok_value")
+        }
         t
     }
 
@@ -1778,9 +2117,15 @@ options:
                 appendLineNo(line,lineNoCnt)
             case l if l.startsWith("setup:") =>
                 appendLineNo(line,lineNoCnt)
+            case l if l.startsWith("setup_http:") =>
+                appendLineNo(line,lineNoCnt)
             case l if l.startsWith("teardown:") =>
                 appendLineNo(line,lineNoCnt)
+            case l if l.startsWith("teardown_http:") =>
+                appendLineNo(line,lineNoCnt)
             case l if l.startsWith("assert:") =>
+                appendLineNo(line,lineNoCnt)
+            case l if l.startsWith("assert_http:") =>
                 appendLineNo(line,lineNoCnt)
             case _ =>
                 line
@@ -1811,9 +2156,15 @@ options:
                     buff += l
                 case l if l.startsWith("setup:") =>
                     buff += l
+                case l if l.startsWith("setup_http:") =>
+                    buff += l
                 case l if l.startsWith("teardown:") =>
                     buff += l
+                case l if l.startsWith("teardown_http:") =>
+                    buff += l
                 case l if l.startsWith("assert:") =>
+                    buff += l
+                case l if l.startsWith("assert_http:") =>
                     buff += l
                 case l if l.startsWith("#") =>
                     buff += l
@@ -1838,7 +2189,7 @@ options:
 
 class TestCaseV1(val serviceId:Int,val msgId:Int,val body:HashMapStringAny,val repeat:Int = 1,val xhead:HashMapStringAny = new HashMapStringAny() )
 
-object TestCaseRunnerV1 {
+object TestCaseRunnerV1 extends Logging {
 
     var requestCount = 1
     var replyCount = 0
@@ -1847,8 +2198,27 @@ object TestCaseRunnerV1 {
     val lock = new ReentrantLock(false)
     val replied = lock.newCondition()
 
+    def initProfile(rootDir:String) {
+        val profile = System.getProperty("scalabpe.profile")
+        if( profile != null && profile != "") {
+           Router.profile = profile
+           Router.parameterXml = "parameter_"+profile+".xml"
+           val filename = "config_"+profile+".xml"
+           if( new File(rootDir+File.separator+filename).exists ) {
+               Router.configXml = filename
+           }
+        }
+        log.info("current profile="+Router.profile)
+        log.info("use config file="+Router.configXml)
+        log.info("use config paramter file="+Router.parameterXml)
+    }
+
     def loadTestServerAddr():String= {
-        val in = new InputStreamReader(new FileInputStream("."+File.separator+"config.xml"),"UTF-8")
+        val rootDir = "."
+
+        initProfile(rootDir)
+
+        val in = new InputStreamReader(new FileInputStream("."+File.separator+Router.configXml),"UTF-8")
         val cfgXml = XML.load(in)
         val port = (cfgXml \ "SapPort").text.toInt
         var serverAddr = "127.0.0.1:"+port
@@ -1999,4 +2369,206 @@ object TestCaseRunnerV1 {
     }
 
 }
+
+class RunTestHttpClient(
+    val connectTimeout :Int = 15000,
+    val timerInterval :Int = 1000) extends HttpClient4Netty with Logging {
+
+    var nettyHttpClient : NettyHttpClient = _
+    val generator = new AtomicInteger(1)
+    val dataMap = new ConcurrentHashMap[Int,CacheData]()
+    val localIp = IpUtils.localIp()
+
+    init
+
+    def init() {
+        nettyHttpClient = new NettyHttpClient(this, connectTimeout, timerInterval, 5000000 )
+        log.info("RunTestHttpClient started")
+    }
+
+    def close() {
+        nettyHttpClient.close()
+        log.info("RunTestHttpClient stopped")
+    }
+
+    def sendWithReturn(method:String, timeout:Int,ssl:Boolean,host:String, path: String, body:String,bodyData:ChannelBuffer,download_field:Tuple2[String,String],
+        headers:HashMapStringString = null,contentType:String="application/x-www-form-urlencoded", 
+        cookies:HashMapStringString = HashMapStringString() ):Tuple3[Int,String,String] = {
+		val lock = new ReentrantLock();
+		val cond = lock.newCondition(); 
+		val r = new AtomicReference[Tuple3[Int,String,String]](); 
+        val callback = (res:Tuple3[Int,String,String])=>{
+            lock.lock();
+            try {
+                r.set(res);
+                cond.signal();
+            } finally {
+                lock.unlock();
+            }
+        }
+
+		lock.lock();
+		try {
+            send(callback,method,timeout,ssl,host,path,body,bodyData,download_field,headers,contentType,cookies)
+			try {
+				val ok = cond.await(timeout,TimeUnit.MILLISECONDS);
+				if( ok ) {
+					return r.get();
+				}
+                return (ResultCodes.SERVICE_TIMEOUT,"","")
+			} catch {
+                case e:InterruptedException =>
+                    return (ResultCodes.SOC_NETWORKERROR,"","")
+			}
+		} finally {
+			lock.unlock();
+		}
+
+    }
+
+    def send(callback:(Tuple3[Int,String,String])=>Unit, method:String, timeout:Int,ssl:Boolean, 
+        host:String, path: String, body:String, bodyData:ChannelBuffer, download_field:Tuple2[String,String],
+        headers:HashMapStringString = null,contentType:String="application/x-www-form-urlencoded", cookies:HashMapStringString = HashMapStringString() ):Unit = {
+        var httpReq = generateRequest(host,path,method,body,bodyData,headers,contentType,cookies)
+        val sequence = generateSequence()
+        dataMap.put(sequence,new CacheData(download_field,callback))
+
+        nettyHttpClient.send(sequence,ssl,host,httpReq,timeout)
+    }
+
+    def receive(sequence:Int,httpRes:HttpResponse):Unit = {
+        val saved = dataMap.remove(sequence)
+        if( saved == null ) return
+        val tpl = parseResult(saved.download_field,httpRes)
+        saved.callback(tpl)   
+    }
+
+    def networkError(sequence:Int) {
+        val saved = dataMap.remove(sequence)
+        if( saved == null ) return
+        val tpl = (ResultCodes.SOC_NETWORKERROR,"","")
+        saved.callback(tpl)
+    }
+
+    def timeoutError(sequence:Int) {
+        val saved = dataMap.remove(sequence)
+        if( saved == null ) return
+        val tpl = (ResultCodes.SOC_TIMEOUT,"","")
+        saved.callback(tpl)
+    }
+
+    def generateSequence():Int = {
+        generator.getAndIncrement()
+    }
+
+    def generateRequest(host:String,path:String,method:String,body:String,bodyData:ChannelBuffer,
+        headers:HashMapStringString = null,contentType:String="application/x-www-form-urlencoded", cookies:HashMapStringString = HashMapStringString() ):HttpRequest = {
+
+        val m = method.toLowerCase match {
+            case "get" => HttpMethod.GET
+            case "put" => HttpMethod.PUT
+            case "post" => HttpMethod.POST
+            case "delete" => HttpMethod.DELETE
+            case _ => HttpMethod.GET
+        }
+        val httpReq = new DefaultHttpRequest(HttpVersion.HTTP_1_1,m,path)
+        httpReq.setHeader("Host", host)
+        httpReq.setHeader("User-Agent", "scalabpe runtest client")
+        httpReq.setHeader("Connection", "close")
+
+        if( headers != null ) {
+            for( (k,v) <- headers ) {
+                httpReq.setHeader(k,v)
+            }
+        }
+
+        val cookiesMap = JsonCodec.parseObjectNotNull(cookies.getOrElse(host,""))
+        if( cookiesMap.size > 0 ) {
+            val encoder = new CookieEncoder(false);
+            for( (k,v) <- cookiesMap ) {
+                encoder.addCookie(k,v.toString)
+            }
+            httpReq.setHeader("Cookie", encoder.encode());
+        }
+
+        if( body.length > 0 ) {
+            if( log.isDebugEnabled() ) {
+                log.debug("method="+method+", path="+path+", content="+body)
+            }
+
+            val buffer= new DynamicChannelBuffer(512);
+            buffer.writeBytes(body.getBytes("UTF-8"))
+            httpReq.setContent(buffer);
+            httpReq.setHeader("Content-Type", contentType)
+            httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
+        }
+        if( bodyData != null ) {
+            if( log.isDebugEnabled() ) {
+                log.debug("method="+method+", path="+path+", file upload")
+            }
+
+            httpReq.setContent(bodyData);
+            httpReq.setHeader("Content-Type", contentType)
+            httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
+        }
+
+        httpReq
+    }
+
+    def parseResult(download_field:Tuple2[String,String],httpRes:HttpResponse):Tuple3[Int,String,String] = {
+
+        val status = httpRes.getStatus
+        if( status.getCode() != 200 && status.getCode() != 201 ) {
+
+            if( log.isDebugEnabled() ) {
+                log.debug("status code={}",status.getCode())
+            }
+
+            return (ResultCodes.SOC_NETWORKERROR,"","")
+        }
+
+        val contentTypeStr = httpRes.getHeader("Content-Type")
+        val content = httpRes.getContent()
+        var contentStr = ""
+        if( download_field == null ) {
+            contentStr = content.toString(Charset.forName("UTF-8"))
+        } else {
+            try {
+                val out = new FileOutputStream(download_field._2)
+                val buff = content.toByteBuffer()
+                out.write(buff.array(),0,buff.limit())
+                out.close()
+                contentStr = """{"%s":"%s"}""".format(download_field._1,download_field._2)
+            } catch {
+                case e:Throwable =>
+                    log.error("cannot save to file "+download_field._2)
+                    return (ResultCodes.SOC_NETWORKERROR,"","")
+            }
+        }
+
+        if( log.isDebugEnabled() ) {
+            log.debug("contentType={},contentStr={}",contentTypeStr,contentStr)
+        }
+
+        val cookie = httpRes.getHeader("Set-Cookie");
+        var cookie_json = ""
+        val cookieMap = HashMapStringAny()
+        if( cookie != null && cookie != "" ) {
+            val cookies = new CookieDecoder().decode(cookie);
+            val i = cookies.iterator()
+            while( i.hasNext() ) {
+                val c = i.next()
+                cookieMap.put(c.getName(),c.getValue())
+            }
+            if( cookieMap.size > 0 ) {
+                cookie_json = JsonCodec.mkString(cookieMap)
+            }
+        }
+        (0,contentStr,cookie_json)
+    }
+
+    class CacheData(val download_field:Tuple2[String,String],val callback:(Tuple3[Int,String,String])=>Unit)
+
+}
+
 

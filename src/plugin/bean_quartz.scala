@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.concurrent.atomic.{AtomicInteger,AtomicBoolean}
 import java.util.{TimerTask,Timer}
@@ -8,7 +8,7 @@ import org.quartz._
 import org.quartz.impl._
 import org.quartz.impl.triggers._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object QuartzBeanJob {
     val dummyActor = new DummyActor()

@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantLock;
@@ -13,7 +13,7 @@ import javax.crypto.spec._
 import java.io.File
 import org.apache.commons.io.FileUtils
 
-object IpUtils {
+object IpUtils extends Logging {
 
     val localips  = ArrayBufferString()
     val netips = ArrayBufferString()
@@ -58,7 +58,24 @@ object IpUtils {
 
     def localIp() : String = {
 
-        val ip0 = localIp0()
+        if( true ) {
+            val envhost = System.getenv("SCALABPE_HOST") // used in docker
+            if( envhost != null && envhost != "" ) {
+                try {
+                    val addr = InetAddress.getByName(envhost)
+                    val s = addr.getHostAddress()
+                    return s
+                } catch {
+                    case e: Exception => 
+                        log.error("cannot get host address, use local ip")
+                }
+            }
+        }
+
+        val docker0 = "172.17.0.1"
+        localips -= docker0
+
+        val ip0 = localIp0() // 此ip可通过调整/etc/hosts文件改变
 
         if ( localips.size > 0  ) {
             if( localips.contains(ip0)) return ip0
@@ -269,7 +286,7 @@ object CryptHelper {
 object LocalStorage {
 
     def save(key:String,value:String) {
-        val dir = Router.main.rootDir+File.separator+"data"+File.separator+"localstorage"
+        val dir = Router.dataDir+File.separator+"localstorage"
         val fdir = new File(dir)
         if( !fdir.exists() ) fdir.mkdirs()
         val filename = dir+File.separator+key
@@ -294,7 +311,7 @@ object LocalStorage {
     }
 
     def loadString(key:String):String = {
-        val filename = Router.main.rootDir+File.separator+"data"+File.separator+"localstorage"+File.separator+key
+        val filename = Router.dataDir+File.separator+"localstorage"+File.separator+key
         val f = new File(filename)
         if( !f.exists() ) return ""
         val s = FileUtils.readFileToString(f,"UTF-8")

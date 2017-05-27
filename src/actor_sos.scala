@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent._
@@ -33,6 +33,7 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
 
     var reverseServiceIds = "0"
     var hasReverseServiceIds = false
+    var spsDisconnectNotifyTo = "55605:111"
     var reverseIps: HashSet[String] = null
     var pushToIpPort: Boolean = false
     val connsAddrMap = new HashMap[String,String]()
@@ -92,18 +93,18 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             s = (cfgNode \ "@reverseServiceIds").text
             if( s != "" ) { 
                 reverseServiceIds = s
-        } 
-        hasReverseServiceIds = ( reverseServiceIds != "0" )
-        router.parameters.put("reverseServiceIds",reverseServiceIds)
+            } 
+            hasReverseServiceIds = ( reverseServiceIds != "0" )
+            router.parameters.put("reverseServiceIds",reverseServiceIds)
 
-        s = (cfgNode \ "@spsReportTo").text
-        if( s != "" ) { 
-            router.parameters.put("spsReportTo",s)
+            s = (cfgNode \ "@spsReportTo").text
+            if( s != "" ) { 
+                router.parameters.put("spsReportTo",s)
         } 
 
         s = (cfgNode \ "@spsDisconnectNotifyTo").text
         if( s != "" ) { 
-            router.parameters.put("spsDisconnectNotifyTo",s)
+            spsDisconnectNotifyTo = s
         } 
 
         s = (cfgNode \ "@pushToIpPort").text
@@ -289,10 +290,9 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
     }
 
     def notifyDisconnected(connId:String) {
-        val notifyTo = router.getConfig("spsDisconnectNotifyTo","55605:111")
-        if( notifyTo == "0:0" ) return
+        if( spsDisconnectNotifyTo == "0:0" ) return
         val sequence = generateSequence()
-        val notifyInfo = notifyTo.split(":")
+        val notifyInfo = spsDisconnectNotifyTo.split(":")
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
             notifyInfo(0).toInt,
@@ -433,11 +433,10 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
 
             case rawRes: RawResponse =>
 
-                reply(rawRes.data,rawRes.connId)
-
-                //case t: RawRequestErrorResponse =>
-
-                //replyWithErrorCode(t.code,t.rawReq.data,t.rawReq.connId)
+                val serviceIdMsgId = rawRes.data.serviceId + ":" + rawRes.data.msgId
+                if( !in(spsDisconnectNotifyTo,serviceIdMsgId) ) { // sent by sos itself
+                    reply(rawRes.data,rawRes.connId)
+                }
 
             case ackInfo: RawRequestAckInfo =>
 
@@ -807,6 +806,12 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             "0.0.0.0"
     }
 
+    def in(ss:String,s:String,t:String=","):Boolean={
+        if( ss == null || ss == "" ) return false
+        if( s == null || s == "" ) return true
+        (t+ss+t).indexOf(t+s+t) >= 0 
+    }
+
     def decode(bb:ByteBuffer,connId:String):AvenueData = {
         var data : AvenueData = null
         if( isEncrypted ) {
@@ -820,14 +825,14 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
                 }
 
                 val serviceIdMsgId = data.serviceId + ":" + data.msgId
-                if( key == null && serviceIdMsgId != shakeHandsServiceIdMsgId && serviceIdMsgId != "0:0") { // heartbeat
+                if( key == null && !in(shakeHandsServiceIdMsgId,serviceIdMsgId) && serviceIdMsgId != "0:0") { // heartbeat
                     log.error("decode error, not shakehanded,service=%d,msgId=%d".format(data.serviceId,data.msgId))
                     throw new RuntimeException("not shakehanded")
                 }
-            } else {
-                data = converter.decode(bb)
-            }
-            data
+        } else {
+            data = converter.decode(bb)
+        }
+        data
     }
 
     def encode(data:AvenueData,connId:String):ByteBuffer = {
@@ -835,11 +840,11 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
         if( isEncrypted ) {
             var key = aesKeyMap.get(connId)
             val serviceIdMsgId = data.serviceId + ":" + data.msgId
-            if( key == null && serviceIdMsgId != shakeHandsServiceIdMsgId ) {
+            if( key == null && !in(shakeHandsServiceIdMsgId,serviceIdMsgId) ) {
                 log.error("encode error, not shakehanded,service=%d,msgId=%d".format(data.serviceId,data.msgId))
                 return null
             }
-            if( serviceIdMsgId == shakeHandsServiceIdMsgId ) key = null
+            if( in(shakeHandsServiceIdMsgId,serviceIdMsgId) ) key = null
             bb = converter.encode(data,key)
         } else {
             bb = converter.encode(data)

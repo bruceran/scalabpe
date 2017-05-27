@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -11,7 +11,7 @@ import scala.collection.mutable.{ArrayBuffer,HashMap,HashSet}
 import com.sdo.billing.queue._
 import com.sdo.billing.queue.impl._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class ConnLocalQueueActor(override val router:Router,override val cfgNode: Node)
 extends LocalQueueActor(router,cfgNode) {

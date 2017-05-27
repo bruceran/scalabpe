@@ -1,6 +1,7 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent._
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.atomic.AtomicInteger
 import java.nio.ByteBuffer
 import org.jboss.netty.util._;
@@ -35,6 +36,10 @@ class SocActor(val router: Router,val cfgNode: Node) extends Actor with RawReque
         log.info(buff.toString)
 
         socWrapper.dump
+    }
+
+    def isTrue(s:String):Boolean = {
+        s == "1"  || s == "t"  || s == "T" || s == "true"  || s == "TRUE" || s == "y"  || s == "Y" || s == "yes" || s == "YES" 
     }
 
     def init() {
@@ -76,6 +81,18 @@ class SocActor(val router: Router,val cfgNode: Node) extends Actor with RawReque
         s = (cfgNode \ "@reconnectInterval").text
         if( s != "" ) reconnectInterval = s.toInt
 
+        var needShakeHands = false
+        s = (cfgNode \ "@needShakeHands").text
+        if( s != "" ) needShakeHands = isTrue(s)
+
+        var shakeHandsTo = ""
+        s = (cfgNode \ "@shakeHandsTo").text
+        if( s != "" ) shakeHandsTo = s
+
+        var shakeHandsPubKey = ""
+        s = (cfgNode \ "@shakeHandsPubKey").text
+        if( s != "" ) shakeHandsPubKey = s
+
         val firstServiceId = serviceIds.split(",")(0)
         threadFactory = new NamedThreadFactory("soc"+firstServiceId)
         pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
@@ -90,6 +107,9 @@ class SocActor(val router: Router,val cfgNode: Node) extends Actor with RawReque
             retryTimes,connectTimeout,pingInterval,maxPackageSize,
             connSizePerAddr,timerInterval,reconnectInterval,
             isSps,reportSpsTo,
+            needShakeHands = needShakeHands,
+            shakeHandsTo = shakeHandsTo,
+            shakeHandsPubKey = shakeHandsPubKey,
             actor = this)
 
         log.info("SocActor started {}",serviceIds)
@@ -201,6 +221,11 @@ trait Soc{
     def send(socReq: SocRequest, timeout: Int):Unit;
 }
 
+object SocImpl {
+    var shakehands_enc_f:(String,String)=>String = null // pubkey,aeskey->encrypted aeskey
+    var shakehands_dec_f:(String,Array[Byte])=>String = null // aesKey,serverKey bytes->decrypted serverKey
+}
+
 class SocImpl(
     val addrs: String,
     val codecs: TlvCodecs,
@@ -214,6 +239,9 @@ class SocImpl(
     val reconnectInterval : Int = 1,
     val isSps: Boolean = false,
     val reportSpsTo: String = "0:0",
+    val needShakeHands:Boolean = false,
+    val shakeHandsTo:String = null,
+    val shakeHandsPubKey:String = null,
     val bossExecutor:ThreadPoolExecutor = null,
     val workerExecutor:ThreadPoolExecutor = null,
     val timer : HashedWheelTimer = null,
@@ -230,8 +258,16 @@ class SocImpl(
     var nettyClient : NettyClient = _
     val generator = new AtomicInteger(1)
     val converter = new AvenueCodec
-    val keyMap = new ConcurrentHashMap[String,String]()
-    val dataMap = new ConcurrentHashMap[Int,CacheData]()
+    val keyMap = new ConcurrentHashMap[String,String]() // connId->aesKey
+    val dataMap = new ConcurrentHashMap[Int,CacheData]() // sequence -> CacheData
+
+    var shakeHandsKeyMap = new ConcurrentHashMap[String,String]()
+    var shakeHandsServiceId = 1
+    var shakeHandsMsgId = 5
+
+    val addrMap = new ConcurrentHashMap[String,String]() // addr:connidx->connId
+    val lock = new ReentrantLock(false)
+    val addrIdxMap = new HashMap[String,Int]() // addr->idx
 
     init
 
@@ -240,6 +276,10 @@ class SocImpl(
         val buff = new StringBuilder
 
         buff.append("dataMap.size=").append(dataMap.size).append(",")
+        buff.append("keyMap.size=").append(keyMap.size).append(",");
+        buff.append("shakeHandsKeyMap.size=").append(shakeHandsKeyMap.size).append(",");
+        buff.append("addrMap.size=").append(addrMap.size).append(",");
+        buff.append("addrIdxMap.size=").append(addrIdxMap.size).append(",");
 
         log.info(buff.toString)
 
@@ -247,6 +287,12 @@ class SocImpl(
     }
 
     def init() {
+
+        if( shakeHandsTo != null && shakeHandsTo != "") {
+            val ss = shakeHandsTo.split(":")
+            shakeHandsServiceId = ss(0).toInt
+            shakeHandsMsgId = ss(1).toInt
+        }
 
         nettyClient = new NettyClient(this,
             addrs,
@@ -267,7 +313,7 @@ class SocImpl(
             startPort, 
             isSps
             )
-
+        nettyClient.start()
         log.info("soc {} started",addrs)
     }
 
@@ -295,9 +341,64 @@ class SocImpl(
         }
     }
 
-    def sendByAddr(data:AvenueData,timeout:Int,addr:String):Int = {
-        try {
+    def isConnId(addr:String):Boolean = {
+        val p1 = addr.indexOf(":")
+        if( p1 < 0 ) return false
+        val p2 = addr.indexOf(":",p1+1)
+        if( p2 < 0 ) return false
+        true
+    }
+    
+    def findConnId(addr:String):String = {
+        if( connSizePerAddr == 1 ) {
+            val connId = addrMap.get(addr+"-0")
+            if( connId != null ) return connId
+            return null
+        }
 
+        lock.lock()
+        try {
+            var idx = addrIdxMap.getOrElse(addr,-1)
+            if( idx == -1 ) return null
+
+            var i = 0 
+            while( i < connSizePerAddr ) {
+                val key = addr+"-"+idx
+                val connId = addrMap.get(addr+"-"+idx)
+                if( connId != null ) {
+                    idx += 1
+                    if( idx >= connSizePerAddr ) idx = 0
+                    addrIdxMap.put(addr,idx)
+                    return connId
+                }
+                idx += 1
+                if( idx >= connSizePerAddr ) idx = 0
+                i += 1
+            }
+            addrIdxMap.put(addr,idx)
+        } finally {
+            lock.unlock()
+        }
+
+        null
+    }
+
+    // addr 可以到地址(ip:port)级别，也可以到连接ID(ip:port:id)级别
+    def sendByAddr(data:AvenueData,timeout:Int,addr:String):Int = {
+
+        if( isConnId(addr) ) { // 目前只有shakehands才会这样调用
+            return sendByConnId(data,timeout,addr)
+        }
+
+        if( needShakeHands ) {
+            val connId = findConnId(addr)
+            if( connId == null ) return ResultCodes.SOC_NOCONNECTION
+            val key = keyMap.get(connId)
+            if( key == null ) return ResultCodes.SOC_NOCONNECTION
+            return sendByConnId(data,timeout,connId)
+        }
+
+        try {
             val buff = converter.encode(data)
 
             var ok = nettyClient.sendByAddr(data.sequence,buff,timeout,addr)
@@ -372,6 +473,74 @@ class SocImpl(
             case e:Throwable =>
                 ResultCodes.TLV_ENCODE_ERROR
         }
+    }
+
+    def connected(connId:String,addr:String,connidx:Int):Unit = {
+        if( !needShakeHands ) return
+        nettyClient.addChannelToMap(connId)
+        addrMap.put(addr+"-"+connidx,connId)
+        lock.lock()
+        try {
+            if( addrIdxMap.getOrElse(addr,null) == null ) {
+               addrIdxMap.put(addr,0) 
+            }
+        } finally {
+            lock.unlock()
+        }
+        shakeHands(connId)
+    }
+    def disconnected(connId:String,addr:String,connidx:Int):Unit = {
+        if( !needShakeHands ) return
+        addrMap.remove(addr+"-"+connidx)
+    }
+
+    def shakeHands(connId:String) {
+    
+        if( SocImpl.shakehands_enc_f == null || SocImpl.shakehands_dec_f == null ) return 
+
+        val requestId = "SOC"+RequestIdGenerator.nextId() // SOC is a special prefix
+        val aesKey = java.util.UUID.randomUUID().toString().replaceAll("-", "").substring(0, 16)
+        shakeHandsKeyMap.put(requestId,aesKey)
+        val body = new HashMapStringAny()
+        val aesKeyPack = SocImpl.shakehands_enc_f(shakeHandsPubKey,aesKey)
+        body.put("clientKey",aesKeyPack)
+
+        val req = new Request(
+            requestId,
+            "0:0",
+            0,
+            1,
+            shakeHandsServiceId,
+            shakeHandsMsgId,
+            HashMapStringAny(),
+            body,
+            actor
+        )
+        req.toAddr = connId
+        send(req,30000)
+    }
+
+    def afterShakeHands(req:Request,res:Response) {
+        val connId = req.toAddr
+        var ok = false
+        val aesKey = shakeHandsKeyMap.remove(req.requestId)
+        if( res.code == 0 ) {
+            val serverKeyBytes = res.body.getOrElse("serverKey",null).asInstanceOf[Array[Byte]]
+            val serverKey = SocImpl.shakehands_dec_f(aesKey,serverKeyBytes)
+            if( serverKey != null ) {
+                keyMap.put( connId, serverKey )
+                ok = true
+                log.info("shakehands ok, soc.key="+serverKey+",connId="+connId)
+                return
+            }
+            log.error("shakehands error, decrypt buff is null, connId="+connId)
+
+      } else {
+          log.error("shakehands error, res="+res.toString)
+      }
+      if(!ok) {
+         nettyClient.closeChannelFromOutside(connId)
+      }
     }
 
     def receive(res:ByteBuffer, connId:String):Tuple2[Boolean,Int] = {
@@ -717,6 +886,10 @@ class SocImpl(
 
                                 val res = new Response (errorCode,body,req)
                                 res.remoteAddr = parseRemoteAddr(connId)
+                                if( needShakeHands && req.serviceId == shakeHandsServiceId && req.msgId == shakeHandsMsgId ) {
+                                    afterShakeHands(req,res)
+                                    return
+                                }
                                 receiver_f(new RequestResponseInfo(req,res))
                             }
 
@@ -772,6 +945,10 @@ class SocImpl(
                         case req: Request =>
                             val res = createErrorResponse(ResultCodes.SOC_TIMEOUT,req)
                             res.remoteAddr = parseRemoteAddr(connId)
+                            if( needShakeHands && req.serviceId == shakeHandsServiceId && req.msgId == shakeHandsMsgId ) {
+                                afterShakeHands(req,res)
+                                return
+                            }
                             receiver_f(new RequestResponseInfo(req,res))
                         case req: SocRequest =>
                             val res = createErrorResponse(ResultCodes.SOC_TIMEOUT,req)
@@ -800,6 +977,10 @@ class SocImpl(
                             case req: Request =>
                                 val res = createErrorResponse(ResultCodes.SOC_NETWORKERROR,req)
                                 res.remoteAddr = parseRemoteAddr(connId)
+                                if( needShakeHands && req.serviceId == shakeHandsServiceId && req.msgId == shakeHandsMsgId ) {
+                                    afterShakeHands(req,res)
+                                    return
+                                }
                                 receiver_f(new RequestResponseInfo(req,res))
                             case req: SocRequest =>
                                 val res = createErrorResponse(ResultCodes.SOC_NETWORKERROR,req)

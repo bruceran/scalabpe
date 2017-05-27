@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent._
 import java.util.concurrent.locks.ReentrantLock;
@@ -80,9 +80,9 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
     val reqStatsLock = new ReentrantLock(false)
     val sosStatsLock = new ReentrantLock(false)
 
-    val reqStatLog = LoggerFactory.getLogger("jvmdbbroker.ReqStatLog")
-    val reqSummaryLog = LoggerFactory.getLogger("jvmdbbroker.ReqSummaryLog")
-    val sosStatLog = LoggerFactory.getLogger("jvmdbbroker.SosStatLog")
+    val reqStatLog = LoggerFactory.getLogger("scalabpe.ReqStatLog")
+    val reqSummaryLog = LoggerFactory.getLogger("scalabpe.ReqSummaryLog")
+    val sosStatLog = LoggerFactory.getLogger("scalabpe.SosStatLog")
 
     val statf_tl = new ThreadLocal[SimpleDateFormat]() {
         override def initialValue() : SimpleDateFormat = {
@@ -107,6 +107,175 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         if( monitorClient != null )
             monitorClient.dump()
 
+    }
+
+    def init() {
+
+        if( reportUrl != "" || detailReportUrl != "" )
+            monitorClient = new MonitorHttpClient(this,reportUrl,detailReportUrl)
+
+        if( detailReportServiceId != "" ) {
+
+            val ss  = detailReportServiceId.split(",")
+            detailReportServiceIdSet = new HashSet[Int]()
+
+            for( s <- ss ) {
+                detailReportServiceIdSet.add(s.toInt)
+            }
+        }
+        if( passwordFields != "" ) {
+
+            val ss  = passwordFields.split(",")
+            passwordFieldsSet = new HashSet[String]()
+
+            for( s <- ss ) {
+                passwordFieldsSet.add(s)
+            }
+        }
+
+        var s = ( router.cfgXml \ "AsyncLogThreadNum").text
+        if( s != "" ) maxThreadNum = s.toInt
+
+        s = ( router.cfgXml \ "AsyncLogWithFieldName" ).text
+        if( s != "" ) {
+            if( s == "true" ||  s == "yes" || s == "t" || s == "y"  || s == "1" ) asyncLogWithFieldName = true
+            else asyncLogWithFieldName = false
+        }
+        s = ( router.cfgXml \ "AsyncLogArray" ).text
+        if( s != "" ) {
+            asyncLogArray = s.toInt
+            if( asyncLogArray < 1 ) asyncLogArray = 1
+        }
+
+        s = ( router.cfgXml \ "AsyncLogLogId" ).text
+        if( s != "" ) {
+            asyncLogLogId = s.toInt
+        }
+
+        s = ( router.cfgXml \ "AsyncLogMaxParamsLen" ).text
+        if( s != "" ) {
+            asyncLogMaxParamsLen = s.toInt
+            if( asyncLogMaxParamsLen < 100 ) asyncLogMaxParamsLen = 100
+        }
+
+        s = ( router.cfgXml \ "AsyncLogMaxContentLen" ).text
+        if( s != "" ) {
+            asyncLogMaxContentLen = s.toInt
+            if( asyncLogMaxContentLen < 100 ) asyncLogMaxContentLen = 100
+        }
+
+        var defaultTarget=  ""
+        s = ( router.cfgXml \ "AsyncLogDispatch" \ "@defaultTarget" ).text
+        if( s != "" ) {
+            defaultTarget= s
+        }
+
+        val dispatchItems = router.cfgXml \ "AsyncLogDispatch" \ "Item"
+        for( item <- dispatchItems ) {
+            val serviceIdStr = (item \ "@serviceId").toString
+            val msgIdStr = (item \ "@msgId").toString
+            val key = serviceIdStr + ":" + msgIdStr
+            var target= (item \ "@target").toString
+            if( target== "" ) target= defaultTarget
+            if( target != "" && target != "0" ) { 
+                target = target.replace(".",":")
+                val ss = target.split(":")
+                dispatchMap.put(key,new Tuple2[Int,Int](ss(0).toInt,ss(1).toInt))
+            }
+        }
+
+        hasConfigFile = new File(configFile).exists
+        if( hasConfigFile ) {
+
+            val in = new InputStreamReader(new FileInputStream(configFile),"UTF-8")
+            val cfgXml = XML.load(in) //  scala.xml.Elem
+            in.close()
+
+            val serviceCfg = ( cfgXml \ "service" ).filter( a => ( a \ "@name" ).toString == "RecordLog" )
+            val items = serviceCfg \ "item"
+            for( item <- items ) {
+                val serviceIdStr = (item \ "@serviceid").toString
+                val msgIdStr = (item \ "@msgid").toString
+                val key = serviceIdStr + ":" + msgIdStr
+                val bs1 = new ArrayBufferString()
+                (item \ "request" \ "field" ).map( a => ( a \ "@name").toString).foreach( a => bs1 += a)
+                requestLogCfgReq.put(key,bs1)
+                val bs2 = new ArrayBufferString()
+                (item \ "response" \ "field" ).map( a => ( a \ "@name").toString).foreach( a => bs2 += a)
+                requestLogCfgRes.put(key,bs2)
+                val bbf = new ArrayBuffer[Boolean]()
+                (item \ "response" \ "field" ).map( a => if( ( a \ "@isproc").toString == "true" ) true else false ).foreach( a => bbf += a)
+                requestLogCfgResVarFlag.put(key,bbf)
+                val indexStr = (item \ "@index").toString
+                val indexFields = new ArrayBufferString()
+                if( indexStr != "" ) {
+                    val ss = indexStr.split(",")
+                    for(s <- ss ) indexFields += s
+                    requestLogIndexFields.put(key,indexFields)
+                }
+
+            }
+
+        }
+
+        threadFactory = new NamedThreadFactory("asynclog")
+        pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
+        pool.prestartAllCoreThreads()
+
+        timer.schedule( new TimerTask() {
+            def run() {
+                while(!shutdown.get()) {
+
+                    val cal = Calendar.getInstance()
+                    val seconds = cal.get(Calendar.SECOND)
+                    if( seconds >= 5 && seconds <= 8 ) {
+
+                        try {
+                            timer.scheduleAtFixedRate( new TimerTask() {
+                                def run() {
+                                    val now = statf_tl.get().format(new Date(System.currentTimeMillis - 60000))
+                                    AsyncLogActor.this.receive(Stats(now))
+                                }
+                            }, 0, 60000 )
+                        } catch {
+                            case e:Throwable =>
+
+                        }
+                        return
+                    }
+
+                    Thread.sleep(1000)
+                }
+            }
+        }, 0 )
+
+        log.info("AsyncLogActor started")
+    }
+
+    def close() {
+
+        shutdown.set(true)
+        timer.cancel()
+
+        val t1 = System.currentTimeMillis
+
+        pool.shutdown()
+
+        pool.awaitTermination(5,TimeUnit.SECONDS)
+
+        writeStats(statf_tl.get().format(new Date(System.currentTimeMillis - 60000)))
+        writeStats(statf_tl.get().format(new Date(System.currentTimeMillis)))
+
+        val t2 = System.currentTimeMillis
+        if( t2 - t1 > 100 )
+            log.warn("AsyncLogActor long time to shutdown pool, ts={}",t2-t1)
+
+        if( monitorClient != null ) {
+            monitorClient.close()
+            monitorClient = null
+        }
+
+        log.info("AsyncLogActor stopped")
     }
 
     def timeToReqIdx(ts:Int) : Int = {
@@ -359,176 +528,6 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         if( monitorClient != null )
             monitorClient.callStatMoreActions(s)
     }
-
-    def init() {
-
-        if( reportUrl != "" || detailReportUrl != "" )
-            monitorClient = new MonitorHttpClient(this,reportUrl,detailReportUrl)
-
-        if( detailReportServiceId != "" ) {
-
-            val ss  = detailReportServiceId.split(",")
-            detailReportServiceIdSet = new HashSet[Int]()
-
-            for( s <- ss ) {
-                detailReportServiceIdSet.add(s.toInt)
-            }
-        }
-        if( passwordFields != "" ) {
-
-            val ss  = passwordFields.split(",")
-            passwordFieldsSet = new HashSet[String]()
-
-            for( s <- ss ) {
-                passwordFieldsSet.add(s)
-            }
-        }
-
-        var s = ( router.cfgXml \ "AsyncLogThreadNum").text
-        if( s != "" ) maxThreadNum = s.toInt
-
-        s = ( router.cfgXml \ "AsyncLogWithFieldName" ).text
-        if( s != "" ) {
-            if( s == "true" ||  s == "yes" || s == "t" || s == "y"  || s == "1" ) asyncLogWithFieldName = true
-            else asyncLogWithFieldName = false
-        }
-        s = ( router.cfgXml \ "AsyncLogArray" ).text
-        if( s != "" ) {
-            asyncLogArray = s.toInt
-            if( asyncLogArray < 1 ) asyncLogArray = 1
-        }
-
-        s = ( router.cfgXml \ "AsyncLogLogId" ).text
-        if( s != "" ) {
-            asyncLogLogId = s.toInt
-        }
-
-        s = ( router.cfgXml \ "AsyncLogMaxParamsLen" ).text
-        if( s != "" ) {
-            asyncLogMaxParamsLen = s.toInt
-            if( asyncLogMaxParamsLen < 100 ) asyncLogMaxParamsLen = 100
-        }
-
-        s = ( router.cfgXml \ "AsyncLogMaxContentLen" ).text
-        if( s != "" ) {
-            asyncLogMaxContentLen = s.toInt
-            if( asyncLogMaxContentLen < 100 ) asyncLogMaxContentLen = 100
-        }
-
-        var defaultTarget=  ""
-        s = ( router.cfgXml \ "AsyncLogDispatch" \ "@defaultTarget" ).text
-        if( s != "" ) {
-            defaultTarget= s
-        }
-
-        val dispatchItems = router.cfgXml \ "AsyncLogDispatch" \ "Item"
-        for( item <- dispatchItems ) {
-            val serviceIdStr = (item \ "@serviceId").toString
-            val msgIdStr = (item \ "@msgId").toString
-            val key = serviceIdStr + ":" + msgIdStr
-            var target= (item \ "@target").toString
-            if( target== "" ) target= defaultTarget
-            if( target != "" && target != "0" ) { 
-                target = target.replace(".",":")
-                val ss = target.split(":")
-                dispatchMap.put(key,new Tuple2[Int,Int](ss(0).toInt,ss(1).toInt))
-            }
-        }
-
-        hasConfigFile = new File(configFile).exists
-        if( hasConfigFile ) {
-
-            val in = new InputStreamReader(new FileInputStream(configFile),"UTF-8")
-            val cfgXml = XML.load(in) //  scala.xml.Elem
-            in.close()
-
-            val serviceCfg = ( cfgXml \ "service" ).filter( a => ( a \ "@name" ).toString == "RecordLog" )
-            val items = serviceCfg \ "item"
-            for( item <- items ) {
-                val serviceIdStr = (item \ "@serviceid").toString
-                val msgIdStr = (item \ "@msgid").toString
-                val key = serviceIdStr + ":" + msgIdStr
-                val bs1 = new ArrayBufferString()
-                (item \ "request" \ "field" ).map( a => ( a \ "@name").toString).foreach( a => bs1 += a)
-                requestLogCfgReq.put(key,bs1)
-                val bs2 = new ArrayBufferString()
-                (item \ "response" \ "field" ).map( a => ( a \ "@name").toString).foreach( a => bs2 += a)
-                requestLogCfgRes.put(key,bs2)
-                val bbf = new ArrayBuffer[Boolean]()
-                (item \ "response" \ "field" ).map( a => if( ( a \ "@isproc").toString == "true" ) true else false ).foreach( a => bbf += a)
-                requestLogCfgResVarFlag.put(key,bbf)
-                val indexStr = (item \ "@index").toString
-                val indexFields = new ArrayBufferString()
-                if( indexStr != "" ) {
-                    val ss = indexStr.split(",")
-                    for(s <- ss ) indexFields += s
-                    requestLogIndexFields.put(key,indexFields)
-                }
-
-            }
-
-        }
-
-        threadFactory = new NamedThreadFactory("asynclog")
-        pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
-        pool.prestartAllCoreThreads()
-
-        timer.schedule( new TimerTask() {
-            def run() {
-                while(!shutdown.get()) {
-
-                    val cal = Calendar.getInstance()
-                    val seconds = cal.get(Calendar.SECOND)
-                    if( seconds >= 5 && seconds <= 8 ) {
-
-                        try {
-                            timer.scheduleAtFixedRate( new TimerTask() {
-                                def run() {
-                                    val now = statf_tl.get().format(new Date(System.currentTimeMillis - 60000))
-                                    AsyncLogActor.this.receive(Stats(now))
-                                }
-                            }, 0, 60000 )
-                        } catch {
-                            case e:Throwable =>
-
-                        }
-                        return
-                    }
-
-                    Thread.sleep(1000)
-                }
-            }
-        }, 0 )
-
-        log.info("AsyncLogActor started")
-    }
-
-    def close() {
-
-        shutdown.set(true)
-        timer.cancel()
-
-        val t1 = System.currentTimeMillis
-
-        pool.shutdown()
-
-        pool.awaitTermination(5,TimeUnit.SECONDS)
-
-        writeStats(statf_tl.get().format(new Date(System.currentTimeMillis - 60000)))
-        writeStats(statf_tl.get().format(new Date(System.currentTimeMillis)))
-
-        val t2 = System.currentTimeMillis
-        if( t2 - t1 > 100 )
-            log.warn("AsyncLogActor long time to shutdown pool, ts={}",t2-t1)
-
-        if( monitorClient != null ) {
-            monitorClient.close()
-            monitorClient = null
-        }
-
-        log.info("AsyncLogActor stopped")
-    }
-
     def findIndexFields(serviceId:Int,msgId:Int): ArrayBufferString = {
         val s = requestLogIndexFields.getOrElse(serviceId+":"+msgId,null)
         if( s != null ) return s
@@ -581,7 +580,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         val key = serviceId+"."+msgId
         var log = requestLogMap.get(key,null)
         if( log != null ) return log
-        val key2 = "jvmdbbroker.RequestLog."+key
+        val key2 = "scalabpe.RequestLog."+key
         log = LoggerFactory.getLogger(key2)
         requestLogMap.put(key,log)
         log
@@ -591,7 +590,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         val key = serviceId+"."+msgId
         var log = csosLogMap.get(key,null)
         if( log != null ) return log
-        val key2 = "jvmdbbroker.CsosLog."+key
+        val key2 = "scalabpe.CsosLog."+key
         log = LoggerFactory.getLogger(key2)
         csosLogMap.put(key,log)
         log
@@ -600,7 +599,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         val key = serviceId+"."+msgId
         var log = httpRequestLogMap.get(key,null)
         if( log != null ) return log
-        val key2 = "jvmdbbroker.HttpRequestLog."+key
+        val key2 = "scalabpe.HttpRequestLog."+key
         log = LoggerFactory.getLogger(key2)
         httpRequestLogMap.put(key,log)
         log
@@ -609,7 +608,7 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
         val key = "access"
         var log = httpRequestLogMap.get(key,null)
         if( log != null ) return log
-        val key2 = "jvmdbbroker.HttpRequestLog."+key
+        val key2 = "scalabpe.HttpRequestLog."+key
         log = LoggerFactory.getLogger(key2)
         httpRequestLogMap.put(key,log)
         log
@@ -711,8 +710,8 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                     val gsInfo = parseLastGsInfo(info.req.xhead)
                     buff.append(gsInfo(0)).append(splitter).append(gsInfo(1)).append(splitter)
                     buff.append(clientInfo(0)).append(splitter).append(clientInfo(1)).append(splitter)
-                    val xappid = info.req.xhead.getOrElse("appId","-10086")
-                    val xareaid = info.req.xhead.getOrElse("areaId","-10087")
+                    val xappid = info.req.xhead.getOrElse("appId","0")
+                    val xareaid = info.req.xhead.getOrElse("areaId","0")
                     val xsocId = info.req.xhead.getOrElse("socId","")
                     buff.append(xappid).append(splitter).append(xareaid).append(splitter).append(xsocId).append(splitter)
                     buff.append(info.req.requestId).append(splitter).append(getXheadRequestId(info.req)).append(splitter)
@@ -783,8 +782,8 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                 val gsInfo = parseLastGsInfo(req.xhead)
                 buff.append(gsInfo(0)).append(splitter).append(gsInfo(1)).append(splitter)
                 buff.append(clientInfo(0)).append(splitter).append(clientInfo(1)).append(splitter)
-                val xappid = req.xhead.getOrElse("appId","-10086")
-                val xareaid = req.xhead.getOrElse("areaId","-10087")
+                val xappid = req.xhead.getOrElse("appId","0")
+                val xareaid = req.xhead.getOrElse("areaId","0")
                 val xsocId = req.xhead.getOrElse("socId","")
                 buff.append(xappid).append(splitter).append(xareaid).append(splitter).append(xsocId).append(splitter)
                 buff.append(req.requestId).append(splitter).append(getXheadRequestId(req)).append(splitter)
@@ -872,10 +871,12 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                         length = content.length
                     } else {
                         if( content.startsWith("raw_content:"))
-                            length = content.substring(12).toInt
+                            length = content.substring(content.lastIndexOf(":")+1).toInt
+                        else if( content.startsWith("static_file:"))
+                            length = content.substring(content.lastIndexOf(":")+1).toInt
                         else
                             length = content.length
-                        content = """{"contentType":"%s","contentLength":%d}""".format(contentType,length)
+                        content = """{"content":"%s","contentType":"%s"}""".format(content,contentType)
                     }
                 } else {
                     length = req.xhead.i("contentLength",0)
@@ -900,8 +901,8 @@ class AsyncLogActor(val router:Router) extends Actor with Logging with Closable 
                         buff.append(ts).append(httpSplitter)
                         buff.append(res.code).append(httpSplitter)
                         buff.append(content).append(httpSplitter)
-                        buff.append("tmstamp:0").append(httpSplitter)
-                        buff.append("sigstat:"+req.xhead.s("sigstat","0")).append(httpSplitter)
+                        buff.append("0").append(httpSplitter)
+                        buff.append("0").append(httpSplitter)
                         buff.append(req.requestId).append(httpSplitter)
                         buff.append(req.xhead.s("host","unknown_host"))
 

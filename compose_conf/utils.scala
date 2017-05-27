@@ -1,6 +1,6 @@
-package jvmdbbroker.flow
+package scalabpe.flow
 
-import jvmdbbroker.core._
+import scalabpe.core._
 import java.util.Random
 
 object Global {

@@ -1,3 +1,47 @@
+1.2.2 (20170522)
+================
+
+* (0410)enableExtendTlv默认值由false改为true
+* (0412)netty client支持reconfig方法可以动态配置目标地址
+* (0412)parameter.xml文件也支持profile
+* (0412)router支持regdishook插件类型以便支持注册与发现
+* (0413)测试框架远程测试模式也支持profile查找不同的配置文件
+* (0414)soc组件支持连接需要的加密服务器
+* (0414)增加Router.profile,默认为default,对应config.xml; 加载的是config_xxx.xml，profile值就是xxx
+* (0418)测试组件特殊的connId参数，用于指定用例中的connId,通过req.remoteAddr可以取到这个值,避免对取对端地址的地方做硬编码
+* (0418)修改test中右值无法引用非String对象的bug
+* (0421)修改runtest如果有测试用例失败或异常，进程退出码设置为1
+* (0421)修改profile下config.xml选择方式
+* (0421)修改parameter xml参数替换的一个bug, 此功能不向下兼容，老版本配置文件里若有特殊字符，需用cdata避免转义
+* (0424)在docker运行下可通过环境变量SCALABPE_HOST获取主机IP
+* (0425)修改installmock的加载逻辑，等参数化配置文件完成后再获取实际值
+* (0425)netty soc在未配置连接地址的情况下不等待连接成功
+* (0425)router类增加started启动完成标志
+* (0427)修改取本地IP地址的方法，排除docker0 ip(172.17.0.1)
+* (0427)支持从环境变量SCALABPE_TCP_PORT/SCALABPE_HTTP_PORT获得外部端口，用于docker环境下获取到外部绑定的端口
+* (0428)单元测试模式下不绑定http端口
+* (0505)runtest all_files支持2级子目录
+* (0508)修改linux下runtest初次运行报错的bug
+* (0509)runtest工具支持http调用，增加了3个指令：setup_http, assert_http, teardown_http; 支持cookie
+* (0519)修改runtest工具对设置header属性的一个bug
+* (0522)runtest工具支持http上传和下载; 命令行支持*通配符来匹配要测试的文件;不同域名cookie分开保存
+
+1.2.1 (20170408)
+================
+
+* (0408)tlvcodec类增加msgIds记录每个消息在服务描述文件里的顺序
+* (0408)runtest工具增加--all_files参数，对testcase下所有文件运行测试,无需手工指定文件名
+* (0408)sos组件的shakeHandsServiceIdMsgId支持配置多个消息
+
+1.2.0 (20170405)
+================
+
+* (0330)支持config.xml中<DataDirRoot>,可将data放在非当前目录下
+* (0330)支持SCALABPE_TEMPDIRROOT环境变量，可将temp放在非当前目录下
+* (0330)支持SCALABPE_PROFILE环境变量,根据profile加载不同的config_xxx.xml文件
+* (0330)代码未做改动，改到jdk 1.8和scala 2.12.1下编译
+* (0405)包名从jvmdbbroker修改成scalabpe
+
 1.1.15 (20170328)
 ================
 
@@ -155,7 +199,7 @@
 * (11/20)修改异步日志request_audit日志格式，调整几个field记录不准确的值：client_ip client_port soc_name server_ip字段的值
 * (11/13)修改baseEndFlow的一个bug, 多余的unlock
 * (10/14)Flow对象增加baseReceive和baseEndFlow，用于用户自定义流程类
-* (10/14)修改启动的编译过程，flow文件的服务名声明时支持.with(classname)语法, classname可以是类名(默认为jvmdbbroerk.flow包)或包含包名的类名, 则该流程将继承该类
+* (10/14)修改启动的编译过程，flow文件的服务名声明时支持.with(classname)语法, classname可以是类名(默认为scalabpe.flow包)或包含包名的类名, 则该流程将继承该类
 * (10/13)调整源码位置，将actor_soc移到core包
 * (10/13)增加httpserver包，兼容hps的基本功能,参考manual
 
@@ -183,7 +227,7 @@
 * (01/26)runtest文件里的json现在可以支持传递数组和结构体参数；如果config.xml里配置了  <TestServerAddr>host:port</TestServerAddr>, 则也可以用runtest工具将请求发给远程服务器。
 * (01/26)增加DumpBeforeClose配置参数，在关闭系统前先做一次dump，便于服务端异常时分析内存数据堆积问题；默认为true
 * (01/21)线程池的队列大小统一从100000修改为20000
-* (01/20)jvmdbbroker.core包中增加JsonCodec类用于json的转换操作
+* (01/20)scalabpe.core包中增加JsonCodec类用于json的转换操作
     常用方法：
         def parseSimpleJson(s:String):HashMapStringAny // 解析无嵌套的json串 
         def parseJson(s:String):Any // 解析嵌套json串，根据顶层类型可能是HashMapStringAny或ArrayBufferAny，需自己转换类型

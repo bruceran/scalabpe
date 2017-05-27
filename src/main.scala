@@ -1,9 +1,10 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.io._
 import sun.misc.Signal;
 import sun.misc.SignalHandler;
 import scala.xml._
+import org.apache.commons.io.FileUtils
 
 object Main extends Logging with SignalHandler {
 
@@ -11,13 +12,27 @@ object Main extends Logging with SignalHandler {
     var mainThread : Thread = _
     var shutdown = false
     var selfCheckServer : SelfCheckServer = _
-    var testMode = false
     var stopFile = ""
 
     def handle(signal:Signal) {
         if(shutdown) return
         println("# signalHandler: " + signal.getName())
         mainThread.interrupt()
+    }
+
+    def initProfile(rootDir:String) {
+        val profile = System.getProperty("scalabpe.profile")
+        if( profile != null && profile != "") {
+           Router.profile = profile
+           Router.parameterXml = "parameter_"+profile+".xml"
+           val filename = "config_"+profile+".xml"
+           if( new File(rootDir+File.separator+filename).exists ) {
+               Router.configXml = filename
+           }
+        }
+        log.info("current profile="+Router.profile)
+        log.info("use config file="+Router.configXml)
+        log.info("use config paramter file="+Router.parameterXml)
     }
 
     def main(args:Array[String]) {
@@ -35,9 +50,20 @@ object Main extends Logging with SignalHandler {
 
         val t1 = System.currentTimeMillis
 
-        val in = new InputStreamReader(new FileInputStream(rootDir+File.separator+"config.xml"),"UTF-8")
+        initProfile(rootDir)
+
+        val in = new InputStreamReader(new FileInputStream(rootDir+File.separator+Router.configXml),"UTF-8")
         val cfgXml = XML.load(in)
         in.close()
+
+        val appName = System.getProperty("application.name")
+        Router.dataDir = rootDir+File.separator+"data"
+        val dataDirRoot = (cfgXml \ "DataDirRoot" ).text
+        if( dataDirRoot != "" ) Router.dataDir = dataDirRoot+File.separator+appName
+
+        Router.tempDir = rootDir+File.separator+"temp"
+        val tempDirRoot = System.getProperty("scalabpe.tempdirroot")
+        if( tempDirRoot != null && tempDirRoot != "" ) Router.tempDir = tempDirRoot+File.separator+appName
 
         val t = System.getenv("runninginide")
         if( t != null && t == "yes" ) {
@@ -51,9 +77,18 @@ object Main extends Logging with SignalHandler {
             }
         }
 
-        val startSos = !testMode 
-        val installMock = (cfgXml \ "InstallMock").text
-        router = new Router(rootDir,startSos,testMode||(installMock!=""))
+        val startSos = !Router.testMode 
+        var installMock = (cfgXml \ "InstallMock").text
+        if( installMock == "" ) {
+            val alllines = FileUtils.readFileToString(new File(rootDir+File.separator+Router.configXml),"UTF-8")
+            if( alllines.indexOf("@installmock") >= 0 ) {
+                val paramfilelines = FileUtils.readFileToString(new File(rootDir+File.separator+"config_parameter"+File.separator+Router.parameterXml),"UTF-8")
+                if( paramfilelines.indexOf("@installmock=") >= 0 ) {
+                    installMock = "true"
+                }
+            }
+        }
+        router = new Router(rootDir,startSos,Router.testMode||(installMock!=""))
 
         val selfCheckPort = (cfgXml \ "CohPort").text.toInt
 
@@ -64,11 +99,12 @@ object Main extends Logging with SignalHandler {
         val t2 = System.currentTimeMillis
         log.info("scalabpe started, ts=%s[ms]".format(t2-t1))
 
-        if( installMock != "" ) {
+        installMock = (router.cfgXml \ "InstallMock").text // 使用参数替换后的config.xml
+        if( installMock != "" && !Router.testMode ) {
             TestCaseRunner.installMock(installMock)
         }
 
-        if( testMode ) {
+        if( Router.testMode ) {
             return
         }
 

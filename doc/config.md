@@ -48,6 +48,8 @@
 
 [HTTP Server插件配置](#httpserver)
 
+[注册与发现插件](#etcdplugin)
+
 [Kafka消息队列producer配置](#kafkaproducer)
 
 [Kafka消息队列consumer配置](#kafkaconsumer)
@@ -81,6 +83,7 @@
     SapPort只用于配置端口，更多属性使用ServerSos节点配置
 
       <ServerSos
+           registerAs="demoservice"
            host="*"
            threadNum="1"
            maxPackageSize="2000000"
@@ -105,6 +108,7 @@
 
       目前支持：
 
+      registerAs 注册与服务插件会根据此值进行注册
       host 绑定哪个网卡，默认绑定所有网卡
       threadNum 线程数，默认为2
       maxPackageSize 最大包长，默认为 2000000
@@ -325,7 +329,7 @@
 
     配置远程SOS服务的服务号和多个地址
 
-    <SosList >
+    <SosList discoverFor="demoservice">
       <ServiceId>888,889</ServiceId>
       <ServerAddr>127.0.0.1:9888</ServerAddr>
       <ServerAddr>127.0.0.2:9888</ServerAddr>
@@ -334,6 +338,7 @@
 
     以下SosList属性一般都不需要设置，默认值就够了：
 
+    discoverFor="demoservice" 注册与服务发现插件会检查此值并注册服务器查询服务器信息替换掉ServerAddr信息
     threadNum="2"  为消息投递线程数，默认为2
     timeout="30000" 为每个消息的超时时间，默认为30000, 表示30秒
     retryTimes="2" 消息发出后连接中断的消息会重发给其它服务器，默认为2次; 
@@ -787,7 +792,8 @@
 
       入参的tlv类型只能是string, int
 
-      如果sql是单条的insert/update/delete, 入参也可以是int array,或string array, 这种方式的后台处理是进行
+      如果sql是单条的insert/update/delete, 入参也可以是int array,或string array 或 struct array 这种方式的后台处理是进行
+      struct array不能和 int/string array混用
       batch update, 对array里每条数据执行一次该sql, 所有执行都在一个事务里;
 
       batch update的时候，个别参数可以是单值，则每次执行sql都用相同值执行; 非单值则要求数组的大小必须相同;
@@ -825,6 +831,8 @@
       </message>
 
       更多映射方式：
+
+      输出参数名是insert_id或insert_ids, 会返回自增值
 
       $SQLCODE为sql error code映射,scalabpe里只要name是sqlcode(不区分大小写),可不写from
 
@@ -876,7 +884,7 @@
             conns="4" 
             splitTableType="custom" 
             tbfactor="6" 
-            splitTableCustomCls="jvmdbbroker.flow.SampleDbPlugin">
+            splitTableCustomCls="scalabpe.flow.SampleDbPlugin">
               <DefaultConn>service=jdbcstring user=riskcontrol password=riskcontrol</DefaultConn>
           </MasterDb>
         </DbSosList>
@@ -902,7 +910,7 @@
 
         <DbSosList>
           <ServiceId>45601,...</ServiceId>
-          <MasterDb conns="4" splitDbType="custom" dbfactor="3" splitDbCustomCls="jvmdbbroker.flow.SampleDbPlugin">
+          <MasterDb conns="4" splitDbType="custom" dbfactor="3" splitDbCustomCls="scalabpe.flow.SampleDbPlugin">
               <DivideConns>
                 <Conn>service=jdbcstring user=riskcontrol password=riskcontrol</Conn>
                 <Conn>service=jdbcstring user=riskcontrol password=riskcontrol</Conn>
@@ -1153,6 +1161,7 @@
 ## 配置
 
     <HttpServerCfg port="9090"
+        registerAs="demoservice_http"
         host="*"
         threadNum="2"
         timeout="30000"
@@ -1165,6 +1174,7 @@
         maxContentLength="5000000"
         jsonRpcUrl="/jsonrpc"
         accessControlAllowOrigin=""
+        removeReturnMessageInBody="false"
 
         cacheEnabled="true"
         cacheFileSize="25000"
@@ -1204,6 +1214,7 @@
 
 ## 基本配置
 
+    registerAs 注册与服务插件会根据此值进行注册
     如未配置HttpServerCfg节点, 则不启动http服务
     port 对外的端口, 此配置值必须手工指定
     host 绑定到哪个IP上, 默认是*, 不限
@@ -1212,6 +1223,8 @@
     idleTimeout 对keep-alive连接，超过此值由服务端关闭
     returnMessageFieldNames 从body中提取哪些field作为输出json串顶层的return message, 
           默认值为return_message,resultMessage,result_message,failReason,fail_reason
+    removeReturnMessageInBody 是否移除body中的错误描述，避免和顶层的错误描述重复
+
     sessionFieldName 服务描述文件中哪一项对应的是HTTP会话ID，默认是jsessionId
     sessionCookieName HTTP会话ID对应的cookie名，默认是JSESSIONID
     sessionMode sessionId模式 1=自动 2=手工，默认是自动
@@ -1435,6 +1448,38 @@
       contextPath url的根一级目录
       urlArgs 静态文件的url参数，默认为?, 通过配置为不同值，如?v1, ?v2可强制客户端所有js,css,html失效重新从
               服务器下载最新版本
+
+[返回](#toc)
+
+# <a name="etcdplugin">注册与发现插件</a>
+
+## 注册与发现插件
+
+    在config.xml中可将tcp服务标记要注册的名称,如下：
+    <Server registerAs="configservice" unregisterOnClose="false"/>
+    registerAs为服务名
+    unregisterOnClose 关闭时是否删除key, 默认为否，依赖ttl来删除
+
+    在config.xml中可将http服务标记要注册的名称,如下：
+    <HttpServerCfg registerAs="gateservice_http"  unregisterOnClose="false" ...>
+    registerAs为服务名
+    unregisterOnClose 关闭时是否删除key, 默认为否，依赖ttl来删除
+
+    在config.xml中可将soc节点标记要去发现的服务名称,如下：
+    <SosList discoverFor="routeservice">
+        <ServiceId>459,451,452,453,454</ServiceId>
+    </SosList>
+    discoverFor为服务名
+
+    config.xml中的注册和发现只是标记，要配置了实际的插件才会起作用，如下：
+
+    <EtcdRegistry ttl="90" interval="30">
+        <Hosts>10.128.112.80:2379,...</Hosts>
+    </EtcdRegistry> 
+
+    ttl 注册的key的有效时间，单位秒
+    interval 多长时间去重新注册和发现，单位秒
+    Hosts etcd服务的ip和端口，多个用逗号隔开
 
 [返回](#toc)
 
@@ -1735,18 +1780,18 @@
 
         #include "jni.h"
 
-        #ifndef _Included_jvmdbbroker_plugins
-        #define _Included_jvmdbbroker_plugins
+        #ifndef _Included_scalabpe_plugins
+        #define _Included_scalabpe_plugins
 
         #ifdef __cplusplus
         extern "C" {
         #endif
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDes(JNIEnv *env, jobject obj, jstring jstr);
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptDes(JNIEnv *env, jobject obj, jstring jstr);
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDesX(JNIEnv *env, jobject obj, jstring jstr);
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptDesX(JNIEnv *env, jobject obj, jstring jstr);
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptRsa(JNIEnv *env, jobject obj, jstring jstr);
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptRsa(JNIEnv *env, jobject obj, jstring jstr);
 
         #ifdef __cplusplus
         }
@@ -1800,21 +1845,21 @@
             return (jstring)env->NewObject(strClass, ctorID, bytes, encoding);
         }
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDes
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptDes
           (JNIEnv *env, jobject obj, jstring jstr) {
             string s  = jstring2string(env,jstr);
             string ns = decrypt_des(s);
             return string2jstring(env,ns);
         }
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptDesX
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptDesX
           (JNIEnv *env, jobject obj, jstring jstr) {
             string s  = jstring2string(env,jstr);
             string ns = decrypt_desx(s);
             return string2jstring(env,ns);
         }
 
-        JNIEXPORT jstring JNICALL Java_jvmdbbroker_plugin_DbLike_decryptRsa
+        JNIEXPORT jstring JNICALL Java_scalabpe_plugin_DbLike_decryptRsa
           (JNIEnv *env, jobject obj, jstring jstr) {
             string s  = jstring2string(env,jstr);
             string ns = decrypt_rsa(s);

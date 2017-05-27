@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.cache
+package scalabpe.plugin.cache
 
 import java.util.{TreeMap,Timer,TimerTask}
 import java.util.concurrent._
@@ -8,7 +8,7 @@ import org.jboss.netty.buffer._;
 import scala.collection.mutable.{ArrayBuffer,HashMap}
 
 import RedisSoc._
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object RedisSoc {
     val TYPE_UNKNOWN = -1

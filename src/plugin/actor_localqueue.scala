@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -16,7 +16,7 @@ import com.fasterxml.jackson.databind.node._
 import com.sdo.billing.queue._
 import com.sdo.billing.queue.impl._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object LocalQueueActor {
     val localDirs = new HashSet[String]()
@@ -96,7 +96,7 @@ extends LocalQueueLike(router,cfgNode) {
 
         localDir = (cfgNode \ "LocalDir").text
         if( localDir == "" ) {
-            localDir = "data" + File.separator + queueTypeName
+            localDir = Router.dataDir + File.separator + queueTypeName
         }
 
         if( LocalQueueActor.localDirs.contains(localDir) ) {
@@ -367,7 +367,7 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
         if( hasIOException.get() ) {
             val msg = "local persistqueue has io error"
-            buff += new SelfCheckResult("JVMDBBRK.IO",ioErrorId,true,msg)
+            buff += new SelfCheckResult("SCALABPE.IO",ioErrorId,true,msg)
         }
 
         buff

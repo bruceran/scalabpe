@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.neo4j
+package scalabpe.plugin.neo4j
 
 import org.neo4j.driver.v1._
 import org.neo4j.driver.v1.summary._
@@ -8,7 +8,7 @@ import scala.collection.mutable.HashMap
 import scala.collection.mutable.ArrayBuffer
 import java.io._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class LocalFile(val filename:String) { 
 
@@ -170,7 +170,7 @@ object DbLike extends Logging {
 
 class DbLike extends Logging  {
 
-    import jvmdbbroker.plugin.neo4j.DbLike._
+    import scalabpe.plugin.neo4j.DbLike._
 
     var mode = DbLike.MODE_ASYNC
     var longTimeSql = 500

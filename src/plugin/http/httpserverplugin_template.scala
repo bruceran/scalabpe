@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
 import java.io.File
 import java.io.StringWriter
@@ -8,7 +8,7 @@ import scala.collection.mutable.{ArrayBuffer,HashMap}
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.StringUtils 
 import org.jboss.netty.handler.codec.http._;
-import jvmdbbroker.core._
+import scalabpe.core._
 import org.apache.velocity._;
 import org.apache.velocity.app._;
 

@@ -1,4 +1,4 @@
-package jvmdbbroker.core 
+package scalabpe.core 
 import java.util.concurrent._
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.atomic.{AtomicBoolean,AtomicInteger}
@@ -196,7 +196,7 @@ class FlowActor(val router:Router,var threadNum:Int = 0) extends Actor with Logg
     def createFlow(req : Request) : Flow = {
 
         val (serviceName,msgName) = router.serviceIdToName(req.serviceId,req.msgId)
-        val clsName = "jvmdbbroker.flow.Flow_"+serviceName+"_"+msgName
+        val clsName = "scalabpe.flow.Flow_"+serviceName+"_"+msgName
         try {
             val flow = Class.forName(clsName).newInstance.asInstanceOf[Flow]
             flow.req = req

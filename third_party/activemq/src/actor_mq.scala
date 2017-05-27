@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -16,7 +16,7 @@ import com.fasterxml.jackson.core.JsonFactory
 import com.sdo.billing.queue._
 import com.sdo.billing.queue.impl._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 /*
 "ActiveMQ InactivityMonitor Worker" daemon prio=10 tid=0x08549c00 nid=0x3fdb waiting on condition [0x9c269000]  for each connection
@@ -374,7 +374,7 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
         for( (serviceId,mqClient) <- mqClients ) {
             if( mqClient.hasError() ) {
                 val msg = "mq ["+mqClient.destCfg.queueName+"] has error"
-                buff += new SelfCheckResult("JVMDBBRK.MQ",errorId,true,msg)
+                buff += new SelfCheckResult("SCALABPE.MQ",errorId,true,msg)
             }
         }
 
@@ -382,11 +382,11 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
 
         if( hasIOException.get() ) {
             val msg = "local persistqueue has io error"
-            buff += new SelfCheckResult("JVMDBBRK.IO",ioErrorId,true,msg)
+            buff += new SelfCheckResult("SCALABPE.IO",ioErrorId,true,msg)
         }
 
         if( buff.size == 0 ) {
-            buff += new SelfCheckResult("JVMDBBRK.MQ",errorId)
+            buff += new SelfCheckResult("SCALABPE.MQ",errorId)
         }
 
         buff

@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
 import java.io._
 import java.util.concurrent._
@@ -20,7 +20,7 @@ import org.jboss.netty.handler.codec.http._;
 import org.jboss.netty.util._;
 import org.jboss.netty.handler.stream._;
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 // used by netty
 trait HttpServer4Netty {
@@ -92,6 +92,53 @@ extends IdleStateAwareChannelHandler with Logging  {
                 });
             }
             return true
+        }
+
+        return false
+    }
+    def writeFileZeroCopy(connId:String, response:HttpResponse, keepAlive:Boolean, f: File,fileLength:Long,reqResInfo:HttpSosRequestResponseInfo = null) : Boolean = {
+
+        val ch = conns.get(connId)
+        if( ch == null ) {
+            log.error("connection not found, id={}",connId)
+            return false;
+        }
+        var raf:RandomAccessFile = null
+        try  {  
+            raf = new RandomAccessFile(f, "r");  
+        } catch {
+            case e:Throwable =>
+                log.error("file open failed, f="+f)
+                return false
+        }  
+        val path = f.getCanonicalPath()
+
+        if( ch.isOpen ) {
+            ch.write(response)
+            val region = new DefaultFileRegion(raf.getChannel(), 0, fileLength);  
+            val future = ch.write(region);  
+            future.addListener(new ChannelFutureProgressListener()  {  
+                def operationComplete(future:ChannelFuture) {  
+                    region.releaseExternalResources();  
+                    if( reqResInfo != null ) {
+                        reqResInfo.res.receivedTime = System.currentTimeMillis
+                        Flow.router.asyncLogActor.receive(reqResInfo)
+                    }
+                }  
+  
+                def operationProgressed(future:ChannelFuture, amount:Long, current:Long, total:Long)  {  
+                    log.info("%s: %d / %d (+%d)".format(path,current,total,amount));  
+                }  
+            }) 
+            if( !keepAlive )
+                future.addListener(ChannelFutureListener.CLOSE)
+            return true
+        } else {
+            try {
+                raf.close()
+            } catch {
+                case e:Throwable =>
+            }
         }
 
         return false
@@ -178,7 +225,9 @@ class NettyHttpServer(val sos: HttpServer4Netty,
     val maxContentLength: Int = 5000000,
     val maxInitialLineLength:Int = 16000,
     val maxHeaderSize:Int = 16000,
-    val maxChunkSize:Int = 16000
+    val maxChunkSize:Int = 16000,
+    val uploadDir:String = "webapp/upload",
+    val maxUploadLength: Int = 5000000
     ) extends Logging with Dumpable {
 
     /*
@@ -260,6 +309,10 @@ class NettyHttpServer(val sos: HttpServer4Netty,
         nettyHttpServerHandler.writeFile(connId,response,keepAlive,f,fileLength,reqResInfo)
     }
 
+    def writeFileZeroCopy(connId:String, response:HttpResponse, keepAlive:Boolean, f: File,fileLength:Long,reqResInfo:HttpSosRequestResponseInfo = null) : Boolean = {
+        nettyHttpServerHandler.writeFileZeroCopy(connId,response,keepAlive,f,fileLength,reqResInfo)
+    }
+
     def closeReadChannel() {
         if( nettyHttpServerHandler != null ) {
             nettyHttpServerHandler.close()
@@ -297,10 +350,11 @@ class NettyHttpServer(val sos: HttpServer4Netty,
             val pipeline = Channels.pipeline()
             pipeline.addLast("timeout", new IdleStateHandler(timer, 0, 0, idleTimeoutMillis / 1000))
             pipeline.addLast("decoder", new HttpRequestDecoder(maxInitialLineLength,maxHeaderSize,maxChunkSize))
-            pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength))
+            pipeline.addLast("uploader", new HttpFileUploadAggregator(uploadDir,maxUploadLength)) // 对上传文件做特殊处理，写到一个文件中
+            pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength)) // 将chunked message合并成一个message
             pipeline.addLast("encoder", new HttpResponseEncoder())
             pipeline.addLast("chunkedWriter", new ChunkedWriteHandler())
-            pipeline.addLast("deflater", new HttpContentCompressor())
+            pipeline.addLast("compressor", new HttpContentCompressor())
             pipeline.addLast("handler", nettyHttpServerHandler)
             pipeline;
         }

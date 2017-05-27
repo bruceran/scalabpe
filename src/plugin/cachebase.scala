@@ -1,11 +1,11 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.concurrent._
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.ArrayBuffer
 import scala.xml._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object RemoteCacheLike {
 

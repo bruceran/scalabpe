@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent.atomic.{AtomicBoolean,AtomicInteger}
 import java.util.concurrent.ConcurrentLinkedQueue

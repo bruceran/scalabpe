@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -207,11 +207,11 @@ class NettyServer(val sos: Sos4Netty,
                 new InetSocketAddress(host, port)
             }
 
-            val channel = bootstrap.bind(addr)
-            allChannels.add(channel)
+        val channel = bootstrap.bind(addr)
+        allChannels.add(channel)
 
-            val s = "netty tcp server started on host(" + host + ") port(" + port + ")"
-            log.info(s)
+        val s = "netty tcp server started on host(" + host + ") port(" + port + ")"
+        log.info(s)
     }
 
     def write(connId:String, response:ByteBuffer) : Boolean = {

@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.sql._;
 import javax.sql.DataSource
@@ -9,7 +9,7 @@ import scala.collection.mutable.ArrayBuffer
 
 import org.apache.commons.dbcp.BasicDataSource
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class LocalFile(val filename:String) { 
 
@@ -191,7 +191,7 @@ object DbLike extends Logging {
 
 class DbLike extends Logging  {
 
-    import jvmdbbroker.plugin.DbLike._
+    import scalabpe.plugin.DbLike._
 
     var mode = DbLike.MODE_ASYNC
     var longTimeSql = 500

@@ -1,4 +1,4 @@
-package jvmdbbroker.core 
+package scalabpe.core 
 import java.util.concurrent.TimeoutException
 import java.util.concurrent._
 import java.util.concurrent.locks.ReentrantLock;
@@ -16,6 +16,12 @@ import scala.reflect.runtime.universe
 
 object Router {
     val DO_NOT_REPLY:String = ""
+    var profile = "default"
+    var configXml = "config.xml"
+    var parameterXml = "parameter.xml"
+    var dataDir = ""
+    var tempDir = ""
+    var testMode = false // 单元测试模式下运行
     var main:Router = null
 }
 
@@ -29,10 +35,11 @@ class MockCfg(val serviceidmsgid:String,val req:HashMapStringAny,val res:HashMap
 class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolean = false)  extends Logging with Closable with Dumpable {
 
     val avenueConfDir = rootDir+File.separator+"avenue_conf"
-    val pluginConfFile = "jvmdbbroker.plugins.conf"
+    val pluginConfFile = "scalabpe.plugins.conf"
     val EMPTY_BUFFER = ByteBuffer.allocate(0)
 
-    val pReg = """@[0-9a-zA-Z_-]+[ <\]]""".r // allowed: @xxx< @xxx]]> @xxx[SPACE]
+    val pReg = """@[0-9a-zA-Z_-]+[ <\]"]""".r // allowed: @xxx< @xxx]]> @xxx[SPACE]
+    val pReg2 = """@[0-9a-zA-Z_-]+$""".r // allowed: @xxx
     val pRegName = """^(@[0-9a-zA-Z_-]+).*$""".r
 
     val actorMap = HashMap[String,Actor]()
@@ -43,7 +50,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
     val serviceIdsAllowed = HashSet[Int]() // to control the visibility of not-flow serviceids, default is closed
     val serviceIdsNotAllowed = HashSet[Int]() // to control the visibility of flow serviceids, default is open
-    val reverseServiceIds = HashSet[Int]() // 3 or other service for jvmdbbroker clients
+    val reverseServiceIds = HashSet[Int]() // 3 or other service for scalabpe clients
 
     val mocks = HashMap[String,ArrayBuffer[MockCfg]]()
     var mockActor:Actor = null
@@ -52,16 +59,18 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
     val qte = new QuickTimerEngine(timeout_function,25)
 
-    var globalCls = "jvmdbbroker.flow.Global"
+    var globalCls = "scalabpe.flow.Global"
     var codecs : TlvCodecs = _
     var cfgParameters = HashMapStringString()
     var cfgXml : Elem = _
     var asyncLogActor  : Actor = _
     var mustReachActor : MustReachActor = _
     var sos:Sos = _
+    var regdishooks : ArrayBuffer[RegDisHook]=_
 
     val parameters = new HashMapStringString()
 
+    val started = new AtomicBoolean()
     val shutdown = new AtomicBoolean()
 
     init
@@ -101,6 +110,8 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
             sos.start()
 
+            started.set(true)
+
         } catch {
             case e:Exception =>
                 log.error("router init exception",e)
@@ -138,6 +149,11 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
         shutdown.set(true)
 
+        if( regdishooks != null ) {
+            for(t <- regdishooks if t.isInstanceOf[Closable] ) {
+                t.asInstanceOf[Closable].close()
+            }
+        }
         for(t <- allBeans if t.isInstanceOf[Closable] ) {
             t.asInstanceOf[Closable].close()
         }
@@ -211,7 +227,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
     def loadParameterFile():HashMapStringString = {
 
         val pmap = HashMapStringString()
-        val configfile = "config.xml"
+        val configfile = Router.configXml
         if( new File(rootDir+"/"+configfile).exists() ) {
             val in = new InputStreamReader(new FileInputStream(rootDir+"/"+configfile),"UTF-8")
             val pxml = XML.load(in)
@@ -220,7 +236,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
             loadParameter(pxml,pmap,"assign")
             loadParameter(pxml,pmap,"Assign")
         }
-        val pfile = "config_parameter/parameter.xml"
+        val pfile = "config_parameter/"+Router.parameterXml
         if( new File(rootDir+"/"+pfile).exists() ) {
             val in = new InputStreamReader(new FileInputStream(rootDir+"/"+pfile),"UTF-8")
             val pxml = XML.load(in)
@@ -232,7 +248,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
         val pluginMap = readPluginsByType("inithook")
         if( pluginMap.size > 0 ) {
 
-            val in = new InputStreamReader(new FileInputStream(rootDir+"/config.xml"),"UTF-8")
+            val in = new InputStreamReader(new FileInputStream(rootDir+"/"+configfile),"UTF-8")
             val tXml = XML.load(in)
             in.close()
 
@@ -264,7 +280,8 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
             val p = str.indexOf("=")
             if( p > 0 ) {
                 val key = str.substring(0,p).trim()
-                val value = Utility.escape( str.substring(p+1).trim() )
+                //val value = Utility.escape( str.substring(p+1).trim() ) // 不再向下兼容，特殊字符可通过cdata避免转义
+                val value = str.substring(p+1).trim()
 
                 pmap.put(key,value)
             }
@@ -273,7 +290,7 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
     def prepareConfigFile():String = {
 
-        val lines = FileUtils.readLines(new File(rootDir+"/config.xml"),"UTF-8").asInstanceOf[java.util.List[String]]
+        val lines = FileUtils.readLines(new File(rootDir+"/"+Router.configXml),"UTF-8").asInstanceOf[java.util.List[String]]
 
         val pmap = loadParameterFile()
         cfgParameters = pmap
@@ -299,20 +316,22 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
 
     def replaceParameter(s:String,pmap:HashMapStringString):String = {
 
-        val matchlist = pReg.findAllMatchIn(s)
-        if( matchlist == null ) {
+        var matchlist = pReg.findAllMatchIn(s).toBuffer
+        if( matchlist.size == 0 ) {
+            matchlist = pReg2.findAllMatchIn(s).toBuffer
+        }
+        if( matchlist.size == 0 ) {
             return s
         }
 
         var ns = s 
-        val tags = matchlist.toList
-        for(tag <- tags ) {
+        for(tag <- matchlist ) {
 
             tag.matched match {
                 case pRegName(name) =>
-                    val v = pmap.getOrElse(name,"").toString
-                    if( v != "" ) {
-                        ns = ns.replace(name,v)
+                    val v = pmap.getOrElse(name,null)
+                    if( v != null ) {
+                        ns = ns.replace(name,v.toString)
                     }
                 case _ =>
             }
@@ -320,11 +339,45 @@ class Router(val rootDir:String,val startSos:Boolean = true, var mockMode:Boolea
         ns
     }
 
+    def updateXml(xml:String):String = {
+
+        val in = new StringReader(xml)
+        val tXml = XML.load(in)
+        in.close()
+
+        var outputXml = xml
+
+        val pluginMap = readPluginsByType("regdishook")
+        if( pluginMap.size > 0 ) {
+            regdishooks = new ArrayBuffer[RegDisHook]()
+            for( (clsName,typeNode) <- pluginMap ) {
+
+                val nodeList = ( tXml \ typeNode ).toList
+
+                if( nodeList.size > 0 ) {
+                    try {
+                        val hook = Class.forName(clsName).getConstructors()(0).newInstance(this,nodeList(0)).asInstanceOf[RegDisHook]
+                        regdishooks += hook
+                        outputXml = hook.updateXml(outputXml)
+                    } catch {
+                        case e:Throwable =>
+                            log.error("plugin {} cannot be loaded", clsName)
+                            throw e
+                    }
+                }
+
+            }
+        }
+
+        outputXml
+    }
+
     def initInternal() {
 
-        val str = prepareConfigFile()
-        //println(str)
-        val in = new StringReader(str)
+        val str1 = prepareConfigFile()
+        val str2 = updateXml(str1)
+//println("final xml="+str2)        
+        val in = new StringReader(str2)
         cfgXml = XML.load(in)
         in.close()
 

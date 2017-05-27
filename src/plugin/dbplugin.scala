@@ -1,13 +1,13 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
-// implement customed split table policy, splitTableType="custom" splitTableCustomCls="jvmdbbroker.flow.SampleDbPlugin"
+// implement customed split table policy, splitTableType="custom" splitTableCustomCls="scalabpe.flow.SampleDbPlugin"
 trait SplitTablePlugin {
     def generateTableIdx(req:Request):String
 }
 
-// implement customed split db policy, splitDbType="custom" splitDbCustomCls="jvmdbbroker.flow.SampleDbPlugin"
+// implement customed split db policy, splitDbType="custom" splitDbCustomCls="scalabpe.flow.SampleDbPlugin"
 trait SplitDbPlugin {
     def generateDbIdx(req:Request):Int
 }

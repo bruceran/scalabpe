@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
 import java.io._
 import java.net.URLEncoder
@@ -6,7 +6,7 @@ import scala.collection.mutable.{ArrayBuffer,HashMap}
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.StringUtils
 import org.jboss.netty.handler.codec.http._;
-import jvmdbbroker.core._
+import scalabpe.core._
 import java.util.{Date,Timer,TimerTask,Calendar,GregorianCalendar,Locale,TimeZone}
 import java.text.{SimpleDateFormat,ParsePosition}
 

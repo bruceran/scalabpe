@@ -1,11 +1,11 @@
-package jvmdbbroker.plugin.cache
+package scalabpe.plugin.cache
 
 import java.util._
 import java.util.concurrent._
 import scala.xml._
 import scala.collection.mutable.{ArrayBuffer}
 
-import jvmdbbroker.core._
+import scalabpe.core._
 import MemCacheSoc._
 
 class MemCacheActor(val router:Router,val cfgNode: Node) 

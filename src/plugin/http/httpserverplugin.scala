@@ -1,7 +1,7 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
 import org.jboss.netty.handler.codec.http._;
-import jvmdbbroker.core._
+import scalabpe.core._
 import scala.collection.mutable.HashMap
 
 trait HttpServerPlugin {}
@@ -24,6 +24,10 @@ trait HttpServerOutputPlugin {
 
 trait HttpServerRawOutputPlugin {
     def generateRawContent(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String,headers:HashMap[String,String]):Array[Byte]
+}
+
+trait HttpServerStaticFilePlugin {
+    def generateStaticFile(serviceId:Int,msgId:Int,errorCode:Int,errorMessage:String,body:HashMapStringAny,pluginParam:String,headers:HashMap[String,String]):String
 }
 
 trait HttpServerVerifyPlugin {

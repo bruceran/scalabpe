@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.concurrent._
 import java.util.{TimerTask,Timer}
@@ -10,7 +10,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.io.Source
 import scala.xml._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class LocalCacheActor(val router:Router,val cfgNode: Node)
 extends Actor with Logging with SyncedActor with Refreshable with Closable with SelfCheckLike with Dumpable  {
@@ -129,7 +129,7 @@ class LocalCache(
     val router: Router,
     val owner: LocalCacheActor ) extends DbLike with CacheLike with Dumpable {
 
-    val runDir = router.rootDir
+    var runDir = router.rootDir
 
     val sqlMap = HashMap[Int,String]() // serviceId -> sql
     val cache = new ConcurrentHashMap[Int, HashMapStringAny ]()
@@ -155,6 +155,10 @@ class LocalCache(
     }
 
     def init() {
+
+        if( connString != "" ) {
+            runDir = Router.dataDir
+        }
 
         initCacheTlv(serviceIds,router.codecs)
 
@@ -205,12 +209,12 @@ class LocalCache(
         if( masterDataSource != null ) {
             if( hasError(masterDataSource) ) {
                 val msg = "master db ["+DbLike.getUrl(masterDataSource)+"] has error"
-                buff += new SelfCheckResult("JVMDBBRK.LOCALCACHEDB",errorId,true,msg)
+                buff += new SelfCheckResult("SCALABPE.LOCALCACHEDB",errorId,true,msg)
             }
         }
 
         if( buff.size == 0 ) {
-            buff += new SelfCheckResult("JVMDBBRK.LOCALCACHEDB",errorId)
+            buff += new SelfCheckResult("SCALABPE.LOCALCACHEDB",errorId)
         }
 
         buff

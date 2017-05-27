@@ -1,4 +1,4 @@
-package jvmdbbroker.core
+package scalabpe.core
 
 import java.io._
 import java.nio.ByteBuffer
@@ -146,6 +146,8 @@ class TlvCodec(val configFile:String) extends Logging {
     val msgKeysForRes = new HashMap[Int,ArrayBufferString]()
     val msgKeyToFieldInfoMapForRes = new HashMap[Int,HashMap[String,TlvFieldInfo]]()
 
+    val msgIds = ArrayBufferInt()
+
     val codecAttributes = new HashMapStringString()
 
     val msgAttributes = new HashMap[Int,HashMapStringString]()
@@ -153,7 +155,7 @@ class TlvCodec(val configFile:String) extends Logging {
     var serviceId:Int = _
     var serviceName:String = _
     var serviceOrigName:String = _
-    var enableExtendTlv = false
+    var enableExtendTlv = true
 
     init
 
@@ -394,7 +396,8 @@ class TlvCodec(val configFile:String) extends Logging {
         val enableExtendTlvStr = (cfgXml \ "@enableExtendTlv").toString.toLowerCase
         enableExtendTlvStr match {
             case "1" | "y"  | "t" | "yes" | "true" => enableExtendTlv = true
-            case _ => enableExtendTlv = false
+            case "0" | "n"  | "f" | "no" | "false" => enableExtendTlv = false
+            case _ => enableExtendTlv = true
         }
         val metadatas = cfgXml.attributes.filter(  _.key != "id").filter( _.key != "name").filter( _.key != "IsTreeStruct").filter( _.key != "enableExtendTlv")
         for( m <- metadatas ) {
@@ -431,7 +434,7 @@ class TlvCodec(val configFile:String) extends Logging {
 
                     val itemType = (t \ "@itemType").toString.toLowerCase
                     val itemConfig = typeNameToCodeMap.getOrElse(itemType,TlvType.UNKNOWN)
-                    if( itemConfig == TlvType.UNKNOWN ) {
+                    if( itemConfig == TlvType.UNKNOWN ) { // todo
                         throw new CodecException("itemType not valid,name=%s,itemType=%s".format(name,itemType ))
                     }
                     val arraycls = TlvCodec.clsToArrayType(itemConfig.cls)
@@ -564,6 +567,8 @@ class TlvCodec(val configFile:String) extends Logging {
             val msgId = (t \ "@id").toString.toInt
             val msgNameOrig = (t \ "@name").toString
             val msgName = (t \ "@name").toString.toLowerCase
+
+            msgIds += msgId
 
             if( msgIdToNameMap.getOrElse(msgId,null) != null ) {
                 throw new CodecException("msgId duplicated, msgId=%d,serviceId=%d".format(msgId,serviceId))
@@ -1600,9 +1605,11 @@ class TlvCodecs(val dir:String) extends Logging {
             }
         }
 
-        log.info("validator size="+Validator.cache.size)
-        log.info("encoder size="+Encoder.cache.size)
-        log.info("tlvfieldinfo size="+TlvFieldInfo.cache.size)
+        if( log.isDebugEnabled()) {
+            log.debug("validator size="+Validator.cache.size)
+            log.debug("encoder size="+Encoder.cache.size)
+            log.debug("tlvfieldinfo size="+TlvFieldInfo.cache.size)
+        }
     }
 
     def findTlvCodec(serviceId:Int):TlvCodec = {

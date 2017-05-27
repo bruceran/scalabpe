@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.concurrent._
 import java.util.concurrent.atomic._
@@ -15,7 +15,7 @@ import net.rubyeye.xmemcached.transcoders.StringTranscoder;
 import net.rubyeye.xmemcached.utils.AddrUtil;
 import net.rubyeye.xmemcached.impl.{KetamaMemcachedSessionLocator,ArrayMemcachedSessionLocator}
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class MemCacheActor(override val router:Router,override val cfgNode: Node)
 extends BaseCacheActor(router,cfgNode) with SelfCheckLike  {
@@ -405,24 +405,24 @@ class MemCacheClient(override val cacheTypeCfg: Int,
 
                 if( xmc.hasErrorForAll(serverAddrs.size) ) {
                     val msg = "cache ["+serverAddrs.mkString(",")+"] has error"
-                    buff += new SelfCheckResult("JVMDBBRK.CACHE",errorId,true,msg)
+                    buff += new SelfCheckResult("SCALABPE.CACHE",errorId,true,msg)
                 }
 
             case RemoteCacheLike.TYPE_MASTERSLAVE =>
 
                 if( xmc_master.hasError() ) {
                     val msg = "master cache ["+serverAddrs(0)+"] has error"
-                    buff += new SelfCheckResult("JVMDBBRK.CACHE",errorId,true,msg)
+                    buff += new SelfCheckResult("SCALABPE.CACHE",errorId,true,msg)
                 }
 
                 if( xmc_slave.hasError() ) {
                     val msg = "slave cache ["+serverAddrs(1)+"] has error"
-                    buff += new SelfCheckResult("JVMDBBRK.CACHE",errorId,true,msg)
+                    buff += new SelfCheckResult("SCALABPE.CACHE",errorId,true,msg)
                 }
         }
 
         if( buff.size == 0 ) {
-            buff += new SelfCheckResult("JVMDBBRK.CACHE",errorId)
+            buff += new SelfCheckResult("SCALABPE.CACHE",errorId)
         }
 
         buff

@@ -1,3 +1,21 @@
+1.2.1 (20170519)
+================
+
+* (0408)httpserver 插件增加 removeReturnMessageInBody，将body中的return_message,fail_reason等错误提示去掉，避免和顶层的return_message重复
+* (0410)db插件支持按行(传入ArrayBufferMap)批量更新
+* (0428)单元测试模式下不绑定http端口
+* (0512)httpserver插件，新增jsonStyle参数，控制输出的json串风格，jsonStyle=codeMessageNoData 表示输出 code, message, body里的数据，无额外的data节点
+* (0514)httpserver插件，增加对超大文件下载的支持，支持Netty的ZeroCopy特性, 文件再大也不占用内存
+* (0515)httpserver插件，增加对超大文件上传的支持，文件再大也不占用内存
+* (0519)httpserver插件，会话id只从cookie中获取，不从参数中获取
+
+1.2.0 (20170330)
+================
+
+* (0330)支持config.xml中<DataDirRoot>,可将data放在非当前目录下
+* (0330)代码未做改动，改到jdk 1.8和scala 2.12.1下编译
+* (0405)包名从jvmdbbroker修改成scalabpe
+
 1.1.15 (20170326)
 ================
 
@@ -296,4 +314,4 @@
 * AHT插件
 * 支持事务的同步DB插件
 * 本地持久化队列插件
-* 参考jvmdbbroker.plugins.conf
+* 参考scalabpe.plugins.conf

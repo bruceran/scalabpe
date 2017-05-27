@@ -7,7 +7,7 @@ import scala.io.Source
 import org.apache.commons.io.FileUtils
 import scala.xml._
 import scala.collection.mutable._
-import jvmdbbroker.core._
+import scalabpe.core._
 import org.apache.commons.lang.StringUtils
 import Tools._
 
@@ -111,6 +111,8 @@ options:
             }
         }
         
+        println("process file: "+p0)
+
         if( p0.endsWith(".xml") ) {
             var p2 = p0.replace(".xml",".txt")
             if( params.ns("output") != "" ) p2 = params.ns("output")

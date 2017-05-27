@@ -7,7 +7,7 @@ import scala.io.Source
 import org.apache.commons.io.FileUtils
 import scala.xml._
 import scala.collection.mutable._
-import jvmdbbroker.core._
+import scalabpe.core._
 import org.apache.commons.lang.StringUtils
 import Tools._
 
@@ -136,7 +136,8 @@ options:
             new File(dir).mkdirs()
         }
 
-        for( (msgId,msgName) <- codec.msgIdToNameMap ) {
+        for( msgId <- codec.msgIds ) {
+            val msgName = codec.msgIdToNameMap.getOrElse(msgId,"unknown")
             generateFile(dir,codec.serviceId.toString,codec.serviceName,msgId.toString,msgName,params,codec.msgAttributes.getOrElse(msgId,null))
         }
     }

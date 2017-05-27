@@ -1,8 +1,8 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import scala.xml._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class InitHookSample(val router:Router,val cfgNode: Node) extends Logging with InitHook {
 

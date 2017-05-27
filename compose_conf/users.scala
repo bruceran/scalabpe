@@ -1,6 +1,6 @@
-package jvmdbbroker.flow
+package scalabpe.flow
 
-import jvmdbbroker.core.HashMapStringAny
+import scalabpe.core.HashMapStringAny
 import scala.collection.mutable.HashMap
 
 object Users {

@@ -1,4 +1,4 @@
-package jvmdbbroker.plugin
+package scalabpe.plugin
 
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
@@ -17,7 +17,7 @@ import com.fasterxml.jackson.core.JsonFactory
 import com.sdo.billing.queue._
 import com.sdo.billing.queue.impl._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 object MqReceiverBean {
     val localDirs = new HashSet[String]()
@@ -334,7 +334,7 @@ class MqReceiver(
         for(res <- resList ) {
             if( res.connection == null || res.session == null || res.hasError ) {
                 val msg = "mq ["+res.connCfg.brokerUrl+"] has error"
-                buff += new SelfCheckResult("JVMDBBRK.MQ",errorId,true,msg)
+                buff += new SelfCheckResult("SCALABPE.MQ",errorId,true,msg)
             }
         }
 

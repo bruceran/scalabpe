@@ -30,9 +30,9 @@ case "$1" in
 	*)
 		if [ ! -d classes ] ; then mkdir classes; fi;
 		env JAVA_OPTS="-Dfile.encoding=UTF-8" scalac -deprecation -encoding UTF8 -cp "../../lib/*:lib/*:."  -d "./classes"  src/*.scala
-		cp -f src/jvmdbbroker.plugins.conf ./classes/
+		cp -f src/scalabpe.plugins.conf ./classes/
 		cp -f src/release_notes.txt ./classes/
-		jar cf ./lib/scalabpe-plugin-$pluginname-$pluginversion.jar -C ./classes/  ./jvmdbbroker/plugin -C ./classes/ ./jvmdbbroker.plugins.conf -C ./classes/ ./release_notes.txt
+		jar cf ./lib/scalabpe-plugin-$pluginname-$pluginversion.jar -C ./classes/  ./scalabpe/plugin -C ./classes/ ./scalabpe.plugins.conf -C ./classes/ ./release_notes.txt
 		;;
 esac
 	

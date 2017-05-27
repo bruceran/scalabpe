@@ -1,11 +1,11 @@
-package jvmdbbroker.plugin.http
+package scalabpe.plugin.http
 
 import java.util.concurrent._
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.ArrayBuffer
 import scala.xml._
 
-import jvmdbbroker.core._
+import scalabpe.core._
 
 class HttpClientActor(val router: Router,val cfgNode: Node) extends Actor with Logging with Closable with Dumpable {
 
