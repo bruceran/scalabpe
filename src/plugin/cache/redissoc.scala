@@ -14,7 +14,8 @@ object RedisSoc {
     val TYPE_UNKNOWN = -1
     val TYPE_ARRAYHASH = 1
     val TYPE_CONHASH = 2
-    val TYPE_MASTERSLAVE = 3
+    val TYPE_MASTERSLAVE = 3   // 这个是客户端自己实现的master/slave模式，不是redis服务端的主备模式
+    val TYPE_CLUSTER = 4
 }
 
 class RedisSoc(
@@ -144,48 +145,14 @@ class RedisSoc(
     def send(req: Request, timeout: Int, toAddr:Int = -1, times:Int = 1):Unit = {
 
         val keys = req.ls("keys")
-        if( req.msgId != RedisCodec.MSGID_MGET || keys == null || keys.size == 0 || cacheType == TYPE_MASTERSLAVE || addrSize == 1) {
+        if( keys == null || keys.size < 2 || cacheType == TYPE_MASTERSLAVE || addrSize == 1 ) {
             sendToSingleAddr(req,timeout,toAddr,times)
             return
         }
 
-        // 特殊逻辑：处理mget时keys分布在不同的redis实例情况
-
-        val m = new HashMap[Int,ArrayBufferString]()
-        for( key <- keys ) {
-            val addrIdx = selectAddrIdx(key,1) 
-            var arr = m.getOrElse(addrIdx,null)
-            if( arr == null ) { 
-                arr = new ArrayBufferString()
-                m.put(addrIdx,arr)
-            }
-            arr += key
-        }
-        if( m.size == 1 ) {
-            val to = m.keys.toList.head
-            sendToSingleAddr(req,timeout,to,1)
-            return
-        }
-
-        var i=0
-
-        // save the parent request
-        val sequence = generateSequence()
-        val data = new CacheData(req,timeout,times,-1)
-        data.responses = new Array[Response](m.size)
-        dataMap.put(sequence,data)
-
-        for( (to,keys) <- m ) {
-            val subreqid = "sub:"+req.requestId + ":" + i
-            val body = HashMapStringAny("keys"->keys,"parentSequence"->sequence)
-            val subreq = new Request(
-                subreqid,"dummy",0,0,req.serviceId,req.msgId,null,
-            body,null
-        )
-            sendToSingleAddr(subreq,timeout,to,times)
-            i += 1
-        }
-
+        // 传入keys参数，key可能分布在不同的redis实例下，此插件不处理这种情况
+        val res = createErrorResponse(ResultCodes.TLV_ENCODE_ERROR,req)
+        receiver_f(new RequestResponseInfo(req,res))
     }
 
     def sendToSingleAddr(req: Request, timeout: Int, toAddr:Int = -1, times:Int = 1):Unit = {
@@ -209,7 +176,6 @@ class RedisSoc(
             if( source != "" ) key = source
         }
         val addrIdx = if( toAddr == -1 ) selectAddrIdx(key,times) else toAddr
-        //println("cacheType=%d,key=%s,addr=%d".format(cacheType,key,addrIdx))
         dataMap.put(sequence,new CacheData(req,timeout,times,addrIdx))
 
         var ok2 = nettyClient.sendByAddr(sequence,buf,timeout,addrIdx)
@@ -254,10 +220,6 @@ class RedisSoc(
             val (errorCode,body) = RedisCodec.decode(req.msgId,buf,req)
             val res = new Response(errorCode,body,req)
             res.remoteAddr = parseRemoteAddr(connId)
-            if( req.requestId.startsWith("sub:")) { // mget 子请求
-                processMgetResponse(req,res)
-                return
-            }
             receiver_f(new RequestResponseInfo(req,res))
             postReceive(req,saved.addrIdx)
 
@@ -312,43 +274,9 @@ class RedisSoc(
 
             val res = createErrorResponse(errorCode,req)
             res.remoteAddr = parseRemoteAddr(connId)
-            if( req.requestId.startsWith("sub:")) { // mget 子请求
-                processMgetResponse(req,res)
-                return
-            }
             receiver_f(new RequestResponseInfo(req,res))
         }
 
-    }
-
-    def processMgetResponse(subreq:Request,subRes:Response) {
-        val p = subreq.requestId.lastIndexOf(":")
-        if( p < 0 ) return
-        val idx = subreq.requestId.substring(p+1).toInt
-        val parentSequence = subreq.i("parentSequence")
-        val parentData = dataMap.get(parentSequence)
-        if( parentData == null ) return
-        if( idx < 0 || idx >= parentData.responses.size ) return
-        parentData.responses(idx) = subRes
-        val finished = parentData.responses.forall(_ != null)
-        if( !finished ) return
-        dataMap.remove(parentSequence)
-        val errorResponse = parentData.responses.filter(_.code < 0)
-        val req = parentData.data
-        if( errorResponse.size > 0 ) {
-            val first = errorResponse(0)
-            val res = new Response(first.code,HashMapStringAny(),req)
-            res.remoteAddr = first.remoteAddr
-            receiver_f(new RequestResponseInfo(req,res))
-            return
-        }
-        val keyvalues = ArrayBufferMap()
-        for( res <- parentData.responses ) 
-            keyvalues ++= res.body.lm("keyvalues")
-
-        val res = new Response(0,HashMapStringAny("keyvalues"->keyvalues),req)
-        res.remoteAddr = parentData.responses(0).remoteAddr
-        receiver_f(new RequestResponseInfo(req,res))
     }
 
     def addrOk(addrIdx:Int) {
@@ -411,7 +339,7 @@ class RedisSoc(
         val MSGID_INCRBY = 102
         val MSGID_DECRBY = 103
         val MSGID_GET = 120
-        val MSGID_MGET = 121 // 支持多节点部署
+        val MSGID_MGET = 121 // 不支持非master/slave的多节点部署
 
         val MSGID_SADD = 200
         val MSGID_SREM = 201
@@ -419,7 +347,6 @@ class RedisSoc(
         val MSGID_SDIFFSTORE = 203 // 不支持非master/slave的多节点部署
         val MSGID_SINTERSTORE = 204 // 不支持非master/slave的多节点部署
         val MSGID_SUNIONSTORE = 205 // 不支持非master/slave的多节点部署
-
         val MSGID_SMEMBERS = 220
         val MSGID_SCARD = 221
         val MSGID_SISMEMBER = 222
@@ -427,6 +354,7 @@ class RedisSoc(
         val MSGID_SDIFF = 224 // 不支持非master/slave的多节点部署
         val MSGID_SINTER = 225 // 不支持非master/slave的多节点部署
         val MSGID_SUNION = 226 // 不支持非master/slave的多节点部署
+        // 未实现：smove, sscan
 
         val MSGID_HSET = 300
         val MSGID_HSETNX = 301
@@ -441,6 +369,7 @@ class RedisSoc(
         val MSGID_HGET = 324
         val MSGID_HGETALL = 325
         val MSGID_HMGET = 326
+        // 未实现：hscan, hstrlen
 
         val MSGID_LPUSH = 400
         val MSGID_LPUSHM = 401
@@ -458,7 +387,6 @@ class RedisSoc(
         val MSGID_BLPOP = 413 // 不支持非master/slave的多节点部署
         val MSGID_BRPOP = 414 // 不支持非master/slave的多节点部署
         val MSGID_BRPOPLPUSH = 415 // 不支持非master/slave的多节点部署
-
         val MSGID_LRANGE = 420
         val MSGID_LLEN = 421
         val MSGID_LINDEX = 422
@@ -683,12 +611,12 @@ class RedisSoc(
                     MSGID_SDIFF |
                     MSGID_SINTER |
                     MSGID_SUNION =>
-                val keys = map.ls("keys")
-                if( keys != null && keys.size >= 2) {
-                    val arr = ArrayBufferString(cmd)
-                    arr ++= keys
-                    b = buildCmd(arr)
-                }
+                    val keys = map.ls("keys")
+                    if( keys != null && keys.size >= 2) {
+                        val arr = ArrayBufferString(cmd)
+                        arr ++= keys
+                        b = buildCmd(arr)
+                    }
                 case MSGID_HSET | 
                     MSGID_HSETNX =>
                     val field = map.s("field","")
