@@ -5,6 +5,7 @@
 * (0604)RedisCfgV2插件删除mget对多节点的支持
 * (0607)修复RedisCfgV2插件在解析redis响应时的一个bug
 * (0607)RedisCfgV2插件支持redis cluster模式
+* (0607)httpserver在302重定向的时候也支持设置cookie
 
 1.2.2 (20170519)
 ================

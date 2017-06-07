@@ -1390,7 +1390,7 @@ application/x-gzip gz
         val redirectUrl302 = body.s(redirect302FieldName,"" )
         if( redirectUrl302 != "" ) {
 
-            write302(connId,req.xhead,redirectUrl302)
+            write302(connId,req.xhead,redirectUrl302,cookies)
 
             val reqResInfo = new HttpSosRequestResponseInfo(req,new HttpSosResponse(req.requestId,0,""))
             req.xhead.put("contentType",MIMETYPE_PLAIN)
@@ -1541,13 +1541,22 @@ application/x-gzip gz
         }
     }
 
-    def write302(connId:String,xhead:HashMapStringAny,url:String) {
+    def write302(connId:String,xhead:HashMapStringAny,url:String,cookies: HashMap[String,Cookie]) {
         val keepAlive = xhead.s("keepAlive","true") == "true"
         val response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.FOUND)
         setDateHeader(response)
         if( !keepAlive ) response.setHeader(HttpHeaders.Names.CONNECTION, "close")
         response.setHeader(HttpHeaders.Names.LOCATION, url )
         response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, "0")
+
+        if( cookies != null && cookies.size > 0 ) {
+            val encoder = new CookieEncoder(true)
+            for( (dummy,c) <- cookies ) {
+                encoder.addCookie(c)
+            }
+            response.setHeader(HttpHeaders.Names.SET_COOKIE, encoder.encode())
+        }
+
         nettyHttpServer.write(connId,response,keepAlive)
     }
 
