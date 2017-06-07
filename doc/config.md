@@ -581,7 +581,7 @@
         failOver="true" 
         errorCountToSwitch="50">
         <ServiceId>990,45612</ServiceId>
-        <ConHash/> 或 <ArrayHash/> 或不配置
+        <ConHash/> 或 <ArrayHash/> 或 <Cluster/> 或不配置自动识别
         <ServerAddr>10.241.37.37:11211</ServerAddr>
         <ServerAddr>10.241.37.37:11211</ServerAddr>
         ...
@@ -602,14 +602,16 @@
       ArrayHash模式: 数据hash后取余定位服务器，数据只有1份；
       ConHash模式: 数据用一致性hash算法，数据只有1份；
       Master/Slave模式：数据写2份；
+      Cluster模式: redis服务端必须是3.0版本并配置为cluster模式; 
 
-      如果只配置了1个ServerAddr，且是ArrayHash方式
-      如果配置了2个ServerAddr，且未指定模式, 为Master/Slave模式；
-      如果超过2个ServerAddr，且未指定模式, 为ConHash方式
-      如果配置了2个或2个以上地址且指定了 <ConHash/> 或 <ArrayHash/> 则为指定模式
+      如果未配置模式，则按一下规则确定模式：
+          如果只配置了1个ServerAddr，且是ArrayHash方式
+          如果配置了2个ServerAddr，且未指定模式, 为Master/Slave模式；
+          如果超过2个ServerAddr，且未指定模式, 为ConHash方式
+          如果配置了2个或2个以上地址且指定了 <ConHash/> 或 <ArrayHash/> 则为指定模式
 
-      特殊说明：
-        如果配置多台服务器，非master/slave模式，则涉及多个key的接口，只有mget接口能正确得到分布在多台服务器上的结果
+      Cluster模式下有些配置参数不支持，包括：connSizePerAddr固定为1, failOver,  errorCountToSwitch 
+      Cluster模式下只需要配置redis集群中的master节点任意一个或多个就可以了
 
     服务描述文件：
 
