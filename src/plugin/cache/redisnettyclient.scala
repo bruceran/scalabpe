@@ -323,12 +323,12 @@ class RedisNettyClient(
                         nextIdx += addrs.size
                         if( nextIdx >= channels.size ) nextIdx = addrIdx
                         nextIdxs(addrIdx) = nextIdx
-                    return d
+                        return d
 
-                } else {
-                    log.error("channel not opened, idx={}, connId={}",i,connId)
-                    removeChannel(connId)
-                }
+                    } else {
+                        log.error("channel not opened, idx={}, connId={}",i,connId)
+                        removeChannel(connId)
+                    }
 
                 }
                 i+=1
@@ -563,129 +563,6 @@ class RedisNettyClient(
     }
 
     class TimeoutInfo(val sequence:Int, val connId:String, val timer: QuickTimer)
-
-
-    class RedisFrameDecoder extends FrameDecoder {
-
-        override def decode(ctx:ChannelHandlerContext,channel:Channel,buf:ChannelBuffer):Object = {
-
-            val len = buf.readableBytes()
-            if ( len < 4) {
-                return null;
-            }
-
-            var s = buf.readerIndex() 
-            val max = s + len - 1
-
-            val valid = getValid(buf,s,max)
-            if( valid < 0 ) {
-                return null
-            }
-
-            val frame = buf.readBytes(valid);
-            return frame
-        }
-
-        /*
-        Null Bulk String:  $-1\r\n
-        空数组:  *0\r\n
-        空Array: *-1\r\n
-
-        嵌套
-         *2\r\n
-         *3\r\n
-         :1\r\n
-         :2\r\n
-         :3\r\n
-         *2\r\n
-         +Foo\r\n
-         -Bar\r\n
-         */
-
-        def getValid(buf:ChannelBuffer,s:Int,max:Int):Int = {
-
-            val len = max - s + 1
-            val ch = buf.getByte(s).toChar
-            var e = findCrNl(buf,s,max)
-            if( e < 0 ) return -1
-
-            var valid = e - s + 1
-            ch match {
-                case '+' | '-' | ':' =>
-                    return valid
-                case '$' =>
-                    val num = parseNumber(buf,s,e)
-                    if( num < -1 ) // can be -1
-                        throw new Exception("number is not valid")
-
-                    if( num >= 0 ) {
-                        if( len < valid + num + 2) return -1
-                        val cr = buf.getByte(s+valid+num).toChar
-                        val nl = buf.getByte(s+valid+num+1).toChar
-                        if( cr != '\r' || nl != '\n' )
-                            throw new Exception("not a valid cr nl")
-                        valid += num + 2
-                        return valid
-                    } else if( num == -1 ) {
-                        return valid
-                    }
-                    return valid
-                case '*' =>
-                    val params = parseNumber(buf,s,e)
-                    if( params < -1 ) // can be -1
-                        throw new Exception("number is not valid")
-
-                    var i = 0
-                    var ts = e + 1
-                    while( i < params ) {
-
-                        val v = getValid(buf,ts,max)
-                        if( v < 0 ) return -1
-                        valid += v
-                        ts += v
-
-                        i += 1
-                    }
-                    return valid
-                case _ =>
-                    throw new Exception("redis frame is not correct")
-            }
-
-            return -1
-        }
-    }
-
-    def findCrNl(buf:ChannelBuffer,min:Int,max:Int):Int = { // find last position of ...\r\n
-        var i = min 
-        while( i <= max ) {
-            val ch = buf.getByte(i)
-            if( ch == '\n' ) {
-                val lastbyte = buf.getByte(i-1)
-                if( lastbyte == '\r') {
-                    return i
-                }
-            }
-            i += 1
-        }
-        -1
-    }
-
-   def parseNumber(buf:ChannelBuffer,min:Int,max:Int):Int = { // read ($|*){number}\r\n skip chars not in [0-9-]
-       var i = min 
-       var s = ""
-       while( i <= max ) {
-           val ch = buf.getByte(i).toChar
-           if( ch == '-' || ch >= '0' && ch <= '9' ) s += ch
-           i += 1
-       }
-
-       try {
-           s.toInt
-       } catch {
-           case e:Throwable =>
-               throw new Exception("number is not correct, s="+s)
-       }
-   }
 
 }
 

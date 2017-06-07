@@ -6,7 +6,7 @@ import scala.xml._
 import scala.collection.mutable.{ArrayBuffer}
 
 import scalabpe.core._
-import RedisSoc._
+import RedisType._
 
 class RedisActor(val router:Router,val cfgNode: Node) 
 extends Actor with Logging with Closable with SelfCheckLike with Dumpable  {
@@ -20,7 +20,7 @@ extends Actor with Logging with Closable with SelfCheckLike with Dumpable  {
     var threadFactory : ThreadFactory = _
     var pool : ThreadPoolExecutor = _
 
-    var soc: RedisSoc = _
+    var soc: RedisSocTrait = _
 
     init
 
@@ -55,11 +55,13 @@ extends Actor with Logging with Closable with SelfCheckLike with Dumpable  {
 
         val conHash = (cfgNode \ "ConHash").text
         val arrayHash = (cfgNode \ "ArrayHash").text
+        val cluster = (cfgNode \ "Cluster").text
 
         var addrs = (cfgNode \ "ServerAddr").map(_.text).toList.mkString(",")
         val serverAddrs = addrs.split(",")
         var cacheType = if( conHash == "1" ) TYPE_CONHASH 
         else if( arrayHash == "1" ) TYPE_ARRAYHASH 
+        else if( cluster == "1" ) TYPE_CLUSTER
         else TYPE_UNKNOWN
 
         if( cacheType == TYPE_UNKNOWN ) {
@@ -102,12 +104,17 @@ extends Actor with Logging with Closable with SelfCheckLike with Dumpable  {
 
         val firstServiceId = serviceIds.split(",")(0)
         threadFactory = new NamedThreadFactory("redisactor-"+firstServiceId)
+
+        if( cacheType != TYPE_CLUSTER ) 
+            soc = new RedisSoc(addrs,cacheType,this.receive,connectTimeout,pingInterval,
+                connSizePerAddr,timerInterval,reconnectInterval,
+                failOver,maxErrorCount)
+        else
+            soc = new RedisSoc4Cluster(addrs,this.receive,connectTimeout,pingInterval,
+                timerInterval,reconnectInterval)
+
         pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
         pool.prestartAllCoreThreads()
-
-        soc = new RedisSoc(addrs,cacheType,this.receive,connectTimeout,pingInterval,
-            connSizePerAddr,timerInterval,reconnectInterval,
-            failOver,maxErrorCount)
 
         log.info("RedisActor started {}",serviceIds)
     }

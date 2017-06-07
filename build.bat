@@ -9,7 +9,7 @@ if "%1"=="clean" goto clean
 :build
 mkdir classes\scalabpe\plugin\  2>>nul 1>>nul
 call scalac -deprecation -encoding UTF-8 -cp ".\lib\*;.\lib\log\*;." -d ".\classes"   src\*.scala src\plugin\*.scala src\plugin\http\*.scala src\plugin\cache\*.scala
-rem call scalac -deprecation -encoding UTF-8 -cp ".\lib\*;." -d ".\classes"   src\compiler.scala
+rem call scalac -deprecation -encoding UTF-8 -cp ".\lib\*;." -d ".\classes"   src\plugin\cache\*
 copy /Y src\plugin\scalabpe.plugins.conf .\classes\  2>>nul 1>>nul 
 copy /Y src\release_notes.txt .\classes\  2>>nul 1>>nul
 jar cf .\lib\scalabpe-core-%version%.jar -C .\classes\  .\scalabpe\core -C .\classes\ .\release_notes.txt

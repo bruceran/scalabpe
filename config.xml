@@ -40,6 +40,7 @@
 -->
 
 <!-- http server 配置 -->
+<!-- 
     <HttpServerCfg  registerAs="demoservicehttp" port="8088" devMode="1">
 
         <UrlMapping>
@@ -52,7 +53,6 @@
             <Item>application/vnd.ms-excel xls xlsx</Item>
         </MimeTypes>
     </HttpServerCfg>
-<!-- 
 -->
 
 <!-- 定时任务配置 -->
@@ -211,7 +211,10 @@
 <!-- 
     <RedisCfgV2>
         <ServiceId>680</ServiceId>
-        <ServerAddr>192.168.52.128:6379</ServerAddr>
+        <Cluster>1</Cluster>
+        <ServerAddr>10.246.84.91:7000</ServerAddr>
+        <ServerAddr>10.246.84.91:7001</ServerAddr>
+        <ServerAddr>10.246.84.91:7002</ServerAddr>
     </RedisCfgV2>
 -->
 
