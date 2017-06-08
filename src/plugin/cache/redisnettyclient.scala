@@ -638,7 +638,7 @@ class RedisNettyClient(
                     var i = 0
                     var ts = e + 1
                     while( i < params ) {
-
+                        if( ts > max ) return -1
                         val v = getValid(buf,ts,max)
                         if( v < 0 ) return -1
                         valid += v
