@@ -1,6 +1,6 @@
 
-version="1.2.3"
-pluginversion="1.2.3"
+version="1.2.4"
+pluginversion="1.2.4"
 
 show_help()
 {
@@ -27,11 +27,11 @@ case "$1" in
 		;;
 	*)
 		if [ ! -d classes ] ; then mkdir classes; fi;
-        env JAVA_OPTS="-Dfile.encoding=UTF-8" scalac -deprecation -encoding UTF8 -cp "./lib/*:./lib/log/*:." -d "./classes" src/*.scala src/plugin/*.scala src/plugin/http/*.scala src/plugin/cache/*.scala
-		cp -f src/plugin/scalabpe.plugins.conf ./classes/
-		cp -f src/release_notes.txt ./classes/
+        env JAVA_OPTS="-Dfile.encoding=UTF-8" scalac -deprecation -encoding UTF8 -cp "./lib/*:./lib/log/*:." -d "./classes" src/scalabpe/*.scala src/scalabpe/plugin/*.scala src/scalabpe/plugin/http/*.scala src/scalabpe/plugin/cache/*.scala
+		cp -f src/scalabpe/plugin/scalabpe.plugins.conf ./classes/
+		cp -f src/scalabpe/core/release_notes.txt ./classes/
 		jar cf ./lib/scalabpe-core-$version.jar -C ./classes/  ./scalabpe/core -C ./classes/ ./release_notes.txt
-		cp -f src/plugin/release_notes.txt ./classes/
+		cp -f src/scalabpe/plugin/release_notes.txt ./classes/
 		jar cf ./lib/scalabpe-plugins-$pluginversion.jar -C ./classes/  ./scalabpe/plugin -C ./classes/ ./scalabpe.plugins.conf -C ./classes/ ./release_notes.txt
 		;;
 esac

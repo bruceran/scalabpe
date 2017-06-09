@@ -1,7 +1,6 @@
 1.2.3 (20170607)
 ================
 
-* (0527)增加.flow.scala后缀格式的流程，可以直接写scala类来实现流程，便于在ide中开发
 * (0604)RedisCfgV2插件删除mget对多节点的支持
 * (0607)修复RedisCfgV2插件在解析redis响应时的一个bug
 * (0607)RedisCfgV2插件支持redis cluster模式
