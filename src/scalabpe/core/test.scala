@@ -2518,7 +2518,7 @@ class RunTestHttpClient(
     def parseResult(download_field:Tuple2[String,String],httpRes:HttpResponse):Tuple3[Int,String,String] = {
 
         val status = httpRes.getStatus
-        if( status.getCode() != 200 && status.getCode() != 201 ) {
+        if( status.getCode() != 200 && status.getCode() != 201 && status.getCode() != 302 ) {
 
             if( log.isDebugEnabled() ) {
                 log.debug("status code={}",status.getCode())
@@ -2531,7 +2531,8 @@ class RunTestHttpClient(
         val content = httpRes.getContent()
         var contentStr = ""
         if( download_field == null ) {
-            contentStr = content.toString(Charset.forName("UTF-8"))
+            if( content != null )
+                contentStr = content.toString(Charset.forName("UTF-8"))
         } else {
             try {
                 val out = new FileOutputStream(download_field._2)
@@ -2563,6 +2564,9 @@ class RunTestHttpClient(
             if( cookieMap.size > 0 ) {
                 cookie_json = JsonCodec.mkString(cookieMap)
             }
+        }
+        if( status.getCode() == 302 && contentStr == "" ) {
+            contentStr = """{"code":0,"Location":"%s"}""".format(httpRes.getHeader("Location"))
         }
         (0,contentStr,cookie_json)
     }
