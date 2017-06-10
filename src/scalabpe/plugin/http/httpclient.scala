@@ -53,6 +53,7 @@ object HttpMsgDefine {
 
     val MIMETYPE_FORM = "application/x-www-form-urlencoded"
     val MIMETYPE_JSON = "application/json"
+    val MIMETYPE_JSON2 = "application/vnd.api+json"
     val MIMETYPE_XML = "text/xml"
 
     val MIMETYPE_XML2 = "application/xml"
@@ -1011,6 +1012,8 @@ class HttpClientImpl(
                 else if ( contentStr.startsWith("[") ) return HttpMsgDefine.MIMETYPE_JSON
                 else if ( contentStr.startsWith("<") ) HttpMsgDefine.MIMETYPE_XML
                 else HttpMsgDefine.MIMETYPE_FORM
+            case HttpMsgDefine.MIMETYPE_JSON2 =>
+                HttpMsgDefine.MIMETYPE_JSON
             case _ =>
                 ss(0)
         }
