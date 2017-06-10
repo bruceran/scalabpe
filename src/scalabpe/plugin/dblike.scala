@@ -1,47 +1,56 @@
 package scalabpe.plugin
 
-import java.sql._;
-import javax.sql.DataSource
-import java.io._
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
+import java.io.PrintWriter
+import java.sql.Connection
+import java.sql.PreparedStatement
+import java.sql.ResultSet
+import java.sql.SQLException
+import java.sql.Statement
+import java.sql.Types
 
-import scala.collection.mutable.HashMap
 import scala.collection.mutable.ArrayBuffer
 
 import org.apache.commons.dbcp.BasicDataSource
 
-import scalabpe.core._
+import javax.sql.DataSource
+import scalabpe.core.ArrayBufferAny
+import scalabpe.core.ArrayBufferMap
+import scalabpe.core.ArrayBufferString
+import scalabpe.core.HashMapStringAny
+import scalabpe.core.Logging
+import scalabpe.core.ResultCodes
 
-class LocalFile(val filename:String) { 
+class LocalFile(val filename: String) {
 
-    var writer:PrintWriter = null
- 
+    var writer: PrintWriter = null
+
     open()
 
     def open() {
         try {
-            writer = new PrintWriter( new OutputStreamWriter(new FileOutputStream(filename,false),"utf-8") );
-        }
-        catch {
-            case e:Throwable =>
+            writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(filename, false), "utf-8"));
+        } catch {
+            case e: Throwable =>
                 writer = null
         }
     }
 
     def close() {
-        if( writer != null ) {
+        if (writer != null) {
             writer.close()
             writer = null
         }
     }
-    
-    def writeLine(line:String):Unit = {
-        if( writer == null ) return 
+
+    def writeLine(line: String): Unit = {
+        if (writer == null) return
         try {
             writer.println(line)
-        }
-        catch {
-            case e:Throwable =>
-                try { if( writer != null ) writer.close(); } catch { case e:Throwable => }
+        } catch {
+            case e: Throwable =>
+                try { if (writer != null) writer.close(); } catch { case e: Throwable => }
                 writer = null
         }
     }
@@ -53,87 +62,87 @@ object ColumnType {
     val COLUMNTYPE_DATE = 3
     val COLUMNTYPE_DATETIME = 4
 
-    def toColumnType(s:String):Int = {
+    def toColumnType(s: String): Int = {
         s.toLowerCase() match {
-            case "string" => COLUMNTYPE_STRING
-            case "number" => COLUMNTYPE_NUMBER
-            case "date" => COLUMNTYPE_DATE
-            case "datetime" => COLUMNTYPE_DATETIME
+            case "string"    => COLUMNTYPE_STRING
+            case "number"    => COLUMNTYPE_NUMBER
+            case "date"      => COLUMNTYPE_DATE
+            case "datetime"  => COLUMNTYPE_DATETIME
             case "timestamp" => COLUMNTYPE_DATETIME
-            case _ => COLUMNTYPE_STRING
+            case _           => COLUMNTYPE_STRING
         }
     }
 
 }
 
 object DbResults {
-    val emptyResults = ArrayBuffer[ ArrayBufferAny ]()
+    val emptyResults = ArrayBuffer[ArrayBufferAny]()
 }
 
-class DbResults (
-    val rowCount:Int,
-    val results:ArrayBuffer[ ArrayBufferAny ],
-    val sqlCode:Int = 0 ) {
+class DbResults(
+        val rowCount: Int,
+        val results: ArrayBuffer[ArrayBufferAny],
+        val sqlCode: Int = 0) {
 
-    var insert_ids:ArrayBufferString = null
+    var insert_ids: ArrayBufferString = null
 
-    def this(rowCount:Int) {
-        this(rowCount,DbResults.emptyResults,0)
+    def this(rowCount: Int) {
+        this(rowCount, DbResults.emptyResults, 0)
     }
-    def this(rowCount:Int,sqlCode:Int) {
-        this(rowCount,DbResults.emptyResults,sqlCode)
+    def this(rowCount: Int, sqlCode: Int) {
+        this(rowCount, DbResults.emptyResults, sqlCode)
     }
 
-    def all(rownames:List[String]) : ArrayBufferMap = {
+    def all(rownames: List[String]): ArrayBufferMap = {
 
         val ss = new ArrayBufferMap()
         var i = 0
-        while(i < rowCount) {
-            ss += value(i,rownames)
-            i+=1
+        while (i < rowCount) {
+            ss += value(i, rownames)
+            i += 1
         }
         ss
     }
 
-    def value(row:Int,col:Int):Any ={
+    def value(row: Int, col: Int): Any = {
 
-        if( row<0||row>=results.size)
+        if (row < 0 || row >= results.size)
             return null
 
         val data = results(row)
 
-        if( col<0||col>=data.size)
+        if (col < 0 || col >= data.size)
             return null
 
         data(col)
     }
 
-    def value(row:Int,rownames:List[String]):HashMapStringAny = {
-        if( row<0||row>=results.size)
+    def value(row: Int, rownames: List[String]): HashMapStringAny = {
+        if (row < 0 || row >= results.size)
             return null
         val data = results(row)
         val returnmap = new HashMapStringAny()
         var i = 0
-        for(rowname <- rownames ) {
-            if( i < data.size) {
-                returnmap.put(rowname,data(i))
+        for (rowname <- rownames) {
+            if (i < data.size) {
+                returnmap.put(rowname, data(i))
             }
-            i+=1
+            i += 1
         }
         returnmap
     }
 
-    def valueList(col:Int):ArrayBufferAny = {
+    def valueList(col: Int): ArrayBufferAny = {
 
-        if( results.size == 0 ) return null
+        if (results.size == 0) return null
 
         val firstrow = results(0)
-        if( col<0||col>=firstrow.size)
+        if (col < 0 || col >= firstrow.size)
             return null
 
         val returnarray = new ArrayBufferAny()
 
-        for( row <- results ) {
+        for (row <- results) {
             returnarray += row(col)
         }
 
@@ -141,11 +150,11 @@ class DbResults (
     }
 
     override def toString() = {
-        "rowCount=%d,results=%s".format(rowCount,results.mkString(","))
+        "rowCount=%d,results=%s".format(rowCount, results.mkString(","))
     }
 }
 
-class DbConnStr(val jdbcString:String, val username:String, val password:String)
+class DbConnStr(val jdbcString: String, val username: String, val password: String)
 
 object DbLike extends Logging {
     val MODE_ASYNC = 1
@@ -155,22 +164,21 @@ object DbLike extends Logging {
     val COMMIT = 10001
     val ROLLBACK = 10002
 
-
     val regDb1 = """^service=([^ ]+)[ ]+user=([^ ]*)[ ]+password=([^ ]*)$""".r
     val regDb2 = """^([^ ]+)[ ]+user=([^ ]*)[ ]+password=([^ ]*)$""".r
 
-    def getDbType(ds: DataSource) : String = {
+    def getDbType(ds: DataSource): String = {
         val url = getUrl(ds)
-        if( url.indexOf("oracle") >= 0 ) return "oracle"
-        if( url.indexOf("mysql") >= 0 ) return "mysql"
-        if( url.indexOf("sqlserver") >= 0 ) return "sqlserver"
+        if (url.indexOf("oracle") >= 0) return "oracle"
+        if (url.indexOf("mysql") >= 0) return "mysql"
+        if (url.indexOf("sqlserver") >= 0) return "sqlserver"
         ""
     }
 
-    def getUrl(ds: DataSource) : String = {
+    def getUrl(ds: DataSource): String = {
         ds match {
             case t: BasicDataSource => t.getUrl()
-            case _ => ""
+            case _                  => ""
         }
     }
 
@@ -182,14 +190,14 @@ object DbLike extends Logging {
             System.loadLibrary("sec");
             log.info("library sec loaded")
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 log.error("cannot load library sec")
         }
 
     }
 }
 
-class DbLike extends Logging  {
+class DbLike extends Logging {
 
     import scalabpe.plugin.DbLike._
 
@@ -197,11 +205,11 @@ class DbLike extends Logging  {
     var longTimeSql = 500
     val tl = new ThreadLocal[Connection]()
 
-    def isTransactionMsgId(msgId:Int) : Boolean = {
-        msgId == DbLike.BEGINTRANSACTION || msgId == DbLike.COMMIT ||  msgId == DbLike.ROLLBACK
+    def isTransactionMsgId(msgId: Int): Boolean = {
+        msgId == DbLike.BEGINTRANSACTION || msgId == DbLike.COMMIT || msgId == DbLike.ROLLBACK
     }
 
-    def decrypt(pwd:String):String = {
+    def decrypt(pwd: String): String = {
         if (pwd.startsWith("des:")) {
             decryptDes(pwd.substring(4))
         } else if (pwd.startsWith("desx:")) {
@@ -214,38 +222,38 @@ class DbLike extends Logging  {
 
     }
 
-    @native def decryptDes(s:String) : String;
-    @native def decryptDesX(s:String) : String;
-    @native def decryptRsa(s:String) : String;
+    @native def decryptDes(s: String): String;
+    @native def decryptDesX(s: String): String;
+    @native def decryptRsa(s: String): String;
 
-    def parseDbConnStr(s:String): DbConnStr = {
+    def parseDbConnStr(s: String): DbConnStr = {
         s match {
-            case regDb1(jdbcString,username,password) =>
-                return new DbConnStr(jdbcString,username,password)
-            case regDb2(jdbcString,username,password) =>
-                return new DbConnStr(jdbcString,username,password)
+            case regDb1(jdbcString, username, password) =>
+                return new DbConnStr(jdbcString, username, password)
+            case regDb2(jdbcString, username, password) =>
+                return new DbConnStr(jdbcString, username, password)
             case _ =>
                 throw new RuntimeException("connection string is not valid,conn=%s".format(s))
         }
     }
 
-    def createDataSource(jdbcString:String,username:String,password:String,connNum:Int = 1): DataSource = {
+    def createDataSource(jdbcString: String, username: String, password: String, connNum: Int = 1): DataSource = {
 
-        var clsName : String = null
-        var isMysql : Boolean = false
-        if( jdbcString.indexOf("oracle") >= 0 ) {
+        var clsName: String = null
+        var isMysql: Boolean = false
+        if (jdbcString.indexOf("oracle") >= 0) {
             clsName = "oracle.jdbc.driver.OracleDriver"
             isMysql = false
-        } else if( jdbcString.indexOf("mysql") >= 0 ) {
+        } else if (jdbcString.indexOf("mysql") >= 0) {
             clsName = "com.mysql.jdbc.Driver"
             isMysql = true
-        } else if( jdbcString.indexOf("jtds") >= 0 ) {
+        } else if (jdbcString.indexOf("jtds") >= 0) {
             clsName = "net.sourceforge.jtds.jdbc.Driver"
-            isMysql = false 
-        } else if( jdbcString.indexOf("sqlserver") >= 0 ) {
+            isMysql = false
+        } else if (jdbcString.indexOf("sqlserver") >= 0) {
             clsName = "com.microsoft.sqlserver.jdbc.SQLServerDriver"
-            isMysql = false 
-        }  
+            isMysql = false
+        }
 
         val ds = new BasicDataSource
         ds.setDriverClassName(clsName)
@@ -258,13 +266,13 @@ class DbLike extends Logging  {
         ds.setMinIdle(connNum)
         ds.setInitialSize(connNum);
 
-        if( isMysql ) {
+        if (isMysql) {
             ds.setValidationQuery("select now()")
             ds.setTestWhileIdle(true)
             ds.setTimeBetweenEvictionRunsMillis(300000)
             ds.setMinEvictableIdleTimeMillis(5 * 60 * 1000L)
             var testNum = connNum / 2
-            if( testNum < 1 ) testNum = 1
+            if (testNum < 1) testNum = 1
             ds.setNumTestsPerEvictionRun(testNum)
         }
 
@@ -272,27 +280,27 @@ class DbLike extends Logging  {
 
     }
 
-    def hasError(ds: DataSource) : Boolean = {
+    def hasError(ds: DataSource): Boolean = {
 
         try {
 
             val dbType = getDbType(ds)
             dbType match {
                 case "oracle" =>
-                    val result = query_db("select sysdate from dual",null,null,ds)
+                    val result = query_db("select sysdate from dual", null, null, ds)
                     return result.rowCount == -1
                 case "mysql" =>
-                    val result = query_db("select now()",null,null,ds)
+                    val result = query_db("select now()", null, null, ds)
                     return result.rowCount == -1
                 case "sqlserver" =>
-                    val result = query_db("select getdate()",null,null,ds)
+                    val result = query_db("select getdate()", null, null, ds)
                     return result.rowCount == -1
                 case _ => false
             }
             return false
 
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 return true
         }
 
@@ -306,7 +314,7 @@ class DbLike extends Logging  {
 
             case ds: BasicDataSource =>
 
-                log.info("--- db url="+ds.getUrl+", username="+ds.getUsername)
+                log.info("--- db url=" + ds.getUrl + ", username=" + ds.getUsername)
                 buff.append("ds.getNumActive=").append(ds.getNumActive).append(",")
                 buff.append("ds.getNumIdle=").append(ds.getNumIdle).append(",")
 
@@ -321,150 +329,149 @@ class DbLike extends Logging  {
         }
     }
 
-    def prepare(ps : PreparedStatement, params:ArrayBufferString, keyTypes:ArrayBuffer[Int] ) {
+    def prepare(ps: PreparedStatement, params: ArrayBufferString, keyTypes: ArrayBuffer[Int]) {
 
-        if( params == null || params.size == 0 ) return
+        if (params == null || params.size == 0) return
 
-        var fdt : java.text.SimpleDateFormat = null
-        var fd : java.text.SimpleDateFormat = null
+        var fdt: java.text.SimpleDateFormat = null
+        var fd: java.text.SimpleDateFormat = null
 
         var i = 0
-        while(i < params.size) {
+        while (i < params.size) {
 
             keyTypes(i) match {
 
                 case ColumnType.COLUMNTYPE_DATE =>
 
-                    if( fd == null ) fd = new java.text.SimpleDateFormat("yyyy-MM-dd")
+                    if (fd == null) fd = new java.text.SimpleDateFormat("yyyy-MM-dd")
 
-                    if( params(i) == null ) {
-                        ps.setDate(i+1,null)
+                    if (params(i) == null) {
+                        ps.setDate(i + 1, null)
                     } else {
                         val d = new java.sql.Date(fd.parse(params(i)).getTime())
-                        ps.setDate(i+1,d)
+                        ps.setDate(i + 1, d)
                     }
 
                 case ColumnType.COLUMNTYPE_DATETIME =>
 
-                    if( fdt == null ) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                    if (fdt == null) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
 
-                    if( params(i) == null ) {
-                        ps.setTimestamp(i+1,null)
+                    if (params(i) == null) {
+                        ps.setTimestamp(i + 1, null)
                     } else {
                         val d = new java.sql.Timestamp(fdt.parse(params(i)).getTime())
-                        ps.setTimestamp(i+1,d)
+                        ps.setTimestamp(i + 1, d)
                     }
 
                 case ColumnType.COLUMNTYPE_NUMBER =>
 
-                    if( params(i) == null ) {
-                        ps.setString(i+1,null)
+                    if (params(i) == null) {
+                        ps.setString(i + 1, null)
                     } else {
-                        ps.setInt(i+1,java.lang.Integer.parseInt(params(i)))
+                        ps.setInt(i + 1, java.lang.Integer.parseInt(params(i)))
                     }
 
                 case _ =>
 
-                    ps.setString(i+1,params(i))
+                    ps.setString(i + 1, params(i))
             }
 
-            i+=1
+            i += 1
         }
     }
 
-    def query_db(sql:String, params:ArrayBufferString, keyTypes:ArrayBuffer[Int], masterList: ArrayBuffer[DataSource], slaveList: ArrayBuffer[DataSource], dbIdx:Int,useSlave:Boolean = false ):DbResults = {
-        if( useSlave && slaveList != null && slaveList.size > 0 ) {
+    def query_db(sql: String, params: ArrayBufferString, keyTypes: ArrayBuffer[Int], masterList: ArrayBuffer[DataSource], slaveList: ArrayBuffer[DataSource], dbIdx: Int, useSlave: Boolean = false): DbResults = {
+        if (useSlave && slaveList != null && slaveList.size > 0) {
             var ds = slaveList(dbIdx)
 
-            val result = query_db(sql,params,keyTypes,ds)
-            if( result.rowCount != -1 )
+            val result = query_db(sql, params, keyTypes, ds)
+            if (result.rowCount != -1)
                 return result
         }
 
         var ds = masterList(dbIdx)
-        val result = query_db(sql,params,keyTypes,ds)
+        val result = query_db(sql, params, keyTypes, ds)
         return result
     }
 
-    def query_db(sql:String,params:ArrayBufferString,keyTypes:ArrayBuffer[Int], ds: DataSource):DbResults = {
+    def query_db(sql: String, params: ArrayBufferString, keyTypes: ArrayBuffer[Int], ds: DataSource): DbResults = {
 
-        var conn : java.sql.Connection = null
-        var ps : PreparedStatement = null
-        var rs : ResultSet = null
+        var conn: java.sql.Connection = null
+        var ps: PreparedStatement = null
+        var rs: ResultSet = null
 
         val ts1 = System.currentTimeMillis
 
-        if( log.isDebugEnabled() ) {
+        if (log.isDebugEnabled()) {
             var paramsstr = ""
-            if( params != null ) paramsstr = params.mkString(",")
-            log.debug("db query, sql=%s,value=%s".format(sql,paramsstr))
+            if (params != null) paramsstr = params.mkString(",")
+            log.debug("db query, sql=%s,value=%s".format(sql, paramsstr))
         }
 
-        val results = new ArrayBuffer[ ArrayBufferAny ] ()
+        val results = new ArrayBuffer[ArrayBufferAny]()
 
         var hasException = false
         try {
 
-            if( mode == DbLike.MODE_SYNC ) {
+            if (mode == DbLike.MODE_SYNC) {
                 conn = tl.get()
-            }else {
+            } else {
                 conn = ds.getConnection()
             }
 
             ps = conn.prepareStatement(sql)
 
-            prepare(ps,params,keyTypes)
+            prepare(ps, params, keyTypes)
 
             rs = ps.executeQuery()
 
             val metaData = rs.getMetaData()
             val columnCount = metaData.getColumnCount()
 
-            var fdt : java.text.SimpleDateFormat = null
+            var fdt: java.text.SimpleDateFormat = null
 
-            while( rs.next()) {
+            while (rs.next()) {
                 val row = new ArrayBufferAny()
-                var i=1
-                while(i <= columnCount) {
+                var i = 1
+                while (i <= columnCount) {
                     val colType = metaData.getColumnType(i)
 
-                    var value : Any = null
-                    var tmpValue : Any = null
+                    var value: Any = null
+                    var tmpValue: Any = null
 
                     colType match {
                         case Types.DATE =>
-                            if( fdt == null ) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                            if (fdt == null) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                             tmpValue = rs.getTimestamp(i)
-                        if( tmpValue != null ) {
-                            value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
-                        }
+                            if (tmpValue != null) {
+                                value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
+                            }
                         case Types.TIMESTAMP =>
-                            if( fdt == null ) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                            if (fdt == null) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                             tmpValue = rs.getTimestamp(i)
-                        if( tmpValue != null )
-                            value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
+                            if (tmpValue != null)
+                                value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
                         case _ =>
                             value = rs.getString(i)
                     }
 
                     row += value
-                    i+=1
+                    i += 1
                 }
 
                 results += row
             }
 
-
-            new DbResults(results.size,results)
+            new DbResults(results.size, results)
 
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 hasException = true
                 var paramsstr = ""
-                if( params != null ) paramsstr = params.mkString(",")
+                if (params != null) paramsstr = params.mkString(",")
                 val sqlCode = ErrorCodeUtils.parseSqlCode(e)
-            log.error("db query exception, e=%s,sql=%s,value=%s,sqlCode=%d".format(e.getMessage,sql,paramsstr,sqlCode))
-            new DbResults(-1,sqlCode)
+                log.error("db query exception, e=%s,sql=%s,value=%s,sqlCode=%d".format(e.getMessage, sql, paramsstr, sqlCode))
+                new DbResults(-1, sqlCode)
         } finally {
             closeResultSet(rs)
             rs = null
@@ -472,18 +479,18 @@ class DbLike extends Logging  {
             ps = null
 
             val ts = System.currentTimeMillis - ts1
-            if( ts >= longTimeSql ) {
-                log.warn("long time sql, sql="+sql+", ts=["+ts+"]ms")
+            if (ts >= longTimeSql) {
+                log.warn("long time sql, sql=" + sql + ", ts=[" + ts + "]ms")
             }
 
-            if( hasException ) {
+            if (hasException) {
 
-                if( mode == DbLike.MODE_SYNC ) {
+                if (mode == DbLike.MODE_SYNC) {
                     mustRollback()
                 }
 
             }
-            if( mode != DbLike.MODE_SYNC ) {
+            if (mode != DbLike.MODE_SYNC) {
                 closeConnection(conn)
                 conn = null
             }
@@ -491,32 +498,32 @@ class DbLike extends Logging  {
 
     }
 
-    def query_db_to_file(sql:String, params:ArrayBufferString, keyTypes:ArrayBuffer[Int], masterList: ArrayBuffer[DataSource], slaveList: ArrayBuffer[DataSource], dbIdx:Int,useSlave:Boolean = false ,saveToFile:String,splitter:String):DbResults = {
-        if( useSlave && slaveList != null && slaveList.size > 0 ) {
+    def query_db_to_file(sql: String, params: ArrayBufferString, keyTypes: ArrayBuffer[Int], masterList: ArrayBuffer[DataSource], slaveList: ArrayBuffer[DataSource], dbIdx: Int, useSlave: Boolean = false, saveToFile: String, splitter: String): DbResults = {
+        if (useSlave && slaveList != null && slaveList.size > 0) {
             var ds = slaveList(dbIdx)
 
-            val result = query_db_to_file(sql,params,keyTypes,ds,saveToFile,splitter)
-            if( result.rowCount != -1 )
+            val result = query_db_to_file(sql, params, keyTypes, ds, saveToFile, splitter)
+            if (result.rowCount != -1)
                 return result
         }
 
         var ds = masterList(dbIdx)
-        val result = query_db_to_file(sql,params,keyTypes,ds,saveToFile,splitter)
+        val result = query_db_to_file(sql, params, keyTypes, ds, saveToFile, splitter)
         return result
     }
 
-    def query_db_to_file(sql:String,params:ArrayBufferString,keyTypes:ArrayBuffer[Int], ds: DataSource,saveToFile:String,splitter:String):DbResults = {
+    def query_db_to_file(sql: String, params: ArrayBufferString, keyTypes: ArrayBuffer[Int], ds: DataSource, saveToFile: String, splitter: String): DbResults = {
 
-        var conn : java.sql.Connection = null
-        var ps : PreparedStatement = null
-        var rs : ResultSet = null
+        var conn: java.sql.Connection = null
+        var ps: PreparedStatement = null
+        var rs: ResultSet = null
 
         val ts1 = System.currentTimeMillis
 
-        if( log.isDebugEnabled() ) {
+        if (log.isDebugEnabled()) {
             var paramsstr = ""
-            if( params != null ) paramsstr = params.mkString(",")
-            log.debug("db query, sql=%s,value=%s".format(sql,paramsstr))
+            if (params != null) paramsstr = params.mkString(",")
+            log.debug("db query, sql=%s,value=%s".format(sql, paramsstr))
         }
 
         val localFile = new LocalFile(saveToFile)
@@ -525,50 +532,50 @@ class DbLike extends Logging  {
         var hasException = false
         try {
 
-            if( mode == DbLike.MODE_SYNC ) {
+            if (mode == DbLike.MODE_SYNC) {
                 conn = tl.get()
-            }else {
+            } else {
                 conn = ds.getConnection()
             }
 
             ps = conn.prepareStatement(sql)
 
-            prepare(ps,params,keyTypes)
+            prepare(ps, params, keyTypes)
 
             rs = ps.executeQuery()
 
             val metaData = rs.getMetaData()
             val columnCount = metaData.getColumnCount()
 
-            var fdt : java.text.SimpleDateFormat = null
+            var fdt: java.text.SimpleDateFormat = null
 
-            while( rs.next()) {
+            while (rs.next()) {
                 val row = new ArrayBufferAny()
-                var i=1
-                while(i <= columnCount) {
+                var i = 1
+                while (i <= columnCount) {
                     val colType = metaData.getColumnType(i)
 
-                    var value : Any = null
-                    var tmpValue : Any = null
+                    var value: Any = null
+                    var tmpValue: Any = null
 
                     colType match {
                         case Types.DATE =>
-                            if( fdt == null ) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                            if (fdt == null) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                             tmpValue = rs.getTimestamp(i)
-                        if( tmpValue != null ) {
-                            value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
-                        }
+                            if (tmpValue != null) {
+                                value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
+                            }
                         case Types.TIMESTAMP =>
-                            if( fdt == null ) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                            if (fdt == null) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                             tmpValue = rs.getTimestamp(i)
-                        if( tmpValue != null )
-                            value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
+                            if (tmpValue != null)
+                                value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
                         case _ =>
                             value = rs.getString(i)
                     }
 
                     row += value
-                    i+=1
+                    i += 1
                 }
 
                 totalRowCount += 1
@@ -576,22 +583,21 @@ class DbLike extends Logging  {
                 localFile.writeLine(line)
             }
 
-
-            val results = new ArrayBuffer[ ArrayBufferAny ] ()
-            val ret = new DbResults(totalRowCount,results)
+            val results = new ArrayBuffer[ArrayBufferAny]()
+            val ret = new DbResults(totalRowCount, results)
             ret
 
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 hasException = true
                 var paramsstr = ""
-                if( params != null ) paramsstr = params.mkString(",")
+                if (params != null) paramsstr = params.mkString(",")
                 val sqlCode = ErrorCodeUtils.parseSqlCode(e)
-            log.error("db query exception, e=%s,sql=%s,value=%s,sqlCode=%d".format(e.getMessage,sql,paramsstr,sqlCode))
-            new DbResults(-1,sqlCode)
+                log.error("db query exception, e=%s,sql=%s,value=%s,sqlCode=%d".format(e.getMessage, sql, paramsstr, sqlCode))
+                new DbResults(-1, sqlCode)
         } finally {
 
-            if( localFile != null ) localFile.close()
+            if (localFile != null) localFile.close()
 
             closeResultSet(rs)
             rs = null
@@ -599,18 +605,18 @@ class DbLike extends Logging  {
             ps = null
 
             val ts = System.currentTimeMillis - ts1
-            if( ts >= longTimeSql ) {
-                log.warn("long time sql, sql="+sql+", ts=["+ts+"]ms")
+            if (ts >= longTimeSql) {
+                log.warn("long time sql, sql=" + sql + ", ts=[" + ts + "]ms")
             }
 
-            if( hasException ) {
+            if (hasException) {
 
-                if( mode == DbLike.MODE_SYNC ) {
+                if (mode == DbLike.MODE_SYNC) {
                     mustRollback()
                 }
 
             }
-            if( mode != DbLike.MODE_SYNC ) {
+            if (mode != DbLike.MODE_SYNC) {
                 closeConnection(conn)
                 conn = null
             }
@@ -618,13 +624,13 @@ class DbLike extends Logging  {
 
     }
 
-    def query_db(sql:String, ds:DataSource, callback: QueryCallback):Int = {
+    def query_db(sql: String, ds: DataSource, callback: QueryCallback): Int = {
 
-        var conn : java.sql.Connection = null
-        var ps : Statement = null
-        var rs : ResultSet = null
+        var conn: java.sql.Connection = null
+        var ps: Statement = null
+        var rs: ResultSet = null
 
-        if( log.isDebugEnabled() ) {
+        if (log.isDebugEnabled()) {
             log.debug("db query, sql=%s".format(sql))
         }
 
@@ -644,39 +650,39 @@ class DbLike extends Logging  {
 
             var totalRowCount = 0
 
-            var fdt : java.text.SimpleDateFormat = null
-            while( rs.next()) {
+            var fdt: java.text.SimpleDateFormat = null
+            while (rs.next()) {
                 val row = new ArrayBufferString()
-                var i=1
-                while(i <= columnCount) {
+                var i = 1
+                while (i <= columnCount) {
                     val colType = metaData.getColumnType(i)
 
-                    var value : String = null
-                    var tmpValue : Any = null
+                    var value: String = null
+                    var tmpValue: Any = null
 
                     colType match {
                         case Types.DATE =>
-                            if( fdt == null ) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                            if (fdt == null) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                             tmpValue = rs.getTimestamp(i)
-                        if( tmpValue != null ) {
-                            value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
-                        }
+                            if (tmpValue != null) {
+                                value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
+                            }
                         case Types.TIMESTAMP =>
-                            if( fdt == null ) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+                            if (fdt == null) fdt = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                             tmpValue = rs.getTimestamp(i)
-                        if( tmpValue != null )
-                            value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
+                            if (tmpValue != null)
+                                value = fdt.format(tmpValue.asInstanceOf[java.util.Date])
                         case _ =>
                             value = rs.getString(i)
                     }
 
                     row += value
-                    i+=1
+                    i += 1
                 }
                 totalRowCount += 1
 
-                val continue = callback.process(totalRowCount,row)
-                if( !continue ) {
+                val continue = callback.process(totalRowCount, row)
+                if (!continue) {
                     return totalRowCount
                 }
             }
@@ -684,9 +690,9 @@ class DbLike extends Logging  {
             totalRowCount
 
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 hasException = true
-                log.error("db query exception, e=%s,sql=%s".format(e.getMessage,sql))
+                log.error("db query exception, e=%s,sql=%s".format(e.getMessage, sql))
                 -1
         } finally {
             closeResultSet(rs)
@@ -697,23 +703,23 @@ class DbLike extends Logging  {
             conn = null
 
             val ts = System.currentTimeMillis - ts1
-            if( ts >= longTimeSql ) {
-                log.warn("long time sql, sql="+sql+", ts=["+ts+"]ms")
+            if (ts >= longTimeSql) {
+                log.warn("long time sql, sql=" + sql + ", ts=[" + ts + "]ms")
             }
         }
 
     }
 
-    def update_db(sql:String,params:ArrayBufferString,keyTypes:ArrayBuffer[Int],dslist:ArrayBuffer[DataSource],dbIdx:Int,insert_id:Boolean = false):DbResults = {
+    def update_db(sql: String, params: ArrayBufferString, keyTypes: ArrayBuffer[Int], dslist: ArrayBuffer[DataSource], dbIdx: Int, insert_id: Boolean = false): DbResults = {
 
-        var conn : java.sql.Connection = null
-        var ps : PreparedStatement = null
+        var conn: java.sql.Connection = null
+        var ps: PreparedStatement = null
 
-        if( log.isDebugEnabled() ) {
+        if (log.isDebugEnabled()) {
             var paramsstr = ""
-            if( params != null ) paramsstr = params.mkString(",")
+            if (params != null) paramsstr = params.mkString(",")
 
-            log.debug("db update, sql=%s,value=%s".format(sql,paramsstr))
+            log.debug("db update, sql=%s,value=%s".format(sql, paramsstr))
         }
 
         val ts1 = System.currentTimeMillis
@@ -724,290 +730,290 @@ class DbLike extends Logging  {
 
         try {
 
-            if( mode == DbLike.MODE_SYNC ) {
+            if (mode == DbLike.MODE_SYNC) {
                 conn = tl.get()
-            }else {
+            } else {
                 conn = ds.getConnection()
                 conn.setAutoCommit(true)
             }
 
-            if( insert_id )
-                ps = conn.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS)
+            if (insert_id)
+                ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
             else
                 ps = conn.prepareStatement(sql)
 
-            prepare(ps,params,keyTypes)
+            prepare(ps, params, keyTypes)
 
             val rows = ps.executeUpdate()
 
             val ret = new DbResults(rows)
-            if( insert_id ) {
+            if (insert_id) {
                 ret.insert_ids = ArrayBufferString()
                 val rs = ps.getGeneratedKeys()
-                if(rs.next()){
+                if (rs.next()) {
                     ret.insert_ids += String.valueOf(rs.getLong(1))
                 }
             }
             ret
 
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 hasException = true
                 var paramsstr = ""
-                if( params != null ) paramsstr = params.mkString(",")
+                if (params != null) paramsstr = params.mkString(",")
 
                 val sqlCode = ErrorCodeUtils.parseSqlCode(e)
-                log.error("db update exception, e=%s,sql=%s,value=%s,sqlCode=%d".format(e.getMessage,sql,paramsstr,sqlCode))
-                new DbResults(-1,sqlCode)
+                log.error("db update exception, e=%s,sql=%s,value=%s,sqlCode=%d".format(e.getMessage, sql, paramsstr, sqlCode))
+                new DbResults(-1, sqlCode)
         } finally {
             closeStatement(ps)
             ps = null
 
             val ts = System.currentTimeMillis - ts1
-            if( ts >= longTimeSql ) {
-                log.warn("long time sql, sql="+sql+", ts=["+ts+"]ms")
+            if (ts >= longTimeSql) {
+                log.warn("long time sql, sql=" + sql + ", ts=[" + ts + "]ms")
             }
 
-            if( hasException ) {
+            if (hasException) {
 
-                if( mode == DbLike.MODE_SYNC ) {
+                if (mode == DbLike.MODE_SYNC) {
                     mustRollback()
                 }
 
             }
-            if( mode != DbLike.MODE_SYNC ) {
+            if (mode != DbLike.MODE_SYNC) {
                 closeConnection(conn)
                 conn = null
             }
         }
     }
 
-    def update_db_multi(sqls_buff:ArrayBuffer[String],params_buff:ArrayBuffer[ArrayBufferString],
-        keytypes_buff:ArrayBuffer[ArrayBuffer[Int]],
-        dslist:ArrayBuffer[DataSource],dbIdx:Int,insert_id:Boolean = false):DbResults = {
+    def update_db_multi(sqls_buff: ArrayBuffer[String], params_buff: ArrayBuffer[ArrayBufferString],
+                        keytypes_buff: ArrayBuffer[ArrayBuffer[Int]],
+                        dslist: ArrayBuffer[DataSource], dbIdx: Int, insert_id: Boolean = false): DbResults = {
 
-            var conn : java.sql.Connection = null
-            var ps_buff = new ArrayBuffer[PreparedStatement]()
-            var ds = dslist(dbIdx)
+        var conn: java.sql.Connection = null
+        var ps_buff = new ArrayBuffer[PreparedStatement]()
+        var ds = dslist(dbIdx)
 
-            if( log.isDebugEnabled() ) {
+        if (log.isDebugEnabled()) {
 
-                for(i <- 0 until sqls_buff.size ) {
-                    val sql = sqls_buff(i)
-                    val params = params_buff(i)
-                    var paramsstr = ""
-                    if( params != null ) paramsstr = params.mkString(",")
+            for (i <- 0 until sqls_buff.size) {
+                val sql = sqls_buff(i)
+                val params = params_buff(i)
+                var paramsstr = ""
+                if (params != null) paramsstr = params.mkString(",")
 
-                    log.debug("db update multi #%d, sql=%s,value=%s".format(i+1,sql,paramsstr))
-                }
-
+                log.debug("db update multi #%d, sql=%s,value=%s".format(i + 1, sql, paramsstr))
             }
-            val ts1 = System.currentTimeMillis
 
-            var hasException = false
+        }
+        val ts1 = System.currentTimeMillis
 
-            var totalrows = 0
+        var hasException = false
 
-            try {
+        var totalrows = 0
 
-                if( mode == DbLike.MODE_SYNC ) {
-                    conn = tl.get()
-                }else {
-                    conn = ds.getConnection()
-                    conn.setAutoCommit(false)
-                }
+        try {
 
-                var sqlii = 0
+            if (mode == DbLike.MODE_SYNC) {
+                conn = tl.get()
+            } else {
+                conn = ds.getConnection()
+                conn.setAutoCommit(false)
+            }
 
-                val insert_ids = ArrayBufferString()
-                while( sqlii < sqls_buff.size ) {
+            var sqlii = 0
 
-                    var ps : PreparedStatement = null
-                    if( insert_id )
-                        ps = conn.prepareStatement(sqls_buff(sqlii),Statement.RETURN_GENERATED_KEYS)
-                    else
-                        ps = conn.prepareStatement(sqls_buff(sqlii))
+            val insert_ids = ArrayBufferString()
+            while (sqlii < sqls_buff.size) {
 
-                    val params = params_buff(sqlii)
-                    val keytypes = keytypes_buff(sqlii)
-                    prepare(ps,params,keytypes)
+                var ps: PreparedStatement = null
+                if (insert_id)
+                    ps = conn.prepareStatement(sqls_buff(sqlii), Statement.RETURN_GENERATED_KEYS)
+                else
+                    ps = conn.prepareStatement(sqls_buff(sqlii))
 
-                    ps_buff += ps
-                    val rows = ps.executeUpdate()
+                val params = params_buff(sqlii)
+                val keytypes = keytypes_buff(sqlii)
+                prepare(ps, params, keytypes)
 
-                    if( insert_id ) {
-                        val rs = ps.getGeneratedKeys()
-                        while(rs.next()){
-                            insert_ids += String.valueOf(rs.getLong(1))
-                        }
+                ps_buff += ps
+                val rows = ps.executeUpdate()
+
+                if (insert_id) {
+                    val rs = ps.getGeneratedKeys()
+                    while (rs.next()) {
+                        insert_ids += String.valueOf(rs.getLong(1))
                     }
-
-                    totalrows += rows
-                    sqlii += 1
                 }
 
-                val results = new DbResults(totalrows)
-                results.insert_ids = insert_ids
+                totalrows += rows
+                sqlii += 1
+            }
 
-                if( mode != DbLike.MODE_SYNC ) {
-                    conn.commit()
-                    conn.setAutoCommit(true)
-                }
+            val results = new DbResults(totalrows)
+            results.insert_ids = insert_ids
 
+            if (mode != DbLike.MODE_SYNC) {
+                conn.commit()
+                conn.setAutoCommit(true)
+            }
+
+            results
+
+        } catch {
+            case e: Throwable => {
+                hasException = true
+
+                var paramsstr = ""
+                if (params_buff != null) paramsstr = params_buff.mkString("^_^")
+
+                val sqlCode = ErrorCodeUtils.parseSqlCode(e)
+                log.error("db update multi exception, e=%s,sqls=%s,values=%s,sqlcode=%d".format(e.getMessage, sqls_buff.mkString("^_^"), paramsstr, sqlCode))
+                val results = new DbResults(-1, sqlCode)
                 results
-
-            } catch {
-                case e:Throwable => {
-                    hasException = true
-
-                    var paramsstr = ""
-                    if( params_buff != null ) paramsstr = params_buff.mkString("^_^")
-
-                    val sqlCode = ErrorCodeUtils.parseSqlCode(e)
-                    log.error("db update multi exception, e=%s,sqls=%s,values=%s,sqlcode=%d".format(e.getMessage,sqls_buff.mkString("^_^"),paramsstr,sqlCode))
-                    val results = new DbResults(-1,sqlCode)
-                    results
-                }
-            } finally {
-                closeStatements(ps_buff)
-                ps_buff.clear()
-
-                val ts = System.currentTimeMillis - ts1
-                if( ts >= longTimeSql ) {
-                    log.warn("long time sql, sqls="+sqls_buff.mkString("^_^")+", ts=["+ts+"]ms")
-                }
-
-                if( hasException ) {
-
-                    if( mode == DbLike.MODE_SYNC ) {
-                        mustRollback()
-                    } else {
-                        try { conn.rollback() } catch {case e:Throwable => log.error("rollback error") };
-                        try { conn.setAutoCommit(true) } catch {case e:Throwable => log.error("set autocommit error") };
-                    }
-
-                }
-
-                if( mode != DbLike.MODE_SYNC ) {
-                    closeConnection(conn)
-                    conn = null
-                }
             }
+        } finally {
+            closeStatements(ps_buff)
+            ps_buff.clear()
+
+            val ts = System.currentTimeMillis - ts1
+            if (ts >= longTimeSql) {
+                log.warn("long time sql, sqls=" + sqls_buff.mkString("^_^") + ", ts=[" + ts + "]ms")
+            }
+
+            if (hasException) {
+
+                if (mode == DbLike.MODE_SYNC) {
+                    mustRollback()
+                } else {
+                    try { conn.rollback() } catch { case e: Throwable => log.error("rollback error") };
+                    try { conn.setAutoCommit(true) } catch { case e: Throwable => log.error("set autocommit error") };
+                }
+
+            }
+
+            if (mode != DbLike.MODE_SYNC) {
+                closeConnection(conn)
+                conn = null
+            }
+        }
 
     }
 
-    def update_db_batch(sql:String,params_buff:ArrayBuffer[ArrayBufferString],
-        keytypes: ArrayBuffer[Int] ,
-        dslist:ArrayBuffer[DataSource],dbIdx:Int,insert_id:Boolean = false):DbResults = {
+    def update_db_batch(sql: String, params_buff: ArrayBuffer[ArrayBufferString],
+                        keytypes: ArrayBuffer[Int],
+                        dslist: ArrayBuffer[DataSource], dbIdx: Int, insert_id: Boolean = false): DbResults = {
 
-            var conn : java.sql.Connection = null
-            var ps : PreparedStatement = null
+        var conn: java.sql.Connection = null
+        var ps: PreparedStatement = null
 
-            var ds = dslist(dbIdx)
+        var ds = dslist(dbIdx)
 
-            if( log.isDebugEnabled() ) {
-                log.debug("db update batch, sql=%s".format(sql))
+        if (log.isDebugEnabled()) {
+            log.debug("db update batch, sql=%s".format(sql))
+        }
+        val ts1 = System.currentTimeMillis
+
+        var hasException = false
+
+        try {
+
+            if (mode == DbLike.MODE_SYNC) {
+                conn = tl.get()
+            } else {
+                conn = ds.getConnection()
+                conn.setAutoCommit(false)
             }
-            val ts1 = System.currentTimeMillis
 
-            var hasException = false
+            if (insert_id)
+                ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)
+            else
+                ps = conn.prepareStatement(sql)
 
-            try {
+            var i = 0
+            while (i < params_buff.size) {
+                val params = params_buff(i)
+                prepare(ps, params, keytypes)
+                ps.addBatch()
+                i += 1
+            }
 
-                if( mode == DbLike.MODE_SYNC ) {
-                    conn = tl.get()
-                }else {
-                    conn = ds.getConnection()
-                    conn.setAutoCommit(false)
+            // SUCCESS_NO_INFO = -2, EXECUTE_FAILED = -3
+
+            val rows = ps.executeBatch()
+            var totalrows = 0
+            i = 0
+            while (i < rows.size) {
+                if (rows(i) >= 0) {
+                    totalrows += rows(i)
                 }
+                i += 1
+            }
 
-                if( insert_id )
-                    ps = conn.prepareStatement(sql,Statement.RETURN_GENERATED_KEYS)
-                else
-                    ps = conn.prepareStatement(sql)
-
-                var i = 0
-                while( i < params_buff.size ) {
-                    val params = params_buff(i)
-                    prepare(ps,params,keytypes)
-                    ps.addBatch()
-                    i += 1
+            val results = new DbResults(totalrows)
+            if (insert_id) {
+                results.insert_ids = ArrayBufferString()
+                val rs = ps.getGeneratedKeys()
+                while (rs.next()) {
+                    results.insert_ids += String.valueOf(rs.getLong(1))
                 }
+            }
 
-                // SUCCESS_NO_INFO = -2, EXECUTE_FAILED = -3
+            if (mode != DbLike.MODE_SYNC) {
+                conn.commit()
+                conn.setAutoCommit(true)
+            }
 
-                val rows = ps.executeBatch()
-                var totalrows = 0
-                i = 0
-                while( i< rows.size ) {
-                    if( rows(i) >= 0 ) {
-                        totalrows += rows(i)
-                    }
-                    i += 1
-                }
+            results
 
-                val results = new DbResults(totalrows)
-                if( insert_id ) {
-                    results.insert_ids = ArrayBufferString()
-                    val rs = ps.getGeneratedKeys()
-                    while(rs.next()){
-                        results.insert_ids += String.valueOf(rs.getLong(1))
-                    }
-                }
-
-                if( mode != DbLike.MODE_SYNC ) {
-                    conn.commit()
-                    conn.setAutoCommit(true)
-                }
-
+        } catch {
+            case e: Throwable => {
+                hasException = true
+                val sqlCode = ErrorCodeUtils.parseSqlCode(e)
+                log.error("db update batch exception, e=%s,sql=%s,sqlCode=%d".format(e.getMessage, sql, sqlCode))
+                val results = new DbResults(-1, sqlCode)
                 results
-
-            } catch {
-                case e:Throwable => {
-                    hasException = true
-                    val sqlCode = ErrorCodeUtils.parseSqlCode(e)
-                    log.error("db update batch exception, e=%s,sql=%s,sqlCode=%d".format(e.getMessage,sql,sqlCode))
-                    val results = new DbResults(-1,sqlCode)
-                    results
-                }
-            } finally {
-                closeStatement(ps)
-                ps = null
-
-                val ts = System.currentTimeMillis - ts1
-                if( ts >= longTimeSql ) {
-                    log.warn("long time sql, sql="+sql+", ts=["+ts+"]ms")
-                }
-
-                if( hasException ) {
-
-                    if( mode == DbLike.MODE_SYNC ) {
-                        mustRollback()
-                    } else {
-                        try { conn.rollback() } catch {case e:Throwable => log.error("rollback error") };
-                        try { conn.setAutoCommit(true) } catch {case e:Throwable => log.error("set autocommit error") };
-                    }
-
-                }
-
-                if( mode != DbLike.MODE_SYNC ) {
-                    closeConnection(conn)
-                    conn = null
-                }
             }
+        } finally {
+            closeStatement(ps)
+            ps = null
+
+            val ts = System.currentTimeMillis - ts1
+            if (ts >= longTimeSql) {
+                log.warn("long time sql, sql=" + sql + ", ts=[" + ts + "]ms")
+            }
+
+            if (hasException) {
+
+                if (mode == DbLike.MODE_SYNC) {
+                    mustRollback()
+                } else {
+                    try { conn.rollback() } catch { case e: Throwable => log.error("rollback error") };
+                    try { conn.setAutoCommit(true) } catch { case e: Throwable => log.error("set autocommit error") };
+                }
+
+            }
+
+            if (mode != DbLike.MODE_SYNC) {
+                closeConnection(conn)
+                conn = null
+            }
+        }
 
     }
 
     def checkBindConnection() {
         val conn = tl.get()
-        if( conn == null )
+        if (conn == null)
             throw new RuntimeException("beginTransaction not called")
     }
 
-    def beginTransaction(ds:DataSource) {
+    def beginTransaction(ds: DataSource) {
 
         var conn = tl.get()
-        if( conn != null )
+        if (conn != null)
             throw new RuntimeException("beginTransaction already called")
 
         conn = ds.getConnection()
@@ -1018,7 +1024,7 @@ class DbLike extends Logging  {
     def commit() {
 
         var conn = tl.get()
-        if( conn == null )
+        if (conn == null)
             throw new RuntimeException("beginTransaction not called")
 
         try {
@@ -1026,7 +1032,7 @@ class DbLike extends Logging  {
             conn.commit()
             conn.setAutoCommit(true)
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 mustRollback()
                 throw e
         } finally {
@@ -1039,7 +1045,7 @@ class DbLike extends Logging  {
     def rollback() {
 
         var conn = tl.get()
-        if( conn == null ) return // allow rollback to be called more than one time
+        if (conn == null) return // allow rollback to be called more than one time
 
         try {
             tl.remove()
@@ -1056,60 +1062,59 @@ class DbLike extends Logging  {
         try {
             rollback()
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 log.error("rollback error")
         }
     }
 
-
-    def closeResultSet(rs:java.sql.ResultSet) {
-        if( rs != null ) {
+    def closeResultSet(rs: java.sql.ResultSet) {
+        if (rs != null) {
             try {
                 rs.close();
             } catch {
-                case e:Throwable =>
+                case e: Throwable =>
                     log.error("close result error")
             };
         }
     }
 
-    def closeStatement(ps:java.sql.Statement) {
-        if( ps != null ) {
+    def closeStatement(ps: java.sql.Statement) {
+        if (ps != null) {
             try {
                 ps.close();
             } catch {
-                case e:Throwable =>
+                case e: Throwable =>
                     log.error("close statement error")
             };
         }
     }
 
-    def closeStatement(ps:java.sql.PreparedStatement) {
-        if( ps != null ) {
+    def closeStatement(ps: java.sql.PreparedStatement) {
+        if (ps != null) {
             try {
                 ps.close();
             } catch {
-                case e:Throwable =>
+                case e: Throwable =>
                     log.error("close statement error")
             };
         }
     }
 
-    def closeStatements(ps_buff:ArrayBuffer[PreparedStatement]) {
+    def closeStatements(ps_buff: ArrayBuffer[PreparedStatement]) {
         var i = 0
-        while( i< ps_buff.size) {
+        while (i < ps_buff.size) {
             val ps = ps_buff(i)
             closeStatement(ps)
             i += 1
         }
     }
 
-    def closeConnection(conn:java.sql.Connection) {
-        if( conn != null ) {
+    def closeConnection(conn: java.sql.Connection) {
+        if (conn != null) {
             try {
                 conn.close();
             } catch {
-                case e:Throwable =>
+                case e: Throwable =>
                     log.error("close connection error")
             };
         }
@@ -1118,7 +1123,6 @@ class DbLike extends Logging  {
 }
 
 object ErrorCodeUtils extends Logging {
-
 
     /*
 
@@ -1238,36 +1242,36 @@ object ErrorCodeUtils extends Logging {
     val connReg2 = """^.*Connection refused.*$""".r
     val connReg3 = """^.*No suitable driver.*$""".r
 
-    val unknown_sql_errorcode  = 99999997
-    val timeout_errorcode      = 99999998
-    val connect_errorcode      = 99999999
+    val unknown_sql_errorcode = 99999997
+    val timeout_errorcode = 99999998
+    val connect_errorcode = 99999999
 
-    val oracleConnectionErrorCodes = scala.Array(1012,1017,28,1092,1093,1094,2134,3113,3114,1090,1034,12505,12560,17002,17447,1683,1653 )
-    val mysqlConnectionErrorCodes = scala.Array(1045,1)
+    val oracleConnectionErrorCodes = scala.Array(1012, 1017, 28, 1092, 1093, 1094, 2134, 3113, 3114, 1090, 1034, 12505, 12560, 17002, 17447, 1683, 1653)
+    val mysqlConnectionErrorCodes = scala.Array(1045, 1)
     val sqlserverConnectionErrorCodes = scala.Array(4060)
 
     def mergeLines(ss: String): String = {
-        var sss = ss.replace("\n\r"," ").replace("\r"," ").replace("\n"," ")
+        var sss = ss.replace("\n\r", " ").replace("\r", " ").replace("\n", " ")
         sss
     }
 
-    def parseErrorCode(ds:DataSource, e: Throwable): Int = {
+    def parseErrorCode(ds: DataSource, e: Throwable): Int = {
         val sqlCode = parseSqlCode(e)
-        sqlCodeToErrorCode(ds,sqlCode)
+        sqlCodeToErrorCode(ds, sqlCode)
     }
 
     def parseSqlCode(e: Throwable): Int = {
 
         val sqle = fetchSQLException(e)
-        if( sqle == null ) return unknown_sql_errorcode
+        if (sqle == null) return unknown_sql_errorcode
 
         var code = sqle.getErrorCode // errorCode may be not correct
-        if( code != 0 ) return code
-        if( sqle.getMessage == null ) return unknown_sql_errorcode
+        if (code != 0) return code
+        if (sqle.getMessage == null) return unknown_sql_errorcode
 
         val ss = mergeLines(sqle.getMessage)
-        if( log.isDebugEnabled) {
-            log.debug("sql e:"+ss)
+        if (log.isDebugEnabled) {
+            log.debug("sql e:" + ss)
         }
 
         ss match {
@@ -1292,17 +1296,17 @@ object ErrorCodeUtils extends Logging {
         }
     }
 
-    def sqlCodeToErrorCode(ds:DataSource, sqlCode:Int): Int = {
+    def sqlCodeToErrorCode(ds: DataSource, sqlCode: Int): Int = {
 
         val dbType = DbLike.getDbType(ds)
-        val codes = if( dbType == "oracle") oracleConnectionErrorCodes else if( dbType == "sqlserver") sqlserverConnectionErrorCodes else mysqlConnectionErrorCodes
+        val codes = if (dbType == "oracle") oracleConnectionErrorCodes else if (dbType == "sqlserver") sqlserverConnectionErrorCodes else mysqlConnectionErrorCodes
 
-        if( sqlCode == timeout_errorcode ) return ResultCodes.DB_TIMEOUT
-        if( sqlCode == connect_errorcode ) return ResultCodes.DB_CONN_FAILED
-        if( sqlCode == unknown_sql_errorcode ) return ResultCodes.DB_ERROR
+        if (sqlCode == timeout_errorcode) return ResultCodes.DB_TIMEOUT
+        if (sqlCode == connect_errorcode) return ResultCodes.DB_CONN_FAILED
+        if (sqlCode == unknown_sql_errorcode) return ResultCodes.DB_ERROR
 
-        for(code <- codes) {
-            if( code == sqlCode ) {
+        for (code <- codes) {
+            if (code == sqlCode) {
                 return ResultCodes.DB_CONN_FAILED
             }
         }
@@ -1311,26 +1315,26 @@ object ErrorCodeUtils extends Logging {
 
     }
 
-    def fetchSQLException(se:Throwable): SQLException = {
+    def fetchSQLException(se: Throwable): SQLException = {
 
         var e = se
-        var t : Throwable = null
+        var t: Throwable = null
         var needBreak = false
 
-        while(!needBreak) {
+        while (!needBreak) {
             t = e.getCause()
-            if( t == null ) needBreak = true
-            else if( t == e ) needBreak = true
+            if (t == null) needBreak = true
+            else if (t == e) needBreak = true
             else e = t
         }
 
-        if( e.isInstanceOf[SQLException]) {
+        if (e.isInstanceOf[SQLException]) {
             val sqle = e.asInstanceOf[SQLException]
             return sqle
         }
 
-        if( e.getMessage() != null ) {
-            return new SQLException(e.getMessage(),null,0)
+        if (e.getMessage() != null) {
+            return new SQLException(e.getMessage(), null, 0)
         }
 
         return null

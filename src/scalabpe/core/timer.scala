@@ -1,10 +1,14 @@
 package scalabpe.core
 
-import java.util.concurrent.atomic.{AtomicBoolean,AtomicInteger}
 import java.util.concurrent.ConcurrentLinkedQueue
-import scala.collection.mutable.{HashMap,Queue,ArrayBuffer}
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
-class QuickTimer (val expireTime:Long,val data:Any,val cancelled:AtomicBoolean, val timeoutFunctionId: Int = 0) {
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.Queue
+
+class QuickTimer(val expireTime: Long, val data: Any, val cancelled: AtomicBoolean, val timeoutFunctionId: Int = 0) {
 
     def cancel() {
         cancelled.set(true)
@@ -15,21 +19,21 @@ object QuickTimerEngine {
     val count = new AtomicInteger(1)
 }
 
-class QuickTimerEngine (val timeoutFunction: (Any)=>Unit,val checkInterval:Int = 100) extends Logging with Dumpable {
+class QuickTimerEngine(val timeoutFunction: (Any) => Unit, val checkInterval: Int = 100) extends Logging with Dumpable {
 
-    val queueMap = new HashMap[ Int, Queue[QuickTimer] ]()
-    val waitingList = new ConcurrentLinkedQueue[ Tuple2[Int,QuickTimer] ]()
+    val queueMap = new HashMap[Int, Queue[QuickTimer]]()
+    val waitingList = new ConcurrentLinkedQueue[Tuple2[Int, QuickTimer]]()
 
     val shutdown = new AtomicBoolean()
     val shutdownFinished = new AtomicBoolean()
 
-    val timeoutFunctions = new ArrayBuffer[ (Any)=>Unit ]
+    val timeoutFunctions = new ArrayBuffer[(Any) => Unit]
 
-    val thread = new Thread( new Runnable() {
+    val thread = new Thread(new Runnable() {
         def run() {
             service()
         }
-    } )
+    })
 
     init
 
@@ -40,8 +44,8 @@ class QuickTimerEngine (val timeoutFunction: (Any)=>Unit,val checkInterval:Int =
         buff.append("threads=1").append(",")
         buff.append("waitingList.size=").append(waitingList.size).append(",")
 
-        for( (t,q) <- queueMap ) {
-            buff.append("timeout("+t+").size=").append(q.size).append(",")
+        for ((t, q) <- queueMap) {
+            buff.append("timeout(" + t + ").size=").append(q.size).append(",")
         }
 
         log.info(buff.toString)
@@ -51,88 +55,87 @@ class QuickTimerEngine (val timeoutFunction: (Any)=>Unit,val checkInterval:Int =
     def init() {
 
         timeoutFunctions += timeoutFunction
-        thread.setName("QuickTimerEngine-"+QuickTimerEngine.count.getAndIncrement())
+        thread.setName("QuickTimerEngine-" + QuickTimerEngine.count.getAndIncrement())
         thread.start()
     }
 
-    def registerAdditionalTimeoutFunction(tf: (Any)=>Unit): Int = {
+    def registerAdditionalTimeoutFunction(tf: (Any) => Unit): Int = {
         timeoutFunctions += tf
-        timeoutFunctions.size-1
+        timeoutFunctions.size - 1
     }
 
     def close() {
 
         shutdown.set(true)
         thread.interrupt()
-        while(!shutdownFinished.get()) {
+        while (!shutdownFinished.get()) {
             Thread.sleep(15)
         }
 
     }
 
-    def newTimer(timeout:Int,data:Any,timeoutFunctionId:Int = 0) : QuickTimer = {
+    def newTimer(timeout: Int, data: Any, timeoutFunctionId: Int = 0): QuickTimer = {
         val expireTime = System.currentTimeMillis + timeout
-        val timer = new QuickTimer(expireTime,data,new AtomicBoolean(),timeoutFunctionId)
-        val tp = (timeout,timer)
+        val timer = new QuickTimer(expireTime, data, new AtomicBoolean(), timeoutFunctionId)
+        val tp = (timeout, timer)
         waitingList.offer(tp)
         timer
     }
 
     def checkTimeout() {
 
-        while( !waitingList.isEmpty() ) {
+        while (!waitingList.isEmpty()) {
 
-            val (timeout,timer) = waitingList.poll()
+            val (timeout, timer) = waitingList.poll()
 
-            var queue = queueMap.getOrElse(timeout,null)
-            if( queue == null ) {
+            var queue = queueMap.getOrElse(timeout, null)
+            if (queue == null) {
                 queue = new Queue[QuickTimer]()
-                queueMap.put(timeout,queue)
+                queueMap.put(timeout, queue)
             }
             queue.enqueue(timer)
         }
 
         val now = System.currentTimeMillis
 
-        for( queue <- queueMap.values ) {
+        for (queue <- queueMap.values) {
 
             var finished = false
-            while(!finished && queue.size>0) {
+            while (!finished && queue.size > 0) {
                 val first = queue.head
 
-                if( first.cancelled.get() ) {
+                if (first.cancelled.get()) {
                     queue.dequeue
-                } else if( first.expireTime <= now ) {
+                } else if (first.expireTime <= now) {
 
-                    if( first.timeoutFunctionId <= 0 ) {
+                    if (first.timeoutFunctionId <= 0) {
 
                         try {
                             timeoutFunction(first.data)
                         } catch {
-                            case e : Throwable =>
-                                log.error("timer callback function exception e={}",e.getMessage)
+                            case e: Throwable =>
+                                log.error("timer callback function exception e={}", e.getMessage)
                         }
-                        } else {
-
-                            if( first.timeoutFunctionId >= timeoutFunctions.size ) {
-                                log.error("timer timeoutFunctionId not found, timeoutFunctionId={}",first.timeoutFunctionId)
-                            } else {
-                                val tf = timeoutFunctions(first.timeoutFunctionId)
-                                try {
-                                    tf(first.data)
-                                } catch {
-                                    case e : Throwable =>
-                                        log.error("timer callback function exception e={}",e.getMessage)
-                                }
-                            }
-
-
-                        }
-
-                        queue.dequeue
                     } else {
-                        finished = true
+
+                        if (first.timeoutFunctionId >= timeoutFunctions.size) {
+                            log.error("timer timeoutFunctionId not found, timeoutFunctionId={}", first.timeoutFunctionId)
+                        } else {
+                            val tf = timeoutFunctions(first.timeoutFunctionId)
+                            try {
+                                tf(first.data)
+                            } catch {
+                                case e: Throwable =>
+                                    log.error("timer callback function exception e={}", e.getMessage)
+                            }
+                        }
+
                     }
+
+                    queue.dequeue
+                } else {
+                    finished = true
+                }
             }
 
         }
@@ -141,19 +144,19 @@ class QuickTimerEngine (val timeoutFunction: (Any)=>Unit,val checkInterval:Int =
 
     def service() {
 
-        while(!shutdown.get()) {
+        while (!shutdown.get()) {
 
-            try{
+            try {
                 checkTimeout()
             } catch {
-                case e : Throwable =>
-                    log.error("checkTimeout exception, e={}",e.getMessage)
+                case e: Throwable =>
+                    log.error("checkTimeout exception, e={}", e.getMessage)
             }
 
-            try{
+            try {
                 Thread.sleep(checkInterval)
             } catch {
-                case e : Throwable =>
+                case e: Throwable =>
                     ;
             }
         }

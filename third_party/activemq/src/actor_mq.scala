@@ -3,11 +3,11 @@ package scalabpe.plugin
 import java.util.concurrent._
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.Date
-import java.io.{File,StringWriter}
+import java.io.{ File, StringWriter }
 import java.text.SimpleDateFormat
 import javax.jms._
 import scala.xml._
-import scala.collection.mutable.{ArrayBuffer,HashMap,HashSet}
+import scala.collection.mutable.{ ArrayBuffer, HashMap, HashSet }
 
 import org.apache.activemq._
 
@@ -29,27 +29,26 @@ import scalabpe.core._
 "Timer-0" prio=10 tid=0x9c7d3000 nid=0x40f2 in Object.wait() [0x9befe000]  for each persist queue manager
  */
 
-class DestinationCfg(val queueName:String, val persistent:Boolean = true)
-class MqConn(val brokerUrl:String, val username:String, val password:String)
-
+class DestinationCfg(val queueName: String, val persistent: Boolean = true)
+class MqConn(val brokerUrl: String, val username: String, val password: String)
 
 object MqActor {
     val localDirs = new HashSet[String]()
 }
 
-class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging with Closable  with SelfCheckLike with Dumpable {
+class MqActor(val router: Router, val cfgNode: Node) extends Actor with Logging with Closable with SelfCheckLike with Dumpable {
 
     val connReg = """^service=([^ ]+)[ ]+username=([^ ]+)[ ]+password=([^ ]+)$""".r
-    val mqClients = new HashMap[Int,MqClient]()
+    val mqClients = new HashMap[Int, MqClient]()
 
-    var serviceIds : String = _
+    var serviceIds: String = _
 
     val threadNum = 1
     val queueSize = 20000
-    var threadFactory : ThreadFactory = _
-    var pool : ThreadPoolExecutor = _
+    var threadFactory: ThreadFactory = _
+    var pool: ThreadPoolExecutor = _
 
-    var persistQueueManager : PersistQueueManagerImpl = _
+    var persistQueueManager: PersistQueueManagerImpl = _
 
     val sendThreads = new ArrayBuffer[Thread]()
     val jsonFactory = new JsonFactory()
@@ -57,7 +56,7 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
 
     val hasIOException = new AtomicBoolean()
 
-    var pluginObj : MqSelialize = _
+    var pluginObj: MqSelialize = _
 
     init
 
@@ -82,7 +81,7 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
         buff1.append("queue size ")
         buff2.append("queue cacheSize ")
         val queueNames = persistQueueManager.getQueueNames
-        for( i <- 0 until queueNames.size ) {
+        for (i <- 0 until queueNames.size) {
             val queue = persistQueueManager.getQueue(queueNames.get(i))
             buff1.append(queueNames.get(i)).append("=").append(queue.size).append(",")
             buff2.append(queueNames.get(i)).append("=").append(queue.cacheSize).append(",")
@@ -91,37 +90,36 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
         log.info(buff2.toString)
     }
 
-
     def init() {
 
         serviceIds = (cfgNode \ "ServiceId").text
 
         var localDir = (cfgNode \ "LocalDir").text
-        if( localDir == "" ) {
+        if (localDir == "") {
             localDir = "data" + File.separator + "mq"
         }
 
         val s = (cfgNode \ "@plugin").text.toString
-        if( s != "" ) {
+        if (s != "") {
 
             val plugin = s
             try {
 
                 val obj = Class.forName(plugin).getConstructors()(0).newInstance()
-                if( !obj.isInstanceOf[MqSelialize] ) {
+                if (!obj.isInstanceOf[MqSelialize]) {
                     throw new RuntimeException("plugin %s is not MqSelialize".format(plugin))
                 }
                 pluginObj = obj.asInstanceOf[MqSelialize]
 
             } catch {
-                case e:Exception =>
+                case e: Exception =>
                     log.error("plugin {} cannot be loaded", plugin)
                     throw e
             }
 
         }
 
-        if( MqActor.localDirs.contains(localDir) ) {
+        if (MqActor.localDirs.contains(localDir)) {
             throw new RuntimeException("Mq localDir cannot be the same, the default is data/mq")
         }
         MqActor.localDirs.add(localDir)
@@ -132,33 +130,33 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
         persistQueueManager.init()
 
         val firstServiceId = serviceIds.split(",")(0)
-        threadFactory = new NamedThreadFactory("mq"+firstServiceId)
-        pool = new ThreadPoolExecutor(threadNum, threadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
+        threadFactory = new NamedThreadFactory("mq" + firstServiceId)
+        pool = new ThreadPoolExecutor(threadNum, threadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize), threadFactory)
         pool.prestartAllCoreThreads()
 
         val serviceIdArray = serviceIds.split(",").map(_.toInt)
-        for( serviceId <- serviceIdArray ) {
+        for (serviceId <- serviceIdArray) {
             val codec = router.codecs.findTlvCodec(serviceId)
 
-            if( codec == null ) {
-                throw new RuntimeException("serviceId not found, serviceId="+serviceId)
+            if (codec == null) {
+                throw new RuntimeException("serviceId not found, serviceId=" + serviceId)
             }
         }
 
         val connStr = (cfgNode \ "Connection").text
         val mqConn = parseConnStr(connStr)
 
-        val destNodes = ( cfgNode \ "Destination" )
-        for( p <- destNodes ) {
+        val destNodes = (cfgNode \ "Destination")
+        for (p <- destNodes) {
             val serviceId = (p \ "@serviceId").toString.toInt
             val queueName = (p \ "@queueName").toString
             val persistentStr = (p \ "@persistent").toString.toLowerCase
             val persistent = persistentStr == "true" || persistentStr == "yes" || persistentStr == "t" || persistentStr == "y" || persistentStr == "1"
 
-            val mqClient = new MqClient(mqConn,new DestinationCfg(queueName,persistent))
-            mqClients.put(serviceId,mqClient)
+            val mqClient = new MqClient(mqConn, new DestinationCfg(queueName, persistent))
+            mqClients.put(serviceId, mqClient)
 
-            val t = new Thread("mqsedingthread"+serviceId) {
+            val t = new Thread("mqsedingthread" + serviceId) {
                 override def run() {
                     sendData(serviceId)
                 }
@@ -167,14 +165,14 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
             sendThreads += t
         }
 
-        log.info("MqActor started {}",serviceIds)
+        log.info("MqActor started {}", serviceIds)
     }
 
-    def parseConnStr(connStr:String):MqConn = {
+    def parseConnStr(connStr: String): MqConn = {
 
         connStr match {
-            case connReg(brokerUrl,username,password) =>
-                val t = new MqConn(brokerUrl,username,password)
+            case connReg(brokerUrl, username, password) =>
+                val t = new MqConn(brokerUrl, username, password)
                 t
             case _ =>
                 throw new RuntimeException("connection string is not valid,conn=%s".format(connStr))
@@ -187,55 +185,55 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
 
         pool.shutdown()
 
-        pool.awaitTermination(5,TimeUnit.SECONDS)
+        pool.awaitTermination(5, TimeUnit.SECONDS)
 
         val t2 = System.currentTimeMillis
-        if( t2 - t1 > 100 )
-            log.warn("MqActor long time to shutdown pool, ts={}",t2-t1)
+        if (t2 - t1 > 100)
+            log.warn("MqActor long time to shutdown pool, ts={}", t2 - t1)
 
-        for(t <- sendThreads ) {
+        for (t <- sendThreads) {
             t.interrupt()
             t.join()
         }
         sendThreads.clear()
 
-        for( (serviceId,mqClient) <- mqClients ) {
+        for ((serviceId, mqClient) <- mqClients) {
             mqClient.close()
         }
         mqClients.clear()
 
-        if( persistQueueManager != null ) {
+        if (persistQueueManager != null) {
             persistQueueManager.close()
             persistQueueManager = null
         }
 
-        log.info("MqActor closed {} ",serviceIds)
+        log.info("MqActor closed {} ", serviceIds)
     }
 
-    override def receive(v:Any) :Unit = {
+    override def receive(v: Any): Unit = {
         v match {
 
             case req: Request =>
 
                 try {
 
-                    pool.execute( new Runnable() {
+                    pool.execute(new Runnable() {
                         def run() {
 
                             try {
                                 onReceive(req)
                             } catch {
-                                case e:Exception =>
-                                    log.error("MqActor exception req={}",req,e)
+                                case e: Exception =>
+                                    log.error("MqActor exception req={}", req, e)
                             }
 
                         }
-                    } )
+                    })
 
                 } catch {
                     case e: RejectedExecutionException =>
-                        replyError(ResultCodes.SERVICE_FULL,req)
-                        log.error("MqActor queue is full, serviceIds={}",serviceIds)
+                        replyError(ResultCodes.SERVICE_FULL, req)
+                        log.error("MqActor queue is full, serviceIds={}", serviceIds)
                 }
 
             case _ =>
@@ -245,7 +243,7 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
         }
     }
 
-    def onReceive(v:Any)  {
+    def onReceive(v: Any) {
 
         v match {
 
@@ -253,8 +251,8 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
 
                 var s = ""
 
-                if( pluginObj != null )
-                    s = pluginObj.selialize(req.serviceId,req.msgId,req.body)
+                if (pluginObj != null)
+                    s = pluginObj.selialize(req.serviceId, req.msgId, req.body)
                 else
                     s = requestToJson(req)
 
@@ -264,9 +262,9 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
                     replyOk(req)
                     hasIOException.set(false)
                 } catch {
-                    case e : Exception =>
-                        log.error("cannot save data to local mq data={}",s)
-                        replyError(ResultCodes.MQ_IO_ERROR,req)
+                    case e: Exception =>
+                        log.error("cannot save data to local mq data={}", s)
+                        replyError(ResultCodes.MQ_IO_ERROR, req)
                         hasIOException.set(true)
                 }
 
@@ -277,35 +275,34 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
         }
     }
 
-
-    def sendData(serviceId:Int) {
+    def sendData(serviceId: Int) {
 
         val queue = persistQueueManager.getQueue(String.valueOf(serviceId))
-        if( queue == null ) return
+        if (queue == null) return
 
-        while(true) {
+        while (true) {
 
             try {
                 val idx = queue.get()
-                if( idx == -1 ) {
+                if (idx == -1) {
                     return
                 }
                 val str = queue.getString(idx)
 
-                if( log.isDebugEnabled() ) {
-                    log.debug("json="+str)
+                if (log.isDebugEnabled()) {
+                    log.debug("json=" + str)
                 }
 
-                val mqClient = mqClients.getOrElse(serviceId,null)
-                if( mqClient != null ) {
+                val mqClient = mqClients.getOrElse(serviceId, null)
+                if (mqClient != null) {
 
                     var ok = false
                     do {
                         ok = mqClient.send(str)
-                        if( !ok ) {
+                        if (!ok) {
                             Thread.sleep(5000)
                         }
-                    } while( !ok )
+                    } while (!ok)
 
                 }
                 queue.commit(idx)
@@ -313,24 +310,24 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
             } catch {
                 case e: InterruptedException =>
                     return
-                case e : Exception =>
-                    log.error("exception in sending mq data {}",e.getMessage)
+                case e: Exception =>
+                    log.error("exception in sending mq data {}", e.getMessage)
                     Thread.sleep(5000)
             }
         }
     }
 
-    def replyOk(req : Request) {
-        val res = new Response (0,new HashMapStringAny(),req)
-        router.reply(new RequestResponseInfo(req,res))
+    def replyOk(req: Request) {
+        val res = new Response(0, new HashMapStringAny(), req)
+        router.reply(new RequestResponseInfo(req, res))
     }
 
-    def replyError(code:Int, req : Request) {
-        val res = new Response (code,new HashMapStringAny(),req)
-        router.reply(new RequestResponseInfo(req,res))
+    def replyError(code: Int, req: Request) {
+        val res = new Response(code, new HashMapStringAny(), req)
+        router.reply(new RequestResponseInfo(req, res))
     }
 
-    def requestToJson(req:Request):String = {
+    def requestToJson(req: Request): String = {
 
         val writer = new StringWriter()
 
@@ -341,18 +338,18 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
         val now = f.format(new Date())
 
         // four standard mq fields
-        jsonGenerator.writeStringField("messageId",req.requestId)
-        jsonGenerator.writeStringField("messageSourceIp",localIp)
-        jsonGenerator.writeStringField("messageTimestamp",now)
-        jsonGenerator.writeStringField("messageType",req.msgId.toString)
+        jsonGenerator.writeStringField("messageId", req.requestId)
+        jsonGenerator.writeStringField("messageSourceIp", localIp)
+        jsonGenerator.writeStringField("messageTimestamp", now)
+        jsonGenerator.writeStringField("messageType", req.msgId.toString)
 
-        for( (key,value) <- req.body) {
+        for ((key, value) <- req.body) {
 
             value match {
-                case s:String =>
-                    jsonGenerator.writeStringField(key,s)
-                case i:Int =>
-                    jsonGenerator.writeNumberField(key,i)
+                case s: String =>
+                    jsonGenerator.writeStringField(key, s)
+                case i: Int =>
+                    jsonGenerator.writeNumberField(key, i)
                 case _ =>
                     jsonGenerator.writeStringField(key, value.toString)
             }
@@ -365,28 +362,28 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
         writer.toString()
     }
 
-    def selfcheck() : ArrayBuffer[SelfCheckResult] = {
+    def selfcheck(): ArrayBuffer[SelfCheckResult] = {
 
         val buff = new ArrayBuffer[SelfCheckResult]()
 
         var errorId = 65301006
 
-        for( (serviceId,mqClient) <- mqClients ) {
-            if( mqClient.hasError() ) {
-                val msg = "mq ["+mqClient.destCfg.queueName+"] has error"
-                buff += new SelfCheckResult("SCALABPE.MQ",errorId,true,msg)
+        for ((serviceId, mqClient) <- mqClients) {
+            if (mqClient.hasError()) {
+                val msg = "mq [" + mqClient.destCfg.queueName + "] has error"
+                buff += new SelfCheckResult("SCALABPE.MQ", errorId, true, msg)
             }
         }
 
         var ioErrorId = 65301007
 
-        if( hasIOException.get() ) {
+        if (hasIOException.get()) {
             val msg = "local persistqueue has io error"
-            buff += new SelfCheckResult("SCALABPE.IO",ioErrorId,true,msg)
+            buff += new SelfCheckResult("SCALABPE.IO", ioErrorId, true, msg)
         }
 
-        if( buff.size == 0 ) {
-            buff += new SelfCheckResult("SCALABPE.MQ",errorId)
+        if (buff.size == 0) {
+            buff += new SelfCheckResult("SCALABPE.MQ", errorId)
         }
 
         buff
@@ -394,15 +391,14 @@ class MqActor(val router:Router,val cfgNode: Node) extends Actor with Logging wi
     }
 }
 
+class MqClient(val mqConn: MqConn, val destCfg: DestinationCfg) extends Logging {
 
-class MqClient(val mqConn:MqConn, val destCfg:DestinationCfg) extends Logging {
+    var connectionFactory: ActiveMQConnectionFactory = _
 
-    var connectionFactory : ActiveMQConnectionFactory = _
-
-    var connection : Connection = _
-    var session : Session = _
-    var destination : Destination = _
-    var producer : MessageProducer = _
+    var connection: Connection = _
+    var session: Session = _
+    var destination: Destination = _
+    var producer: MessageProducer = _
 
     init
 
@@ -424,7 +420,7 @@ class MqClient(val mqConn:MqConn, val destCfg:DestinationCfg) extends Logging {
             System.loadLibrary("sec");
             log.info("library sec loaded")
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 log.error("cannot load library sec")
         }
 
@@ -435,11 +431,11 @@ class MqClient(val mqConn:MqConn, val destCfg:DestinationCfg) extends Logging {
         log.info("mq client closed, brokerUrl=%s".format(mqConn.brokerUrl))
     }
 
-    def hasError():Boolean = {
-        return ( session == null || producer == null )
+    def hasError(): Boolean = {
+        return (session == null || producer == null)
     }
 
-    def decrypt(pwd:String):String = {
+    def decrypt(pwd: String): String = {
         if (pwd.startsWith("des:")) {
             decryptDes(pwd.substring(4))
         } else if (pwd.startsWith("desx:")) {
@@ -452,39 +448,39 @@ class MqClient(val mqConn:MqConn, val destCfg:DestinationCfg) extends Logging {
 
     }
 
-    @native def decryptDes(s:String) : String;
-    @native def decryptDesX(s:String) : String;
-    @native def decryptRsa(s:String) : String;
+    @native def decryptDes(s: String): String;
+    @native def decryptDesX(s: String): String;
+    @native def decryptRsa(s: String): String;
 
     def reset() {
 
-        if( producer != null ) {
+        if (producer != null) {
             try {
                 producer.close()
             } catch {
-                case e:Exception =>
-                    log.error("producer.close error brokerUrl=%s, exception=%s".format(mqConn.brokerUrl,e.getMessage))
+                case e: Exception =>
+                    log.error("producer.close error brokerUrl=%s, exception=%s".format(mqConn.brokerUrl, e.getMessage))
             }
             producer = null
         }
 
         destination = null
 
-        if( session != null ) {
+        if (session != null) {
             try {
                 session.close()
             } catch {
-                case e:Exception =>
-                    log.error("session.close error brokerUrl=%s, exception=%s".format(mqConn.brokerUrl,e.getMessage))
+                case e: Exception =>
+                    log.error("session.close error brokerUrl=%s, exception=%s".format(mqConn.brokerUrl, e.getMessage))
             }
             session = null
         }
-        if( connection != null ) {
+        if (connection != null) {
             try {
                 connection.close()
             } catch {
-                case e:Exception =>
-                    log.error("connection.close error brokerUrl=%s, exception=%s".format(mqConn.brokerUrl,e.getMessage))
+                case e: Exception =>
+                    log.error("connection.close error brokerUrl=%s, exception=%s".format(mqConn.brokerUrl, e.getMessage))
             }
             connection = null
         }
@@ -496,15 +492,15 @@ class MqClient(val mqConn:MqConn, val destCfg:DestinationCfg) extends Logging {
         session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE)
         destination = session.createQueue(destCfg.queueName)
         producer = session.createProducer(destination)
-        val d = if(destCfg.persistent) DeliveryMode.PERSISTENT else DeliveryMode.NON_PERSISTENT
+        val d = if (destCfg.persistent) DeliveryMode.PERSISTENT else DeliveryMode.NON_PERSISTENT
         producer.setDeliveryMode(d)
     }
 
-    def send(str:String):Boolean = {
+    def send(str: String): Boolean = {
 
         try {
 
-            if( session == null || producer == null ) {
+            if (session == null || producer == null) {
                 prepare()
             }
 
@@ -515,14 +511,13 @@ class MqClient(val mqConn:MqConn, val destCfg:DestinationCfg) extends Logging {
             return true
 
         } catch {
-            case e:Exception =>
-                log.error("mq send error brokerUrl=%s, exception=%s, str=%s".format(mqConn.brokerUrl,e.getMessage,str))
+            case e: Exception =>
+                log.error("mq send error brokerUrl=%s, exception=%s, str=%s".format(mqConn.brokerUrl, e.getMessage, str))
                 reset()
                 return false
         }
 
     }
-
 
 }
 

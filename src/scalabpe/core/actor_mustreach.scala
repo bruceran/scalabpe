@@ -1,67 +1,68 @@
 package scalabpe.core
 
-import java.util.concurrent._
+import java.io.File
+import java.nio.ByteBuffer
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.locks.ReentrantLock;
-import java.util._
-import java.io.{File,StringWriter}
-import java.nio.ByteBuffer
-import scala.xml._
-import scala.collection.mutable.{ArrayBuffer,HashMap,HashSet}
+import java.util.concurrent.locks.ReentrantLock
 
-import com.sdo.billing.queue._
-import com.sdo.billing.queue.impl._
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.HashMap
+import scala.xml.Node
 
-import scalabpe.core._
+import com.sdo.billing.queue.PersistQueue
+import com.sdo.billing.queue.impl.PersistQueueManagerImpl
 
-case class MustReachReqCommitInfo(req:Request,code:Int)
-case class MustReachRawReqCommitInfo(rawReq:RawRequest,code:Int)
+case class MustReachReqCommitInfo(req: Request, code: Int)
+case class MustReachRawReqCommitInfo(rawReq: RawRequest, code: Int)
 
 object PersistData {
     val SOURCE_RAWREQ = 1
     val SOURCE_REQ = 2
 }
 
-class PersistData (
+class PersistData(
     val source: Int, // 1 from rawRequest 2 for request
-    val serviceId : Int,
-    val msgId : Int,
-    val encoding : Int,
-    val createTime : Long,
-    var xhead : ByteBuffer,
-    val body : ByteBuffer ) {}
+    val serviceId: Int,
+    val msgId: Int,
+    val encoding: Int,
+    val createTime: Long,
+    var xhead: ByteBuffer,
+    val body: ByteBuffer) {}
 
 class MustReachSendingData(
-    val queueName:String,
-    var persistId:Long = 0,
-    var data:PersistData = null,
-    var sendCount : Int = 0,
-    var nextRunTime : Long = 0L ) {
+        val queueName: String,
+        var persistId: Long = 0,
+        var data: PersistData = null,
+        var sendCount: Int = 0,
+        var nextRunTime: Long = 0L) {
 
-        def reset() {
-            persistId = 0
-            data = null
-            sendCount = 0
-            nextRunTime = 0L
-        }
-
+    def reset() {
+        persistId = 0
+        data = null
+        sendCount = 0
+        nextRunTime = 0L
     }
 
-class MustReachRetryConfig(val retryTimes:Int,val retryInterval:Int)
+}
 
-class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Logging with Closable
+class MustReachRetryConfig(val retryTimes: Int, val retryInterval: Int)
+
+class MustReachActor(val router: Router, val cfgNode: Node) extends Actor with Logging with Closable
         with SelfCheckLike with Dumpable with BeforeClose with AfterInit {
 
     import scalabpe.core.PersistData._
 
-    val mustReachMsgMap = new HashMap[String,MustReachRetryConfig]()   // serviceId:msgId
+    val mustReachMsgMap = new HashMap[String, MustReachRetryConfig]() // serviceId:msgId
 
     val queueTypeName = "mustreach"
 
-    var persistQueueManager : PersistQueueManagerImpl = _
+    var persistQueueManager: PersistQueueManagerImpl = _
 
-    var retryThread : Thread = _
+    var retryThread: Thread = _
 
     val hasIOException = new AtomicBoolean()
 
@@ -71,68 +72,68 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
 
     val waitingRunnableList = new ConcurrentLinkedQueue[Runnable]()
     val waitingQueueNameList = new ConcurrentLinkedQueue[String]()
-    val queuesNoData = new HashMap[String,MustReachSendingData]()
-    val queuesHasData = new HashMap[String,MustReachSendingData]()
+    val queuesNoData = new HashMap[String, MustReachSendingData]()
+    val queuesHasData = new HashMap[String, MustReachSendingData]()
 
     val shutdown = new AtomicBoolean()
     val beforeCloseFlag = new AtomicBoolean()
 
-    var defaultRetryTimes = 3*24*60 // 3 days
+    var defaultRetryTimes = 3 * 24 * 60 // 3 days
     var defaultRetryInterval = 60000 // 1 minute
 
     var maxCacheSize = 5000
-    val cachedData = new ConcurrentHashMap[String,Array[Byte]]()
+    val cachedData = new ConcurrentHashMap[String, Array[Byte]]()
 
     init
 
-    def genQueueName(serviceId:Int,msgId:Int):String = {
-        serviceId+"_"+msgId
+    def genQueueName(serviceId: Int, msgId: Int): String = {
+        serviceId + "_" + msgId
     }
 
-    def getRetryTimes(queueName:String):Int = {
-        val c = mustReachMsgMap.getOrElse(queueName,null)
-        if( c == null ) defaultRetryTimes
+    def getRetryTimes(queueName: String): Int = {
+        val c = mustReachMsgMap.getOrElse(queueName, null)
+        if (c == null) defaultRetryTimes
         else c.retryTimes
     }
-    def getRetryInterval(queueName:String):Int = {
-        val c = mustReachMsgMap.getOrElse(queueName,null)
-        if( c == null ) defaultRetryInterval
+    def getRetryInterval(queueName: String): Int = {
+        val c = mustReachMsgMap.getOrElse(queueName, null)
+        if (c == null) defaultRetryInterval
         else c.retryInterval
     }
 
     def init() {
 
-        var s = router.getConfig("mustReach.defaultRetryTimes","")
-        if( s != "" ) defaultRetryTimes = s.toInt
-        s = router.getConfig("mustReach.defaultRetryInterval","")
-        if( s != "" ) defaultRetryInterval = s.toInt
-        s = router.getConfig("mustReach.maxCacheSize","")
-        if( s != "" ) maxCacheSize = s.toInt
+        var s = router.getConfig("mustReach.defaultRetryTimes", "")
+        if (s != "") defaultRetryTimes = s.toInt
+        s = router.getConfig("mustReach.defaultRetryInterval", "")
+        if (s != "") defaultRetryInterval = s.toInt
+        s = router.getConfig("mustReach.maxCacheSize", "")
+        if (s != "") maxCacheSize = s.toInt
 
-        for( (serviceId,codec) <- router.codecs.codecs_id ) {
+        for ((serviceId, codec) <- router.codecs.codecs_id) {
 
             val msgIds = codec.msgKeyToTypeMapForReq.keys
 
-            for( msgId <- msgIds ) {
+            for (msgId <- msgIds) {
 
-                val msgAttributes = codec.msgAttributes.getOrElse(msgId,null)
-                var s = msgAttributes.getOrElse("isack","").toLowerCase
-                if( s == "" ) s = msgAttributes.getOrElse("isAck","").toLowerCase
-                if( s == "1" || s == "true" || s == "yes" || s == "t" || s == "y" ) {
+                val msgAttributes = codec.msgAttributes.getOrElse(msgId, null)
+                var s = msgAttributes.getOrElse("isack", "").toLowerCase
+                if (s == "") s = msgAttributes.getOrElse("isAck", "").toLowerCase
+                if (s == "1" || s == "true" || s == "yes" || s == "t" || s == "y") {
 
                     var retryTimes = defaultRetryTimes
-                    s = msgAttributes.getOrElse("retryTimes","")
-                    if( s != "" )
+                    s = msgAttributes.getOrElse("retryTimes", "")
+                    if (s != "")
                         retryTimes = s.toInt
 
                     var retryInterval = defaultRetryInterval
-                    s = msgAttributes.getOrElse("retryInterval","")
-                    if( s != "" )
+                    s = msgAttributes.getOrElse("retryInterval", "")
+                    if (s != "")
                         retryInterval = s.toInt
 
-                    val config = new MustReachRetryConfig(retryTimes,retryInterval)
-                    val queueName = genQueueName(serviceId,msgId)
-                    mustReachMsgMap.put(queueName,config)
+                    val config = new MustReachRetryConfig(retryTimes, retryInterval)
+                    val queueName = genQueueName(serviceId, msgId)
+                    mustReachMsgMap.put(queueName, config)
                 }
             }
 
@@ -146,27 +147,27 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
         persistQueueManager.init()
 
         val queueNames = persistQueueManager.getQueueNames
-        for( i <- 0 until queueNames.size ) {
+        for (i <- 0 until queueNames.size) {
             waitingQueueNameList.offer(queueNames.get(i))
         }
 
-        retryThread = new Thread(queueTypeName+"_retrythread") {
+        retryThread = new Thread(queueTypeName + "_retrythread") {
             override def run() {
                 sendData()
             }
         }
 
-        log.info(getClass.getName+" started")
+        log.info(getClass.getName + " started")
     }
 
     def afterInit() {
         retryThread.start()
-        log.info(getClass.getName+" retryThread started")
+        log.info(getClass.getName + " retryThread started")
     }
 
     def beforeClose() {
         beforeCloseFlag.set(true)
-        log.info(getClass.getName+" beforeClose called")
+        log.info(getClass.getName + " beforeClose called")
     }
 
     def close() {
@@ -175,23 +176,23 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
         retryThread.interrupt()
         retryThread.join()
 
-        if( persistQueueManager != null ) {
+        if (persistQueueManager != null) {
             persistQueueManager.close()
             persistQueueManager = null
         }
 
-        log.info(getClass.getName+" closed")
+        log.info(getClass.getName + " closed")
     }
 
-    def selfcheck() : ArrayBuffer[SelfCheckResult] = {
+    def selfcheck(): ArrayBuffer[SelfCheckResult] = {
 
         val buff = new ArrayBuffer[SelfCheckResult]()
 
         var ioErrorId = 65301007
 
-        if( hasIOException.get() ) {
+        if (hasIOException.get()) {
             val msg = "local persistqueue has io error"
-            buff += new SelfCheckResult("SCALABPE.IO",ioErrorId,true,msg)
+            buff += new SelfCheckResult("SCALABPE.IO", ioErrorId, true, msg)
         }
 
         buff
@@ -222,7 +223,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
         buff1.append("queue size: ")
         buff2.append("queue cacheSize: ")
         val queueNames = persistQueueManager.getQueueNames
-        for( i <- 0 until queueNames.size ) {
+        for (i <- 0 until queueNames.size) {
             val queue = persistQueueManager.getQueue(queueNames.get(i))
             buff1.append(queueNames.get(i)).append("=").append(queue.size).append(",")
             buff2.append(queueNames.get(i)).append("=").append(queue.cacheSize).append(",")
@@ -231,101 +232,101 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
         log.info(buff2.toString)
     }
 
-    def isReached(code:Int): Boolean = {
+    def isReached(code: Int): Boolean = {
         code != -10242488 && code != -10242504 && code != -10242404
     }
 
-    override def receive(v:Any) :Unit = {
+    override def receive(v: Any): Unit = {
 
-        if( v == null ) return
+        if (v == null) return
 
         v match {
-            case req: Request =>  // from flow engine, must use the caller's thread to process
+            case req: Request => // from flow engine, must use the caller's thread to process
                 onReceiveRequest(req)
                 return
             case rawReq: RawRequest => // from network, must use the caller's thread to process
                 onReceiveRawRequest(rawReq)
                 return
             case _ =>
-                waitingRunnableList.offer( new Runnable() {
+                waitingRunnableList.offer(new Runnable() {
                     def run() {
                         onReceiveCommitInfo(v)
-                } } )
+                    }
+                })
 
                 wakeUpRetryThread()
         }
 
     }
 
+    def onReceiveRequest(req: Request) {
 
-    def onReceiveRequest(req:Request)  {
+        if (req.persistId != 0) return
 
-        if( req.persistId != 0 ) return
-
-        val queueName = genQueueName(req.serviceId,req.msgId)
+        val queueName = genQueueName(req.serviceId, req.msgId)
         val found = mustReachMsgMap.contains(queueName)
-        if( !found ) return
+        if (!found) return
 
         val bs = reqToBytes(req)
-        if( bs == null ) return
-        val persistId = persist(queueName,bs)
+        if (bs == null) return
+        val persistId = persist(queueName, bs)
         req.persistId = persistId
     }
 
-    def onReceiveRawRequest(rawReq:RawRequest)  {
+    def onReceiveRawRequest(rawReq: RawRequest) {
 
-        if( rawReq.persistId != 0 ) return
+        if (rawReq.persistId != 0) return
 
         var req = rawReq.data
-        val queueName = genQueueName(req.serviceId,req.msgId)
+        val queueName = genQueueName(req.serviceId, req.msgId)
         val found = mustReachMsgMap.contains(queueName)
-        if( !found && rawReq.data.mustReach == 0) {
+        if (!found && rawReq.data.mustReach == 0) {
             return
         }
 
         val bs = reqToBytes(rawReq)
-        if( bs == null ) return
-        val persistId = persist(queueName,bs)
+        if (bs == null) return
+        val persistId = persist(queueName, bs)
         rawReq.persistId = persistId
     }
 
-    def persist(queueName:String,bs:Array[Byte]):Long= {
+    def persist(queueName: String, bs: Array[Byte]): Long = {
 
         var idx = 0L
 
-        if( bs == null ) return idx
+        if (bs == null) return idx
 
         try {
             val queue = persistQueueManager.getQueue(queueName)
             idx = queue.putAndReturnIdx(bs)
 
-            if( cachedData.size < maxCacheSize ) {
-                cachedData.put(queueName+":"+idx,bs)
+            if (cachedData.size < maxCacheSize) {
+                cachedData.put(queueName + ":" + idx, bs)
             }
 
             waitingQueueNameList.offer(queueName)
             wakeUpRetryThread()
             hasIOException.set(false)
         } catch {
-            case e : Exception =>
-                log.error("cannot save data to must reach queue queueName={}",queueName)
+            case e: Exception =>
+                log.error("cannot save data to must reach queue queueName={}", queueName)
                 hasIOException.set(true)
                 idx = 0
         }
-        if( idx < 0 ) idx = 0
+        if (idx < 0) idx = 0
 
         idx
     }
 
     def wakeUpRetryThread() {
 
-        if( lock.tryLock() ) {
+        if (lock.tryLock()) {
 
             try {
                 hasNewData.signal()
-                } finally {
-                    lock.unlock()
-                }
+            } finally {
+                lock.unlock()
+            }
 
         }
     }
@@ -333,20 +334,20 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
     def sendData() {
 
         lock.lock()
-        while(!shutdown.get()) {
+        while (!shutdown.get()) {
 
             try {
                 sendDataInternal()
 
-                if( !needRun() ) {
-                    hasNewData.await( 1000, TimeUnit.MILLISECONDS ) // ignore return code
+                if (!needRun()) {
+                    hasNewData.await(1000, TimeUnit.MILLISECONDS) // ignore return code
                 }
 
             } catch {
-                case e:InterruptedException =>
+                case e: InterruptedException =>
 
-                case e:Throwable =>
-                    log.error("exception in sendData, e={}",e.getMessage)
+                case e: Throwable =>
+                    log.error("exception in sendData, e={}", e.getMessage)
             }
 
         }
@@ -354,53 +355,53 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
         lock.unlock()
     }
 
-    def addQueueName(queueName:String) {
+    def addQueueName(queueName: String) {
 
         var existed = queuesHasData.contains(queueName)
-        if( existed ) {
+        if (existed) {
             return
         }
 
-        val sendingdata = queuesNoData.getOrElse(queueName,null)
-        if( sendingdata != null ) {
+        val sendingdata = queuesNoData.getOrElse(queueName, null)
+        if (sendingdata != null) {
             queuesNoData.remove(queueName)
             sendingdata.reset
-            queuesHasData.put(queueName,sendingdata)
+            queuesHasData.put(queueName, sendingdata)
             return
         }
 
-        queuesHasData.put(queueName,new MustReachSendingData(queueName))
+        queuesHasData.put(queueName, new MustReachSendingData(queueName))
     }
 
-    def loadData(queueName:String,sendingdata:MustReachSendingData,queue:PersistQueue): Boolean = {
+    def loadData(queueName: String, sendingdata: MustReachSendingData, queue: PersistQueue): Boolean = {
 
         var hasData = true
 
         try {
             val idx = queue.get(0) // no wait
 
-            if( idx == -1 ) {  // no data
+            if (idx == -1) { // no data
 
                 hasData = false
 
             } else {
 
-                var bs = cachedData.remove(queueName+":"+idx)
-                if( bs == null ) {
-                    if( log.isDebugEnabled() ) {
+                var bs = cachedData.remove(queueName + ":" + idx)
+                if (bs == null) {
+                    if (log.isDebugEnabled()) {
                         log.debug("queue.getBytes called")
                     }
                     bs = queue.getBytes(idx)
                 }
                 sendingdata.data = bytesToPersistData(bs)
-                if( sendingdata.data != null ) {
+                if (sendingdata.data != null) {
                     sendingdata.persistId = idx
                     sendingdata.nextRunTime = sendingdata.data.createTime + getRetryInterval(queueName)
                 }
             }
         } catch {
-            case e : Exception =>
-                log.error("exception in sending must reach data {}",e.getMessage)
+            case e: Exception =>
+                log.error("exception in sending must reach data {}", e.getMessage)
         }
 
         hasData
@@ -410,71 +411,71 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
         val now = System.currentTimeMillis
 
         !waitingRunnableList.isEmpty() ||
-        !waitingQueueNameList.isEmpty() ||
-        queuesHasData.values.filter( d => d.data == null || d.data != null && d.nextRunTime < now).size > 0
+            !waitingQueueNameList.isEmpty() ||
+            queuesHasData.values.filter(d => d.data == null || d.data != null && d.nextRunTime < now).size > 0
     }
 
     def sendDataInternal() {
 
-        while( !waitingRunnableList.isEmpty() ) {
+        while (!waitingRunnableList.isEmpty()) {
 
             val runnable = waitingRunnableList.poll()
 
             try {
                 runnable.run()
             } catch {
-                case e:Throwable =>
+                case e: Throwable =>
             }
 
         }
 
-        while( !waitingQueueNameList.isEmpty() ) {
+        while (!waitingQueueNameList.isEmpty()) {
             val queueName = waitingQueueNameList.poll()
             addQueueName(queueName)
         }
 
         val removeList = new ArrayBuffer[String]()
 
-        for( (queueName,sendingdata) <- queuesHasData if sendingdata.data == null ) { // not sending data
+        for ((queueName, sendingdata) <- queuesHasData if sendingdata.data == null) { // not sending data
 
             val queue = persistQueueManager.getQueue(queueName)
-            if( queue == null ) {
+            if (queue == null) {
                 removeList += queueName
             } else {
-                val hasData = loadData(queueName,sendingdata,queue)
-                if( !hasData )
+                val hasData = loadData(queueName, sendingdata, queue)
+                if (!hasData)
                     removeList += queueName
             }
 
         }
 
-        for( queueName <- removeList ) {
-            val sendingdata = queuesHasData.getOrElse(queueName,null)
+        for (queueName <- removeList) {
+            val sendingdata = queuesHasData.getOrElse(queueName, null)
             queuesHasData.remove(queueName)
             sendingdata.reset
-            queuesNoData.put(queueName,sendingdata)
+            queuesNoData.put(queueName, sendingdata)
         }
 
         val now = System.currentTimeMillis
-        for( (queueName,sendingdata) <- queuesHasData if sendingdata.data != null && sendingdata.nextRunTime < now ) {
+        for ((queueName, sendingdata) <- queuesHasData if sendingdata.data != null && sendingdata.nextRunTime < now) {
 
             val ok = send(sendingdata)
-            if( !ok ) {
+            if (!ok) {
                 val queue = persistQueueManager.getQueue(queueName)
                 queue.commit(sendingdata.persistId)
-                cachedData.remove(queueName+":"+sendingdata.persistId)
+                cachedData.remove(queueName + ":" + sendingdata.persistId)
                 sendingdata.reset
             }
         }
     }
 
-    def send(sendingdata:MustReachSendingData):Boolean = {
+    def send(sendingdata: MustReachSendingData): Boolean = {
 
-        if( beforeCloseFlag.get()) {
+        if (beforeCloseFlag.get()) {
             return true
         }
 
-        val requestId = "MR"+RequestIdGenerator.nextId()
+        val requestId = "MR" + RequestIdGenerator.nextId()
         val nextSeq = sequence.getAndIncrement()
 
         val data = sendingdata.data
@@ -494,7 +495,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
                     data.xhead,
                     data.body)
 
-                val rawreq = new RawRequest(requestId,newdata,Router.DO_NOT_REPLY,this)
+                val rawreq = new RawRequest(requestId, newdata, Router.DO_NOT_REPLY, this)
                 rawreq.persistId = sendingdata.persistId
                 router.send(rawreq)
                 sendingdata.nextRunTime = System.currentTimeMillis + getRetryInterval(sendingdata.queueName)
@@ -503,17 +504,17 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
 
                 //try {
 
-                val xhead = TlvCodec4Xhead.decode(data.serviceId,data.xhead)
+                val xhead = TlvCodec4Xhead.decode(data.serviceId, data.xhead)
 
                 val tlvCodec = router.findTlvCodec(data.serviceId)
-                if( tlvCodec == null ) {
+                if (tlvCodec == null) {
                     return false
                 }
 
-                val (body,ec) = tlvCodec.decodeRequest(data.msgId,data.body,data.encoding)
-                if( ec != 0 ) return false
+                val (body, ec) = tlvCodec.decodeRequest(data.msgId, data.body, data.encoding)
+                if (ec != 0) return false
 
-                val req = new Request (
+                val req = new Request(
                     requestId,
                     Router.DO_NOT_REPLY,
                     nextSeq,
@@ -522,17 +523,16 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
                     data.msgId,
                     xhead,
                     body,
-                    this
-                )
+                    this)
 
                 req.persistId = sendingdata.persistId
                 router.send(req)
                 sendingdata.nextRunTime = System.currentTimeMillis + getRetryInterval(sendingdata.queueName)
 
-                //} catch {
-                //case e:Exception =>
-                //return false
-                //}
+            //} catch {
+            //case e:Exception =>
+            //return false
+            //}
 
             case _ =>
 
@@ -541,51 +541,51 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
         true
     }
 
-    def onReceiveCommitInfo(v:Any)  {
+    def onReceiveCommitInfo(v: Any) {
 
         try {
 
             v match {
-                case MustReachReqCommitInfo(req,code) =>
-                    if( req.persistId == 0 ) return
-                    commit(req.serviceId,req.msgId,req.persistId,code)
+                case MustReachReqCommitInfo(req, code) =>
+                    if (req.persistId == 0) return
+                    commit(req.serviceId, req.msgId, req.persistId, code)
 
-                case MustReachRawReqCommitInfo(rawReq,code) =>
-                    if( rawReq.persistId == 0 ) return
-                    commit(rawReq.data.serviceId,rawReq.data.msgId,rawReq.persistId,code)
+                case MustReachRawReqCommitInfo(rawReq, code) =>
+                    if (rawReq.persistId == 0) return
+                    commit(rawReq.data.serviceId, rawReq.data.msgId, rawReq.persistId, code)
 
                 case _ =>
             }
 
         } catch {
-            case e:Exception =>
-                log.error(getClass.getName+" exception req={}",v.toString,e)
+            case e: Exception =>
+                log.error(getClass.getName + " exception req={}", v.toString, e)
         }
 
     }
 
-    def commit(serviceId:Int, msgId:Int, persistId:Long, code:Int)  {
+    def commit(serviceId: Int, msgId: Int, persistId: Long, code: Int) {
 
-        val queueName = genQueueName(serviceId,msgId)
-        val sendingdata = queuesHasData.getOrElse(queueName,null)
+        val queueName = genQueueName(serviceId, msgId)
+        val sendingdata = queuesHasData.getOrElse(queueName, null)
         val retryTimes = getRetryTimes(queueName)
 
         var reached = isReached(code)
         var isSending = false
         var retryOver = false
 
-        if( sendingdata != null && sendingdata.data != null && sendingdata.persistId == persistId ) {
+        if (sendingdata != null && sendingdata.data != null && sendingdata.persistId == persistId) {
             isSending = true
-            if( sendingdata.sendCount >= retryTimes ) retryOver = true
+            if (sendingdata.sendCount >= retryTimes) retryOver = true
         }
 
-        cachedData.remove(queueName+":"+persistId)
+        cachedData.remove(queueName + ":" + persistId)
 
-        if( reached || retryOver ) {
+        if (reached || retryOver) {
 
-            commit(queueName,persistId)
+            commit(queueName, persistId)
 
-            if( isSending ) {
+            if (isSending) {
                 sendingdata.reset()
             }
 
@@ -593,24 +593,24 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
 
     }
 
-    def commit(queueName:String,idx:Long) {
+    def commit(queueName: String, idx: Long) {
 
         val queue = persistQueueManager.getQueue(queueName)
-        if( queue == null ) {
+        if (queue == null) {
             return
         } else {
             try {
                 queue.commit(idx)
             } catch {
-                case e : Exception =>
-                    log.error("exception in commit must reach data {}",e.getMessage)
+                case e: Exception =>
+                    log.error("exception in commit must reach data {}", e.getMessage)
             }
         }
     }
 
-    def reqToBytes(v:Any):Array[Byte] = {
+    def reqToBytes(v: Any): Array[Byte] = {
 
-        var pd : PersistData = null
+        var pd: PersistData = null
 
         v match {
             case req: Request =>
@@ -619,12 +619,12 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
                 pd = toPersistData(rawReq)
             case _ =>
         }
-        if( pd == null ) return null
+        if (pd == null) return null
 
         persistDataToBytes(pd)
     }
 
-    def toPersistData(rawReq: RawRequest) : PersistData = {
+    def toPersistData(rawReq: RawRequest): PersistData = {
 
         new PersistData(SOURCE_RAWREQ,
             rawReq.data.serviceId,
@@ -635,17 +635,17 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
             rawReq.data.body)
     }
 
-    def toPersistData(req: Request) : PersistData = {
+    def toPersistData(req: Request): PersistData = {
 
         val tlvCodec = router.codecs.findTlvCodec(req.serviceId)
-        if( tlvCodec == null ) {
+        if (tlvCodec == null) {
             return null
         }
 
-        val xhead = TlvCodec4Xhead.encode(req.serviceId,req.xhead)
+        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead)
 
-        val (body,ec) = tlvCodec.encodeRequest(req.msgId,req.body,req.encoding)
-        if( ec != 0 ) return null
+        val (body, ec) = tlvCodec.encodeRequest(req.msgId, req.body, req.encoding)
+        if (ec != 0) return null
 
         val pd = new PersistData(SOURCE_REQ,
             req.serviceId,
@@ -658,14 +658,14 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
         pd
     }
 
-    def persistDataToBytes(pd: PersistData):Array[Byte] = {
+    def persistDataToBytes(pd: PersistData): Array[Byte] = {
 
         val xheadcopy = pd.xhead.duplicate()
         xheadcopy.position(0)
         val bodycopy = pd.body.duplicate()
         bodycopy.position(0)
 
-        val len = 18+4+xheadcopy.limit+4+bodycopy.limit
+        val len = 18 + 4 + xheadcopy.limit + 4 + bodycopy.limit
         val buff = ByteBuffer.allocate(len)
 
         buff.put(pd.source.toByte)
@@ -683,7 +683,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
         buff.array()
     }
 
-    def bytesToPersistData(bs:Array[Byte]):PersistData = {
+    def bytesToPersistData(bs: Array[Byte]): PersistData = {
 
         try {
             val buff = ByteBuffer.wrap(bs)
@@ -695,7 +695,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
             val createTime = buff.getLong()
 
             val xheadlen = buff.getInt()
-            val xhead  = ByteBuffer.allocate(xheadlen)
+            val xhead = ByteBuffer.allocate(xheadlen)
             buff.get(xhead.array())
             xhead.position(0)
 
@@ -715,7 +715,7 @@ class MustReachActor(val router:Router,val cfgNode: Node) extends Actor with Log
             pd
 
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 return null
         }
     }

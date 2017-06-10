@@ -1,33 +1,58 @@
 package scalabpe.plugin
 
-import java.util.concurrent._
+import java.io.File
+import java.io.StringWriter
+import java.util.Timer
+import java.util.TimerTask
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentLinkedQueue
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.locks.ReentrantLock;
-import java.util._
-import java.io.{File,StringWriter}
-import scala.xml._
-import scala.collection.mutable.{ArrayBuffer,HashMap,HashSet}
+import java.util.concurrent.locks.ReentrantLock
+
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashSet
+import scala.xml.Node
 
 import com.fasterxml.jackson.core.JsonFactory
-import com.fasterxml.jackson.databind._
-import com.fasterxml.jackson.databind.node._
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.sdo.billing.queue.PersistQueue
+import com.sdo.billing.queue.impl.PersistQueueManagerImpl
 
-import com.sdo.billing.queue._
-import com.sdo.billing.queue.impl._
-
-import scalabpe.core._
+import scalabpe.core.Actor
+import scalabpe.core.AfterInit
+import scalabpe.core.BeforeClose
+import scalabpe.core.Closable
+import scalabpe.core.Dumpable
+import scalabpe.core.HashMapStringAny
+import scalabpe.core.InvokeResult
+import scalabpe.core.Logging
+import scalabpe.core.NamedThreadFactory
+import scalabpe.core.Request
+import scalabpe.core.RequestIdGenerator
+import scalabpe.core.RequestResponseInfo
+import scalabpe.core.Response
+import scalabpe.core.ResultCodes
+import scalabpe.core.Router
+import scalabpe.core.SelfCheckLike
+import scalabpe.core.SelfCheckResult
 
 object LocalQueueActor {
     val localDirs = new HashSet[String]()
 }
 
-class MsgPaCfg(val maxSendTimes: Int ,val retryInterval: Int, val concurrentNum:Int = 0 )
+class MsgPaCfg(val maxSendTimes: Int, val retryInterval: Int, val concurrentNum: Int = 0)
 
-class LocalQueueActor(override val router:Router,override val cfgNode: Node)
-extends LocalQueueLike(router,cfgNode) {
+class LocalQueueActor(override val router: Router, override val cfgNode: Node)
+        extends LocalQueueLike(router, cfgNode) {
 
-    val queueNameMap = new HashMap[String,String]()   // serviceId:msgId -> queueNameKey
+    val queueNameMap = new HashMap[String, String]() // serviceId:msgId -> queueNameKey
 
     init
 
@@ -41,48 +66,48 @@ extends LocalQueueLike(router,cfgNode) {
         for (inf <- infos) {
             var msgId = (inf \ "@msgId").text
             var s = (inf \ "@retryInterval").toString()
-            var retryIntervalCfg = if( s != "" ) s.toInt else 0
+            var retryIntervalCfg = if (s != "") s.toInt else 0
             s = (inf \ "@maxSendTimes").toString()
-            var maxSendTimesCfg = if( s != "" ) s.toInt else 0
+            var maxSendTimesCfg = if (s != "") s.toInt else 0
             s = (inf \ "@concurrentNum").toString()
-            var concurrentNum = if( s != "" ) s.toInt else 0
+            var concurrentNum = if (s != "") s.toInt else 0
 
-            msgIdCfgMap.put(msgId, new MsgPaCfg(maxSendTimesCfg,retryIntervalCfg,concurrentNum))
+            msgIdCfgMap.put(msgId, new MsgPaCfg(maxSendTimesCfg, retryIntervalCfg, concurrentNum))
 
         }
 
         val serviceIdArray = serviceIds.split(",").map(_.toInt)
-        for( serviceId <- serviceIdArray ) {
+        for (serviceId <- serviceIdArray) {
             val codec = router.codecs.findTlvCodec(serviceId)
 
-            if( codec == null ) {
-                throw new RuntimeException("serviceId not found, serviceId="+serviceId)
+            if (codec == null) {
+                throw new RuntimeException("serviceId not found, serviceId=" + serviceId)
             }
 
-            if( codec!= null) {
+            if (codec != null) {
                 val tlvType = codec.findTlvType(10000)
-                if( tlvType == null ) {
-                    throw new RuntimeException("queueName not configured for serviceId="+serviceId)
+                if (tlvType == null) {
+                    throw new RuntimeException("queueName not configured for serviceId=" + serviceId)
                 }
                 val msgIds = codec.msgKeyToTypeMapForReq.keys
 
-                for( msgId <- msgIds ) {
+                for (msgId <- msgIds) {
 
-                    val reqNameMap = codec.msgKeysForReq.getOrElse(msgId,null)
-                    val keyToTypeMapReq = codec.msgKeyToTypeMapForReq.getOrElse(msgId,null)
+                    val reqNameMap = codec.msgKeysForReq.getOrElse(msgId, null)
+                    val keyToTypeMapReq = codec.msgKeyToTypeMapForReq.getOrElse(msgId, null)
                     var found = false
-                    for(key <- reqNameMap ) {
+                    for (key <- reqNameMap) {
 
-                        val typeKey =  keyToTypeMapReq.getOrElse(key,null)
-                        val tlvType = codec.typeNameToCodeMap.getOrElse(typeKey,null)
-                        if( tlvType.code == 10000 ) {
+                        val typeKey = keyToTypeMapReq.getOrElse(key, null)
+                        val tlvType = codec.typeNameToCodeMap.getOrElse(typeKey, null)
+                        if (tlvType.code == 10000) {
                             found = true
-                            queueNameMap.put(serviceId+":"+msgId,key)
+                            queueNameMap.put(serviceId + ":" + msgId, key)
 
                         }
                     }
-                    if( !found ) {
-                        throw new RuntimeException("queueName not configured for serviceId=%d,msgId=%d".format(serviceId,msgId))
+                    if (!found) {
+                        throw new RuntimeException("queueName not configured for serviceId=%d,msgId=%d".format(serviceId, msgId))
                     }
                 }
 
@@ -95,18 +120,18 @@ extends LocalQueueLike(router,cfgNode) {
     override def checkLocalDir() {
 
         localDir = (cfgNode \ "LocalDir").text
-        if( localDir == "" ) {
+        if (localDir == "") {
             localDir = Router.dataDir + File.separator + queueTypeName
         }
 
-        if( LocalQueueActor.localDirs.contains(localDir) ) {
-            throw new RuntimeException("LocalQueueActor localDir cannot be the same, the default is data/"+queueTypeName)
+        if (LocalQueueActor.localDirs.contains(localDir)) {
+            throw new RuntimeException("LocalQueueActor localDir cannot be the same, the default is data/" + queueTypeName)
         }
 
         LocalQueueActor.localDirs.add(localDir)
     }
 
-    override def onReceive(v:Any)  {
+    override def onReceive(v: Any) {
 
         v match {
 
@@ -118,35 +143,35 @@ extends LocalQueueLike(router,cfgNode) {
         }
     }
 
-    def onReceiveRequest(req:Request)  {
+    def onReceiveRequest(req: Request) {
 
-        val queueNameKey = queueNameMap.getOrElse(req.serviceId+":"+req.msgId,null)
-        if( queueNameKey == null ) {
-            log.error("queueName not found serviceId=%d,msgId=%d".format(req.serviceId,req.msgId))
-            replyError(ResultCodes.QUEUENAME_NOT_FOUND,req)
+        val queueNameKey = queueNameMap.getOrElse(req.serviceId + ":" + req.msgId, null)
+        if (queueNameKey == null) {
+            log.error("queueName not found serviceId=%d,msgId=%d".format(req.serviceId, req.msgId))
+            replyError(ResultCodes.QUEUENAME_NOT_FOUND, req)
             return
         }
 
         val queueName = req.s(queueNameKey)
-        if( queueName == null ) {
-            log.error("queueName not found serviceId=%d,msgId=%d".format(req.serviceId,req.msgId))
-            replyError(ResultCodes.QUEUENAME_NOT_FOUND,req)
+        if (queueName == null) {
+            log.error("queueName not found serviceId=%d,msgId=%d".format(req.serviceId, req.msgId))
+            replyError(ResultCodes.QUEUENAME_NOT_FOUND, req)
             return
         }
 
         val s = requestToJson(req)
 
-        val ok = saveToQueue(queueName,s)
-        if( ok )
+        val ok = saveToQueue(queueName, s)
+        if (ok)
             replyOk(req)
         else
-            replyError(ResultCodes.MQ_IO_ERROR,req)
+            replyError(ResultCodes.MQ_IO_ERROR, req)
     }
 
 }
 
-class LocalQueueSendingData(val queueName:String, var requestId:String = null, var idx:Long = 0, 
-    var json:String = null, var sendCount : Int = 1) {
+class LocalQueueSendingData(val queueName: String, var requestId: String = null, var idx: Long = 0,
+                            var json: String = null, var sendCount: Int = 1) {
 
     var createTime = System.currentTimeMillis
 
@@ -159,22 +184,22 @@ class LocalQueueSendingData(val queueName:String, var requestId:String = null, v
     }
 }
 
-abstract class LocalQueueLike(val router:Router,val cfgNode: Node) extends Actor with Logging
-with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
+abstract class LocalQueueLike(val router: Router, val cfgNode: Node) extends Actor with Logging
+        with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
-    var queueTypeName : String = _
-    var serviceIds : String = _
+    var queueTypeName: String = _
+    var serviceIds: String = _
     var localDir: String = _
 
     var threadNum = 1
     val queueSize = 20000
-    var threadFactory : ThreadFactory = _
-    var pool : ThreadPoolExecutor = _
+    var threadFactory: ThreadFactory = _
+    var pool: ThreadPoolExecutor = _
 
-    var persistQueueManager : PersistQueueManagerImpl = _
+    var persistQueueManager: PersistQueueManagerImpl = _
 
-    var timer : Timer = _
-    var sendThread : Thread = _
+    var timer: Timer = _
+    var sendThread: Thread = _
     var receiverServiceId = 0
 
     var maxSendTimes = 60
@@ -191,14 +216,14 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
     val waitingRunnableList = new ConcurrentLinkedQueue[Runnable]()
     val waitingQueueNameList = new ConcurrentLinkedQueue[String]()
-    val queuesNoData = new HashMap[String,LocalQueueSendingData]()
-    val queuesHasData = new HashMap[String,LocalQueueSendingData]()
-    val requestIdMap = new ConcurrentHashMap[String,LocalQueueSendingData]() // requestId -> LocalQueueSendingData
+    val queuesNoData = new HashMap[String, LocalQueueSendingData]()
+    val queuesHasData = new HashMap[String, LocalQueueSendingData]()
+    val requestIdMap = new ConcurrentHashMap[String, LocalQueueSendingData]() // requestId -> LocalQueueSendingData
 
     val shutdown = new AtomicBoolean()
     val beforeCloseFlag = new AtomicBoolean()
 
-    val msgIdCfgMap = new HashMap[String,MsgPaCfg]()//msgid -> maxSendTimes,retryInterval
+    val msgIdCfgMap = new HashMap[String, MsgPaCfg]() //msgid -> maxSendTimes,retryInterval
 
     def dump() {
 
@@ -228,7 +253,7 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
         buff1.append("queue size ")
         buff2.append("queue cacheSize ")
         val queueNames = persistQueueManager.getQueueNames
-        for( i <- 0 until queueNames.size ) {
+        for (i <- 0 until queueNames.size) {
             val queue = persistQueueManager.getQueue(queueNames.get(i))
             buff1.append(queueNames.get(i)).append("=").append(queue.size).append(",")
             buff2.append(queueNames.get(i)).append("=").append(queue.cacheSize).append(",")
@@ -241,18 +266,18 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
         checkLocalDir()
 
-        timer = new Timer(queueTypeName+"_retrytimer")
+        timer = new Timer(queueTypeName + "_retrytimer")
 
         var dataDir = ""
-        if( localDir.startsWith("/") ) dataDir = localDir
+        if (localDir.startsWith("/")) dataDir = localDir
         else dataDir = router.rootDir + File.separator + localDir
 
-        var s = (cfgNode \ "@maxSendTimes" ).text
-        if( s != "" ) maxSendTimes = s.toInt
-        s = (cfgNode \ "@retryInterval" ).text
-        if( s != "" ) retryInterval = s.toInt
-        s = (cfgNode \ "@threadNum" ).text
-        if( s != "" ) threadNum = s.toInt
+        var s = (cfgNode \ "@maxSendTimes").text
+        if (s != "") maxSendTimes = s.toInt
+        s = (cfgNode \ "@retryInterval").text
+        if (s != "") retryInterval = s.toInt
+        s = (cfgNode \ "@threadNum").text
+        if (s != "") threadNum = s.toInt
 
         new File(dataDir).mkdirs()
         persistQueueManager = new PersistQueueManagerImpl()
@@ -260,38 +285,37 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
         persistQueueManager.init()
 
         val queueNames = persistQueueManager.getQueueNames
-        for( i <- 0 until queueNames.size ) {
+        for (i <- 0 until queueNames.size) {
             waitingQueueNameList.offer(queueNames.get(i))
         }
 
         val firstServiceId = serviceIds.split(",")(0)
-        threadFactory = new NamedThreadFactory(queueTypeName+"_"+firstServiceId)
-        pool = new ThreadPoolExecutor(threadNum, threadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
+        threadFactory = new NamedThreadFactory(queueTypeName + "_" + firstServiceId)
+        pool = new ThreadPoolExecutor(threadNum, threadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize), threadFactory)
         pool.prestartAllCoreThreads()
 
-        receiverServiceId  = (cfgNode \ "@receiverServiceId" ).text.toInt
-        if( receiverServiceId <= 0 )
-            throw new RuntimeException("receiverServiceId is not valid receiverServiceId="+receiverServiceId)
+        receiverServiceId = (cfgNode \ "@receiverServiceId").text.toInt
+        if (receiverServiceId <= 0)
+            throw new RuntimeException("receiverServiceId is not valid receiverServiceId=" + receiverServiceId)
 
-
-        sendThread = new Thread(queueTypeName+"_sedingthread"+firstServiceId) {
+        sendThread = new Thread(queueTypeName + "_sedingthread" + firstServiceId) {
             override def run() {
                 sendData()
             }
         }
 
-        log.info(getClass.getName+" started {}",serviceIds)
+        log.info(getClass.getName + " started {}", serviceIds)
     }
 
     def afterInit() {
 
         sendThread.start()
-        log.info(getClass.getName+" sendThread started")
+        log.info(getClass.getName + " sendThread started")
     }
 
     def beforeClose() {
         beforeCloseFlag.set(true)
-        log.info(getClass.getName+" beforeClose called")
+        log.info(getClass.getName + " beforeClose called")
     }
 
     def checkLocalDir()
@@ -306,79 +330,79 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
         pool.shutdown()
 
-        pool.awaitTermination(5,TimeUnit.SECONDS)
+        pool.awaitTermination(5, TimeUnit.SECONDS)
 
         val t2 = System.currentTimeMillis
-        if( t2 - t1 > 100 )
-            log.warn(getClass.getName+" long time to shutdown pool, ts={}",t2-t1)
+        if (t2 - t1 > 100)
+            log.warn(getClass.getName + " long time to shutdown pool, ts={}", t2 - t1)
 
         sendThread.interrupt()
         sendThread.join()
 
-        if( persistQueueManager != null ) {
+        if (persistQueueManager != null) {
             persistQueueManager.close()
             persistQueueManager = null
         }
 
-        log.info(getClass.getName+" closed {} ",serviceIds)
+        log.info(getClass.getName + " closed {} ", serviceIds)
     }
 
-    override def receive(v:Any) :Unit = {
+    override def receive(v: Any): Unit = {
 
         try {
 
-            pool.execute( new Runnable() {
+            pool.execute(new Runnable() {
                 def run() {
 
                     try {
                         onReceive(v)
                     } catch {
-                        case e:Exception =>
-                            log.error(getClass.getName+" exception req={}",v.toString,e)
+                        case e: Exception =>
+                            log.error(getClass.getName + " exception req={}", v.toString, e)
                     }
 
                 }
-            } )
+            })
 
         } catch {
             case e: RejectedExecutionException =>
-                if( v.isInstanceOf[Request])
-                    replyError(ResultCodes.SERVICE_FULL,v.asInstanceOf[Request])
-                log.error(getClass.getName+" queue is full, serviceIds={}",serviceIds)
+                if (v.isInstanceOf[Request])
+                    replyError(ResultCodes.SERVICE_FULL, v.asInstanceOf[Request])
+                log.error(getClass.getName + " queue is full, serviceIds={}", serviceIds)
         }
 
     }
 
-    def replyOk(req : Request) {
-        val res = new Response (0,new HashMapStringAny(),req)
-        router.reply(new RequestResponseInfo(req,res))
+    def replyOk(req: Request) {
+        val res = new Response(0, new HashMapStringAny(), req)
+        router.reply(new RequestResponseInfo(req, res))
     }
 
-    def replyError(code:Int, req : Request) {
-        val res = new Response (code,new HashMapStringAny(),req)
-        router.reply(new RequestResponseInfo(req,res))
+    def replyError(code: Int, req: Request) {
+        val res = new Response(code, new HashMapStringAny(), req)
+        router.reply(new RequestResponseInfo(req, res))
     }
 
-    def selfcheck() : ArrayBuffer[SelfCheckResult] = {
+    def selfcheck(): ArrayBuffer[SelfCheckResult] = {
 
         val buff = new ArrayBuffer[SelfCheckResult]()
 
         var ioErrorId = 65301007
 
-        if( hasIOException.get() ) {
+        if (hasIOException.get()) {
             val msg = "local persistqueue has io error"
-            buff += new SelfCheckResult("SCALABPE.IO",ioErrorId,true,msg)
+            buff += new SelfCheckResult("SCALABPE.IO", ioErrorId, true, msg)
         }
 
         buff
 
     }
 
-    def onReceive(v:Any)  {
+    def onReceive(v: Any) {
 
         v match {
 
-            case res : InvokeResult =>
+            case res: InvokeResult =>
                 onReceiveResponse(res)
             case _ =>
                 log.error("unknown msg")
@@ -386,27 +410,27 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
         }
     }
 
-    def getMaxSendTimes(msgId: Int):Int ={
+    def getMaxSendTimes(msgId: Int): Int = {
         val tempvalue = msgIdCfgMap.getOrElse(msgId.toString, null)
-        if (tempvalue != null){
-            val c = if( tempvalue.maxSendTimes <= 0 ) maxSendTimes else tempvalue.maxSendTimes
+        if (tempvalue != null) {
+            val c = if (tempvalue.maxSendTimes <= 0) maxSendTimes else tempvalue.maxSendTimes
             return c
-        }else{
+        } else {
             return maxSendTimes
         }
     }
 
-    def getRetryInterval(msgId: Int):Int ={
+    def getRetryInterval(msgId: Int): Int = {
         val tempvalue = msgIdCfgMap.getOrElse(msgId.toString, null)
-        if (tempvalue != null){
-            val c = if( tempvalue.retryInterval <= 0 ) retryInterval else tempvalue.retryInterval
+        if (tempvalue != null) {
+            val c = if (tempvalue.retryInterval <= 0) retryInterval else tempvalue.retryInterval
             return c
-        }else{
+        } else {
             return retryInterval
         }
     }
 
-    def onReceiveResponse(res:InvokeResult)  {
+    def onReceiveResponse(res: InvokeResult) {
         val sendingdata = requestIdMap.remove(res.requestId)
         val body = jsonToBody(sendingdata.json)
         if (body == null) return
@@ -419,28 +443,27 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
         val maxSendTimes = getMaxSendTimes(msgId)
         val retryInterval = getRetryInterval(msgId)
 
-        if( sendingdata == null ) return
-        if( res.code == 0 || sendingdata.sendCount >= maxSendTimes ) {
+        if (sendingdata == null) return
+        if (res.code == 0 || sendingdata.sendCount >= maxSendTimes) {
 
-            if( res.code != 0 ) {
-                log.error("send failed, requestId="+sendingdata.requestId)
+            if (res.code != 0) {
+                log.error("send failed, requestId=" + sendingdata.requestId)
             }
 
             waitingRunnableList.offer(
                 new Runnable() {
                     def run() {
-                        commit(sendingdata.queueName,sendingdata.idx)
+                        commit(sendingdata.queueName, sendingdata.idx)
                         sendingdata.reset()
                     }
-                }
-                )
+                })
 
             wakeUpSendThread()
             return
 
         }
 
-        timer.schedule( new TimerTask() {
+        timer.schedule(new TimerTask() {
             def run() {
 
                 waitingRunnableList.offer(
@@ -448,24 +471,23 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
                         def run() {
                             retry(sendingdata)
                         }
-                    }
-                    )
+                    })
                 wakeUpSendThread()
 
             }
-        }, retryInterval )
+        }, retryInterval)
 
     }
 
     def wakeUpSendThread() {
 
-        if( lock.tryLock() ) {
+        if (lock.tryLock()) {
 
             try {
                 hasNewData.signal()
-                } finally {
-                    lock.unlock()
-                }
+            } finally {
+                lock.unlock()
+            }
 
         }
     }
@@ -473,20 +495,20 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
     def sendData() {
 
         lock.lock()
-        while(!shutdown.get()) {
+        while (!shutdown.get()) {
 
             try {
                 sendDataInternal()
 
-                if( !needRun() ) {
-                    hasNewData.await( 1000, TimeUnit.MILLISECONDS ) // ignore return code
+                if (!needRun()) {
+                    hasNewData.await(1000, TimeUnit.MILLISECONDS) // ignore return code
                 }
 
             } catch {
-                case e:InterruptedException =>
+                case e: InterruptedException =>
 
-                case e:Throwable =>
-                    log.error("exception in sendData, e={}",e.getMessage,e)
+                case e: Throwable =>
+                    log.error("exception in sendData, e={}", e.getMessage, e)
             }
 
         }
@@ -496,36 +518,36 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
     def needRun() = {
         !waitingRunnableList.isEmpty() ||
-        !waitingQueueNameList.isEmpty() ||
-        queuesHasData.values.filter( _.requestId == null ).size > 0
+            !waitingQueueNameList.isEmpty() ||
+            queuesHasData.values.filter(_.requestId == null).size > 0
     }
 
-    def addQueueName(queueName:String) {
+    def addQueueName(queueName: String) {
 
         var existed = queuesHasData.contains(queueName)
-        if( existed ) {
+        if (existed) {
             return
         }
 
-        val sendingdata = queuesNoData.getOrElse(queueName,null)
-        if( sendingdata != null ) {
+        val sendingdata = queuesNoData.getOrElse(queueName, null)
+        if (sendingdata != null) {
             queuesNoData.remove(queueName)
             sendingdata.reset
-            queuesHasData.put(queueName,sendingdata)
+            queuesHasData.put(queueName, sendingdata)
             return
         }
 
-        queuesHasData.put(queueName,new LocalQueueSendingData(queueName))
+        queuesHasData.put(queueName, new LocalQueueSendingData(queueName))
     }
 
-    def checkAndSend(queueName:String,sendingdata:LocalQueueSendingData,queue:PersistQueue): Boolean = {
+    def checkAndSend(queueName: String, sendingdata: LocalQueueSendingData, queue: PersistQueue): Boolean = {
 
         var hasData = true
 
         try {
             val idx = queue.get(0) // no wait
 
-            if( idx == -1 ) {  // no data
+            if (idx == -1) { // no data
 
                 hasData = false
 
@@ -536,16 +558,16 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
                 sendingdata.json = json
                 sendingdata.idx = idx
 
-                val ok = send(sendingdata,null)
-                if( !ok ) {
+                val ok = send(sendingdata, null)
+                if (!ok) {
                     queue.commit(idx)
                     sendingdata.reset
                 }
 
             }
         } catch {
-            case e : Exception =>
-                log.error("exception in sending localqueue data {}",e)
+            case e: Exception =>
+                log.error("exception in sending localqueue data {}", e)
         }
 
         hasData
@@ -553,33 +575,33 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
 
     def sendDataInternal() {
 
-        while( !waitingRunnableList.isEmpty() ) {
+        while (!waitingRunnableList.isEmpty()) {
 
             val runnable = waitingRunnableList.poll()
 
             try {
                 runnable.run()
             } catch {
-                case e:Throwable =>
+                case e: Throwable =>
             }
 
         }
 
-        while( !waitingQueueNameList.isEmpty() ) {
+        while (!waitingQueueNameList.isEmpty()) {
             val queueName = waitingQueueNameList.poll()
             addQueueName(queueName)
         }
 
         val removeList = new ArrayBuffer[String]()
 
-        for( (queueName,sendingdata) <- queuesHasData if sendingdata.requestId == null ) { // not sending data
+        for ((queueName, sendingdata) <- queuesHasData if sendingdata.requestId == null) { // not sending data
 
             val queue = persistQueueManager.getQueue(queueName)
-            if( queue == null ) {
+            if (queue == null) {
                 removeList += queueName
             } else {
-                val hasData = checkAndSend(queueName,sendingdata,queue)
-                if( !hasData )
+                val hasData = checkAndSend(queueName, sendingdata, queue)
+                if (!hasData)
                     removeList += queueName
             }
 
@@ -588,66 +610,66 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
         removeNoDataQueues(removeList)
     }
 
-    def removeNoDataQueues(removeList:ArrayBuffer[String]) {
-        for( queueName <- removeList ) {
-            val sendingdata = queuesHasData.getOrElse(queueName,null)
+    def removeNoDataQueues(removeList: ArrayBuffer[String]) {
+        for (queueName <- removeList) {
+            val sendingdata = queuesHasData.getOrElse(queueName, null)
             queuesHasData.remove(queueName)
             sendingdata.reset
-            queuesNoData.put(queueName,sendingdata)
+            queuesNoData.put(queueName, sendingdata)
         }
     }
 
-    def retry(sendingdata:LocalQueueSendingData) {
+    def retry(sendingdata: LocalQueueSendingData) {
         sendingdata.sendCount += 1
         send(sendingdata)
     }
 
-    def commit(queueName:String,idx:Long) {
+    def commit(queueName: String, idx: Long) {
         val queue = persistQueueManager.getQueue(queueName)
-        if( queue == null ) {
+        if (queue == null) {
             return
         } else {
             try {
                 queue.commit(idx)
             } catch {
-                case e : Exception =>
-                    log.error("exception in commit localqueue data {}",e.getMessage)
+                case e: Exception =>
+                    log.error("exception in commit localqueue data {}", e.getMessage)
             }
         }
     }
 
-    def send(sendingdata:LocalQueueSendingData,generatedRequestId:String=null):Boolean = {
+    def send(sendingdata: LocalQueueSendingData, generatedRequestId: String = null): Boolean = {
 
-//println("send called,idx="+sendingdata.idx)
-        if( beforeCloseFlag.get() ) {
+        //println("send called,idx="+sendingdata.idx)
+        if (beforeCloseFlag.get()) {
             return true
         }
 
         val body = jsonToBody(sendingdata.json)
-        if( body == null ) return false
+        if (body == null) return false
 
         val msgId = body.i("X-MSGID")
-        if( msgId <= 0 ) {
-            log.error("X-MSGID not found or not valid in json "+sendingdata.json)
+        if (msgId <= 0) {
+            log.error("X-MSGID not found or not valid in json " + sendingdata.json)
             return false
         }
         body.remove("X-MSGID")
 
-        val maxSendTimes=getMaxSendTimes(msgId)
+        val maxSendTimes = getMaxSendTimes(msgId)
 
-        body.put("x_sendCount", sendingdata.sendCount )
-        body.put("x_isLastSend",if (sendingdata.sendCount == maxSendTimes ) 1 else 0 )
-        body.put("x_maxSendTimes",maxSendTimes)
-        body.put("x_sendTimeUsed", System.currentTimeMillis - sendingdata.createTime )
+        body.put("x_sendCount", sendingdata.sendCount)
+        body.put("x_isLastSend", if (sendingdata.sendCount == maxSendTimes) 1 else 0)
+        body.put("x_maxSendTimes", maxSendTimes)
+        body.put("x_sendTimeUsed", System.currentTimeMillis - sendingdata.createTime)
 
         var requestId = generatedRequestId
-        if( requestId == null ) {
-            requestId = "LQ"+RequestIdGenerator.nextId()
-        } 
+        if (requestId == null) {
+            requestId = "LQ" + RequestIdGenerator.nextId()
+        }
         sendingdata.requestId = requestId
-        requestIdMap.put(requestId,sendingdata)
+        requestIdMap.put(requestId, sendingdata)
 
-        val req = new Request (
+        val req = new Request(
             requestId,
             "localqueue:0",
             sequence.getAndIncrement(),
@@ -656,62 +678,61 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
             msgId,
             new HashMapStringAny(),
             body,
-            this
-        )
+            this)
 
         router.send(req)
 
         true
     }
 
-    def jsonToBody(json:String):HashMapStringAny = {
+    def jsonToBody(json: String): HashMapStringAny = {
 
         val body = new HashMapStringAny()
 
-        try{
+        try {
 
-            if( !json.startsWith("{") ) {
-                log.error("not a valid json, json="+json)
+            if (!json.startsWith("{")) {
+                log.error("not a valid json, json=" + json)
                 return null
             }
 
             val valueTree = mapper.readTree(json)
             val names = valueTree.fieldNames
 
-            while( names.hasNext ) {
+            while (names.hasNext) {
                 val name = names.next()
                 body.put(name, valueTree.get(name).asText)
             }
 
         } catch {
-            case e:Throwable =>
-                log.error("not a valid json "+json)
+            case e: Throwable =>
+                log.error("not a valid json " + json)
                 return null
         }
 
         body
     }
 
-    def requestToJson(req:Request):String = {
-        bodyToJson(req.body,req.msgId)
+    def requestToJson(req: Request): String = {
+        bodyToJson(req.body, req.msgId)
     }
 
-    def bodyToJson(body:HashMapStringAny,msgId:Int):String = {
+    def bodyToJson(body: HashMapStringAny, msgId: Int): String = {
 
         val writer = new StringWriter()
 
         val jsonGenerator = jsonFactory.createGenerator(writer)
         jsonGenerator.writeStartObject()
 
-        jsonGenerator.writeNumberField("X-MSGID",msgId)
+        jsonGenerator.writeNumberField("X-MSGID", msgId)
 
-        for( (key,value) <- body if key != "queueName") {
+        for ((key, value) <- body if key != "queueName") {
 
             value match {
-                case s:String =>
-                    jsonGenerator.writeStringField(key,s)
-                case i:Int =>
-                    jsonGenerator.writeNumberField(key,i)
+                case s: String =>
+                    jsonGenerator.writeStringField(key, s)
+                case i: Int =>
+                    jsonGenerator.writeNumberField(key, i)
                 case _ =>
                     jsonGenerator.writeStringField(key, value.toString)
             }
@@ -724,7 +745,7 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
         writer.toString()
     }
 
-    def saveToQueue(queueName:String,s:String):Boolean = {
+    def saveToQueue(queueName: String, s: String): Boolean = {
 
         try {
             val queue = persistQueueManager.getQueue(queueName)
@@ -734,8 +755,8 @@ with Closable with BeforeClose with AfterInit with SelfCheckLike with Dumpable {
             hasIOException.set(false)
             return true
         } catch {
-            case e : Exception =>
-                log.error("cannot save data to local queue data={}",s)
+            case e: Exception =>
+                log.error("cannot save data to local queue data={}", s)
                 hasIOException.set(true)
                 return false
         }

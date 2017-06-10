@@ -1,15 +1,16 @@
 package scalabpe.plugin
 
-import scalabpe.core._
+import scalabpe.core.ArrayBufferString
+import scalabpe.core.Request
 
 // implement customed split table policy, splitTableType="custom" splitTableCustomCls="scalabpe.flow.SampleDbPlugin"
 trait SplitTablePlugin {
-    def generateTableIdx(req:Request):String
+    def generateTableIdx(req: Request): String
 }
 
 // implement customed split db policy, splitDbType="custom" splitDbCustomCls="scalabpe.flow.SampleDbPlugin"
 trait SplitDbPlugin {
-    def generateDbIdx(req:Request):Int
+    def generateDbIdx(req: Request): Int
 }
 
 // usage in flow:
@@ -36,6 +37,6 @@ trait SplitDbPlugin {
 //
 
 trait QueryCallback {
-    def process(rowNum:Int, buff:ArrayBufferString):Boolean
+    def process(rowNum: Int, buff: ArrayBufferString): Boolean
 }
 

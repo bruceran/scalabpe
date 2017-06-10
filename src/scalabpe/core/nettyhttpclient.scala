@@ -1,34 +1,44 @@
 package scalabpe.core
 
-import java.util.concurrent._
-import java.util.concurrent.atomic.AtomicBoolean
+import java.net.InetSocketAddress
+import java.security.Security
+import java.security.cert.X509Certificate
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.Executors
+import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.locks.ReentrantLock;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import scala.collection.mutable.ArrayBuffer
 
-import org.jboss.netty.buffer._;
-import org.jboss.netty.channel._;
-import org.jboss.netty.handler.timeout._;
-import org.jboss.netty.bootstrap._;
-import org.jboss.netty.channel.group._;
-import org.jboss.netty.channel.socket.nio._;
-import org.jboss.netty.handler.codec.http._;
-import org.jboss.netty.util._;
-import org.jboss.netty.handler.ssl.SslHandler;
+import org.jboss.netty.bootstrap.ClientBootstrap
+import org.jboss.netty.channel.Channel
+import org.jboss.netty.channel.ChannelFuture
+import org.jboss.netty.channel.ChannelFutureListener
+import org.jboss.netty.channel.ChannelHandlerContext
+import org.jboss.netty.channel.ChannelPipeline
+import org.jboss.netty.channel.ChannelPipelineFactory
+import org.jboss.netty.channel.ChannelStateEvent
+import org.jboss.netty.channel.Channels
+import org.jboss.netty.channel.ExceptionEvent
+import org.jboss.netty.channel.MessageEvent
+import org.jboss.netty.channel.SimpleChannelUpstreamHandler
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory
+import org.jboss.netty.handler.codec.http.HttpChunkAggregator
+import org.jboss.netty.handler.codec.http.HttpRequest
+import org.jboss.netty.handler.codec.http.HttpRequestEncoder
+import org.jboss.netty.handler.codec.http.HttpResponse
+import org.jboss.netty.handler.codec.http.HttpResponseDecoder
+import org.jboss.netty.handler.ssl.SslHandler
+import org.jboss.netty.util.ThreadNameDeterminer
+import org.jboss.netty.util.ThreadRenamingRunnable
 
-import javax.net.ssl._
-import java.security._
-import java.security.cert._
-
-import scalabpe.core._
+import javax.net.ssl.SSLContext
+import javax.net.ssl.TrustManager
+import javax.net.ssl.X509TrustManager
 
 // used by netty
 trait HttpClient4Netty {
-    def receive(sequence:Int,httpRes:HttpResponse):Unit;
-    def networkError(sequence:Int):Unit;
-    def timeoutError(sequence:Int):Unit;
+    def receive(sequence: Int, httpRes: HttpResponse): Unit;
+    def networkError(sequence: Int): Unit;
+    def timeoutError(sequence: Int): Unit;
 }
 
 object NettyHttpClient {
@@ -37,26 +47,26 @@ object NettyHttpClient {
 
 class NettyHttpClient(
     val httpClient: HttpClient4Netty,
-    val connectTimeout :Int = 15000,
-    val timerInterval :Int = 100,
-    val maxContentLength :Int = 1048576 )
-extends Logging with Dumpable {
+    val connectTimeout: Int = 15000,
+    val timerInterval: Int = 100,
+    val maxContentLength: Int = 1048576)
+        extends Logging with Dumpable {
 
-    var factory : NioClientSocketChannelFactory = _
+    var factory: NioClientSocketChannelFactory = _
     val pipelineFactory = new NettyPipelineFactory()
-    var sslPipelineFactory : SslNettyPipelineFactory = null
-    var nettyHttpClientHandler : NettyHttpClientHandler = _
+    var sslPipelineFactory: SslNettyPipelineFactory = null
+    var nettyHttpClientHandler: NettyHttpClientHandler = _
 
-    val qte = new QuickTimerEngine(onTimeout,timerInterval)
+    val qte = new QuickTimerEngine(onTimeout, timerInterval)
 
-    val dataMap = new ConcurrentHashMap[Int,TimeoutInfo]() // key is sequence
-    val connMap = new ConcurrentHashMap[Int,TimeoutInfo]() // key is channel.getId
+    val dataMap = new ConcurrentHashMap[Int, TimeoutInfo]() // key is sequence
+    val connMap = new ConcurrentHashMap[Int, TimeoutInfo]() // key is channel.getId
 
-    val bossThreadFactory = new NamedThreadFactory("httpclientboss"+NettyHttpClient.count.getAndIncrement())
-    val workThreadFactory = new NamedThreadFactory("httpclientwork"+NettyHttpClient.count.getAndIncrement())
+    val bossThreadFactory = new NamedThreadFactory("httpclientboss" + NettyHttpClient.count.getAndIncrement())
+    val workThreadFactory = new NamedThreadFactory("httpclientwork" + NettyHttpClient.count.getAndIncrement())
 
-    var bossExecutor:ThreadPoolExecutor = _
-    var workerExecutor:ThreadPoolExecutor = _
+    var bossExecutor: ThreadPoolExecutor = _
+    var workerExecutor: ThreadPoolExecutor = _
 
     init
 
@@ -77,7 +87,7 @@ extends Logging with Dumpable {
         qte.dump
     }
 
-    def close() : Unit = {
+    def close(): Unit = {
 
         if (factory != null) {
 
@@ -93,7 +103,7 @@ extends Logging with Dumpable {
         log.info("netty http client stopped")
     }
 
-    def init() : Unit  = {
+    def init(): Unit = {
 
         nettyHttpClientHandler = new NettyHttpClientHandler(this)
 
@@ -105,24 +115,23 @@ extends Logging with Dumpable {
 
         factory = new NioClientSocketChannelFactory(bossExecutor, workerExecutor)
 
-
         log.info("netty http client started")
     }
 
-    def send(sequence:Int, ssl:Boolean, addr:String, httpReq:HttpRequest, timeout:Int) : Unit = {
+    def send(sequence: Int, ssl: Boolean, addr: String, httpReq: HttpRequest, timeout: Int): Unit = {
 
         var ss = addr.split(":")
         var host = ss(0)
-        var port = if( ss.size >= 2 ) ss(1).toInt else 80
+        var port = if (ss.size >= 2) ss(1).toInt else 80
 
         val bootstrap = new ClientBootstrap(factory);
-        if( ssl ) {
+        if (ssl) {
 
-            if( SslContextFactory.CLIENT_CONTEXT == null ) {
+            if (SslContextFactory.CLIENT_CONTEXT == null) {
                 httpClient.networkError(sequence)
                 return
             }
-            if( sslPipelineFactory == null )
+            if (sslPipelineFactory == null)
                 sslPipelineFactory = new SslNettyPipelineFactory()
             bootstrap.setPipelineFactory(sslPipelineFactory);
 
@@ -134,86 +143,86 @@ extends Logging with Dumpable {
         bootstrap.setOption("tcpNoDelay", true);
         bootstrap.setOption("keepAlive", true);
 
-        val t = if( timeout < connectTimeout ) timeout else connectTimeout
+        val t = if (timeout < connectTimeout) timeout else connectTimeout
         bootstrap.setOption("connectTimeoutMillis", t);
 
-        val future = bootstrap.connect(new InetSocketAddress(host,port));
-        future.addListener( new ChannelFutureListener() {
-            def operationComplete(future: ChannelFuture ) {
-                onConnectCompleted(future,sequence,addr,httpReq,timeout)
+        val future = bootstrap.connect(new InetSocketAddress(host, port));
+        future.addListener(new ChannelFutureListener() {
+            def operationComplete(future: ChannelFuture) {
+                onConnectCompleted(future, sequence, addr, httpReq, timeout)
             }
-        } )
+        })
 
     }
 
-    def onConnectCompleted(f: ChannelFuture, sequence:Int, addr:String, httpReq:HttpRequest, timeout:Int) : Unit = {
+    def onConnectCompleted(f: ChannelFuture, sequence: Int, addr: String, httpReq: HttpRequest, timeout: Int): Unit = {
 
         if (f.isCancelled()) {
             log.error("onConnectCompleted f.isCancelled should not be called")
         } else if (!f.isSuccess()) {
-            log.error("connect failed, addr={},e={}",addr,f.getCause.getMessage)
+            log.error("connect failed, addr={},e={}", addr, f.getCause.getMessage)
             httpClient.networkError(sequence)
         } else {
             // log.debug(addr+" connected");
             val ch = f.getChannel
 
-            val t = qte.newTimer(timeout,sequence)
-            val ti = new TimeoutInfo(sequence,ch,t)
-            dataMap.put(sequence,ti)
-            connMap.put(ch.getId,ti)
+            val t = qte.newTimer(timeout, sequence)
+            val ti = new TimeoutInfo(sequence, ch, t)
+            dataMap.put(sequence, ti)
+            connMap.put(ch.getId, ti)
 
             ch.write(httpReq);
         }
 
     }
 
-    def onTimeout(data:Any):Unit = {
+    def onTimeout(data: Any): Unit = {
 
         val sequence = data.asInstanceOf[Int]
 
         val ti = dataMap.remove(sequence)
-        if( ti != null ) {
+        if (ti != null) {
             connMap.remove(ti.channel.getId)
             httpClient.timeoutError(sequence)
             ti.channel.close()
         } else {
-            log.error("timeout but sequence not found, seq={}",sequence)
+            log.error("timeout but sequence not found, seq={}", sequence)
         }
 
     }
 
-    def messageReceived(ctx:ChannelHandlerContext, e:MessageEvent): Unit = {
+    def messageReceived(ctx: ChannelHandlerContext, e: MessageEvent): Unit = {
         val ch = e.getChannel
 
         val ti = connMap.remove(ch.getId)
-        if( ti == null ) return
+        if (ti == null) return
         dataMap.remove(ti.sequence)
         ti.timer.cancel()
 
         val httpRes = e.getMessage().asInstanceOf[HttpResponse]
 
-        httpClient.receive(ti.sequence,httpRes)
+        httpClient.receive(ti.sequence, httpRes)
 
         ch.close()
     }
 
-    def exceptionCaught(ctx:ChannelHandlerContext, e: ExceptionEvent) :Unit = {
+    def exceptionCaught(ctx: ChannelHandlerContext, e: ExceptionEvent): Unit = {
         val ch = e.getChannel
 
         val ti = connMap.remove(ch.getId)
-        if( ti == null ) return
+        if (ti == null) return
         dataMap.remove(ti.sequence)
         ti.timer.cancel()
 
         val remoteAddr = ch.getRemoteAddress.toString
-        log.error("exceptionCaught addr={},e={}",remoteAddr,e)
+        log.error("exceptionCaught addr={},e={}", remoteAddr, e)
 
         httpClient.networkError(ti.sequence)
 
         ch.close()
     }
 
-    def channelDisconnected(ctx:ChannelHandlerContext, e:ChannelStateEvent):Unit = {
+    def channelDisconnected(ctx: ChannelHandlerContext, e: ChannelStateEvent): Unit = {
         val ch = e.getChannel
         val remoteAddr = ch.getRemoteAddress.toString
         // log.debug(remoteAddr+" disconnected");
@@ -221,7 +230,7 @@ extends Logging with Dumpable {
         // remove dataMap
 
         val ti = connMap.remove(ch.getId)
-        if( ti == null ) return
+        if (ti == null) return
         dataMap.remove(ti.sequence)
         ti.timer.cancel()
 
@@ -229,7 +238,7 @@ extends Logging with Dumpable {
 
     class NettyPipelineFactory extends Object with ChannelPipelineFactory {
 
-        def getPipeline() : ChannelPipeline =  {
+        def getPipeline(): ChannelPipeline = {
             val pipeline = Channels.pipeline();
             pipeline.addLast("decoder", new HttpResponseDecoder());
             pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength));
@@ -241,7 +250,7 @@ extends Logging with Dumpable {
 
     class SslNettyPipelineFactory extends Object with ChannelPipelineFactory {
 
-        def getPipeline() : ChannelPipeline =  {
+        def getPipeline(): ChannelPipeline = {
             val pipeline = Channels.pipeline();
 
             val engine = SslContextFactory.CLIENT_CONTEXT.createSSLEngine();
@@ -257,23 +266,23 @@ extends Logging with Dumpable {
         }
     }
 
-    class NettyHttpClientHandler(val nettyHttpClient: NettyHttpClient) extends SimpleChannelUpstreamHandler  with Logging {
+    class NettyHttpClientHandler(val nettyHttpClient: NettyHttpClient) extends SimpleChannelUpstreamHandler with Logging {
 
-        override def messageReceived(ctx:ChannelHandlerContext, e:MessageEvent): Unit = {
-            nettyHttpClient.messageReceived(ctx,e)
+        override def messageReceived(ctx: ChannelHandlerContext, e: MessageEvent): Unit = {
+            nettyHttpClient.messageReceived(ctx, e)
         }
 
-        override def exceptionCaught(ctx:ChannelHandlerContext, e: ExceptionEvent) :Unit = {
-            nettyHttpClient.exceptionCaught(ctx,e)
+        override def exceptionCaught(ctx: ChannelHandlerContext, e: ExceptionEvent): Unit = {
+            nettyHttpClient.exceptionCaught(ctx, e)
         }
 
-        override def channelDisconnected(ctx:ChannelHandlerContext, e:ChannelStateEvent):Unit = {
-            nettyHttpClient.channelDisconnected(ctx,e)
+        override def channelDisconnected(ctx: ChannelHandlerContext, e: ChannelStateEvent): Unit = {
+            nettyHttpClient.channelDisconnected(ctx, e)
         }
 
     }
 
-    class TimeoutInfo(val sequence:Int, val channel:Channel, val timer: QuickTimer)
+    class TimeoutInfo(val sequence: Int, val channel: Channel, val timer: QuickTimer)
 
 }
 
@@ -296,7 +305,7 @@ object SslContextFactory {
             clientContext.init(null, SslTrustManagerFactory.getTrustManagers(), null);
             CLIENT_CONTEXT = clientContext;
         } catch {
-            case e:Exception =>
+            case e: Exception =>
                 throw new Error(
                     "Failed to initialize the client-side SSLContext", e);
         }
@@ -309,7 +318,7 @@ object SslTrustManagerFactory extends Logging {
 
     val DUMMY_TRUST_MANAGER = new X509TrustManager() {
 
-        override def getAcceptedIssuers() : Array[X509Certificate] = Array[X509Certificate]()
+        override def getAcceptedIssuers(): Array[X509Certificate] = Array[X509Certificate]()
         override def checkClientTrusted(chain: Array[X509Certificate], authType: String) {}
 
         /*
@@ -329,14 +338,14 @@ object SslTrustManagerFactory extends Logging {
 
         override def checkServerTrusted(chain: Array[X509Certificate], authType: String) {
             // TODO Always trust any server certificate, should do something.
-            if( log.isDebugEnabled() ) {
+            if (log.isDebugEnabled()) {
                 log.debug("SERVER CERTIFICATE: " + chain(0).getSubjectDN());
             }
         }
     };
 
-    def getTrustManagers() : Array[TrustManager] = {
-        Array( DUMMY_TRUST_MANAGER )
+    def getTrustManagers(): Array[TrustManager] = {
+        Array(DUMMY_TRUST_MANAGER)
     }
 
 }

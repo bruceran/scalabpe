@@ -1,23 +1,23 @@
 package scalabpe.plugin.cache
 
-import java.nio.ByteBuffer;
+import java.nio.ByteBuffer
 import java.nio.ByteOrder;
 
 object MurmurHash {
 
-    def hash(key:String):Long = {
+    def hash(key: String): Long = {
         return hash(key.getBytes("utf-8"));
     }
 
-    def hash(key:Array[Byte]):Long = {
+    def hash(key: Array[Byte]): Long = {
         return hash64A(key, 305441741);
     }
 
-    def hash64A(data:Array[Byte],seed:Int):Long = {
+    def hash64A(data: Array[Byte], seed: Int): Long = {
         return hash64A(ByteBuffer.wrap(data), seed);
     }
 
-    def hash64A(buf:ByteBuffer,seed:Int):Long = {
+    def hash64A(buf: ByteBuffer, seed: Int): Long = {
         val byteOrder = buf.order();
         buf.order(ByteOrder.LITTLE_ENDIAN);
 
@@ -30,7 +30,7 @@ object MurmurHash {
             var k = buf.getLong();
 
             k = k * m;
-            k = k ^ ( k >>> r ) ;
+            k = k ^ (k >>> r);
             k = k * m;
 
             h ^= k;

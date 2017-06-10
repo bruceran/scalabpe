@@ -1,9 +1,11 @@
 package scalabpe.core
 
-import org.apache.commons.lang.StringUtils 
-import scala.collection.mutable.{HashMap,HashSet}
-import scala.collection.mutable.ArrayBuffer
-import java.util.regex._
+import java.util.regex.Pattern
+
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashSet
+
+import org.apache.commons.lang.StringUtils
 
 /*
 
@@ -29,118 +31,118 @@ validator定义为：
 
 object Validator extends Logging {
 
-    val cache = new HashMap[String,Validator]()
+    val cache = new HashMap[String, Validator]()
     val emailRegex = """^[A-Za-z0-9_.-]+@[a-zA-Z0-9_-]+[.][a-zA-Z0-9_-]+$"""
     val urlRegex = """^https?://[^/]+/.*$"""
 
-    def getValidator(cls:String, param:String, returnCode:String):Validator =  {
-        if( cls == null || cls == "" ) return null
-        val rc = if( returnCode == null || returnCode == "") -10242400 else returnCode.toInt
+    def getValidator(cls: String, param: String, returnCode: String): Validator = {
+        if (cls == null || cls == "") return null
+        val rc = if (returnCode == null || returnCode == "") -10242400 else returnCode.toInt
 
-    val key = cls.toLowerCase + ":param=" + param + ":rc=" + rc
-    var v = cache.getOrElse(key,null)
-    if( v != null ) return v
+        val key = cls.toLowerCase + ":param=" + param + ":rc=" + rc
+        var v = cache.getOrElse(key, null)
+        if (v != null) return v
 
-    v = cls.toLowerCase match {
-        case "required" =>
-            new RequireValidator(cls.toLowerCase,param,rc)
-        case "regex" =>
-            new RegexValidator(cls.toLowerCase,param,rc)
-        case "email" =>
-            new RegexValidator(cls.toLowerCase,emailRegex,rc)
-        case "url" =>
-            new RegexValidator(cls.toLowerCase,urlRegex,rc)
-        case "numberrange" =>
-            new NumberRangeValidator(cls.toLowerCase,param,rc)
-        case "lengthrange" =>
-            new LengthRangeValidator(cls.toLowerCase,param,rc)
-        case "timerange" =>
-            new TimeRangeValidator(cls.toLowerCase,param,rc)
-        case "numberset" =>
-            new ValueSetValidator(cls.toLowerCase,param,rc)
-        case "valueset" =>
-            new ValueSetValidator(cls.toLowerCase,param,rc)
-        case _ =>
-            log.error("unknown validator, cls="+cls)
-            throw new CodecException("unknown validator, cls="+cls)
-    }
-    cache.put(key,v)
-    return v
+        v = cls.toLowerCase match {
+            case "required" =>
+                new RequireValidator(cls.toLowerCase, param, rc)
+            case "regex" =>
+                new RegexValidator(cls.toLowerCase, param, rc)
+            case "email" =>
+                new RegexValidator(cls.toLowerCase, emailRegex, rc)
+            case "url" =>
+                new RegexValidator(cls.toLowerCase, urlRegex, rc)
+            case "numberrange" =>
+                new NumberRangeValidator(cls.toLowerCase, param, rc)
+            case "lengthrange" =>
+                new LengthRangeValidator(cls.toLowerCase, param, rc)
+            case "timerange" =>
+                new TimeRangeValidator(cls.toLowerCase, param, rc)
+            case "numberset" =>
+                new ValueSetValidator(cls.toLowerCase, param, rc)
+            case "valueset" =>
+                new ValueSetValidator(cls.toLowerCase, param, rc)
+            case _ =>
+                log.error("unknown validator, cls=" + cls)
+                throw new CodecException("unknown validator, cls=" + cls)
+        }
+        cache.put(key, v)
+        return v
     }
 }
 
 trait Validator {
-    val cls:String
-    val param:String
-    val returnCode:Int
-    def validate(a:Any):Int
+    val cls: String
+    val param: String
+    val returnCode: Int
+    def validate(a: Any): Int
 }
 
-class RequireValidator(val cls:String, val param:String, val returnCode:Int) extends Validator with Logging {
+class RequireValidator(val cls: String, val param: String, val returnCode: Int) extends Validator with Logging {
 
-    def validate(a:Any):Int = {
-        if( a == null )
+    def validate(a: Any): Int = {
+        if (a == null)
             return returnCode
         a match {
-            case s:String => 
-                if( s == "")
+            case s: String =>
+                if (s == "")
                     return returnCode
-            case ls:ArrayBufferString => 
-                if( ls.size == 0)
+            case ls: ArrayBufferString =>
+                if (ls.size == 0)
                     return returnCode
-            case li:ArrayBufferInt => 
-                if( li.size == 0)
+            case li: ArrayBufferInt =>
+                if (li.size == 0)
                     return returnCode
-            case lm:ArrayBufferMap => 
-                if( lm.size == 0)
+            case lm: ArrayBufferMap =>
+                if (lm.size == 0)
                     return returnCode
-            case _  => 
+            case _ =>
         }
         0
     }
 
 }
 
-class NumberRangeValidator(val cls:String, val param:String, val returnCode:Int) extends Validator with Logging {
+class NumberRangeValidator(val cls: String, val param: String, val returnCode: Int) extends Validator with Logging {
 
-    var min = Int.MinValue 
-    var max = Int.MaxValue 
+    var min = Int.MinValue
+    var max = Int.MaxValue
 
     init
 
     def init() {
-        if( param == null || param == "" ) 
+        if (param == null || param == "")
             throw new CodecException("number range validator param is not valid, param is empty")
         val p = param.indexOf(",")
-        if( p < 0 )
-            throw new CodecException("number range validator param is not valid, param="+param)
-        val v1 = param.substring(0,p)
-        val v2 = param.substring(p+1)
-        if( v1 != "" )
+        if (p < 0)
+            throw new CodecException("number range validator param is not valid, param=" + param)
+        val v1 = param.substring(0, p)
+        val v2 = param.substring(p + 1)
+        if (v1 != "")
             min = v1.toInt
-        if( v2 != "" )
+        if (v2 != "")
             max = v2.toInt
-        if( max < min )
-            throw new CodecException("number range validator param is not valid, param="+param)
+        if (max < min)
+            throw new CodecException("number range validator param is not valid, param=" + param)
     }
 
-    def validate(a:Any):Int = {
+    def validate(a: Any): Int = {
         a match {
-            case i:Int => 
-                if( i < min || i > max ) 
+            case i: Int =>
+                if (i < min || i > max)
                     return returnCode
-            case s:String => 
-                if( s == null || s == "")
+            case s: String =>
+                if (s == null || s == "")
                     return returnCode
                 try {
                     val i = s.toInt
-                    if( i < min || i > max ) 
+                    if (i < min || i > max)
                         return returnCode
                 } catch {
-                    case e:Throwable => 
+                    case e: Throwable =>
                         return returnCode
                 }
-            case _  => 
+            case _ =>
                 return returnCode
         }
         0
@@ -148,49 +150,49 @@ class NumberRangeValidator(val cls:String, val param:String, val returnCode:Int)
 
 }
 
-class LengthRangeValidator(val cls:String, val param:String, val returnCode:Int) extends Validator with Logging {
+class LengthRangeValidator(val cls: String, val param: String, val returnCode: Int) extends Validator with Logging {
 
-    var min = Int.MinValue 
-    var max = Int.MaxValue 
+    var min = Int.MinValue
+    var max = Int.MaxValue
 
     init
 
     def init() {
-        if( param == null || param == "" ) 
+        if (param == null || param == "")
             throw new CodecException("length range validator param is not valid, param is empty")
         val p = param.indexOf(",")
-        if( p < 0 )
-            throw new CodecException("length range validator param is not valid, param="+param)
-        val v1 = param.substring(0,p)
-        val v2 = param.substring(p+1)
-        if( v1 != "" )
+        if (p < 0)
+            throw new CodecException("length range validator param is not valid, param=" + param)
+        val v1 = param.substring(0, p)
+        val v2 = param.substring(p + 1)
+        if (v1 != "")
             min = v1.toInt
-        if( v2 != "" )
+        if (v2 != "")
             max = v2.toInt
-        if( max < min )
-            throw new CodecException("length range validator param is not valid, param="+param)
+        if (max < min)
+            throw new CodecException("length range validator param is not valid, param=" + param)
     }
 
-    def validate(a:Any):Int = {
+    def validate(a: Any): Int = {
         a match {
-            case i:Int => 
+            case i: Int =>
                 val len = i.toString.length
-                if( len < min || len > max ) 
+                if (len < min || len > max)
                     return returnCode
-            case s:String => 
-                if( s == null || s == "")
+            case s: String =>
+                if (s == null || s == "")
                     return returnCode
                 val len = s.length
-            if( len < min || len > max ) 
-                return returnCode
-            case _  => 
+                if (len < min || len > max)
+                    return returnCode
+            case _ =>
                 return returnCode
         }
         0
     }
 
 }
-class TimeRangeValidator(val cls:String, val param:String, val returnCode:Int) extends Validator with Logging {
+class TimeRangeValidator(val cls: String, val param: String, val returnCode: Int) extends Validator with Logging {
 
     var min = "1970-01-01 00:00:00"
     var max = "2099-01-01 00:00:00"
@@ -198,90 +200,90 @@ class TimeRangeValidator(val cls:String, val param:String, val returnCode:Int) e
     init
 
     def init() {
-        if( param == null || param == "" ) 
+        if (param == null || param == "")
             throw new CodecException("time range validator param is not valid, param is empty")
         val p = param.indexOf(",")
-        if( p < 0 )
-            throw new CodecException("time range validator param is not valid, param="+param)
-        val v1 = param.substring(0,p)
-        val v2 = param.substring(p+1)
-        if( v1 != "" )
+        if (p < 0)
+            throw new CodecException("time range validator param is not valid, param=" + param)
+        val v1 = param.substring(0, p)
+        val v2 = param.substring(p + 1)
+        if (v1 != "")
             min = v1
-        if( v2 != "" )
+        if (v2 != "")
             max = v2
-        if( max < min )
-            throw new CodecException("time range validator param is not valid, param="+param)
+        if (max < min)
+            throw new CodecException("time range validator param is not valid, param=" + param)
     }
 
-    def validate(a:Any):Int = {
+    def validate(a: Any): Int = {
         a match {
-            case s:String => 
-                if( s == null || s == "")
+            case s: String =>
+                if (s == null || s == "")
                     return returnCode
-                if( s < min || s > max ) 
+                if (s < min || s > max)
                     return returnCode
-            case _  => 
+            case _ =>
                 return returnCode
         }
         0
     }
 
 }
-class ValueSetValidator(val cls:String, val param:String, val returnCode:Int) extends Validator with Logging {
+class ValueSetValidator(val cls: String, val param: String, val returnCode: Int) extends Validator with Logging {
 
     var set = HashSet[String]()
 
     init
 
     def init() {
-        if( param == null || param == "" ) 
+        if (param == null || param == "")
             throw new CodecException("value set validator param is not valid, param is empty")
         val ss = param.split("\\|")
-        for( s <- ss ) set.add(s)
+        for (s <- ss) set.add(s)
     }
 
-    def validate(a:Any):Int = {
+    def validate(a: Any): Int = {
         a match {
-            case s:String => 
-                if( s == null || s == "")
+            case s: String =>
+                if (s == null || s == "")
                     return returnCode
-                if( !set.contains(s) ) 
+                if (!set.contains(s))
                     return returnCode
-            case i:Int => 
-                if( !set.contains(i.toString) ) 
+            case i: Int =>
+                if (!set.contains(i.toString))
                     return returnCode
-            case _  => 
+            case _ =>
                 return returnCode
         }
         0
     }
 
 }
-class RegexValidator(val cls:String, val param:String, val returnCode:Int) extends Validator with Logging {
+class RegexValidator(val cls: String, val param: String, val returnCode: Int) extends Validator with Logging {
 
-    var p:Pattern = _
+    var p: Pattern = _
 
     init
 
     def init() {
-        if( param == null || param == "" ) 
+        if (param == null || param == "")
             throw new CodecException("regex validator param is not valid, param is empty")
         p = Pattern.compile(param)
     }
 
-    def validate(a:Any):Int = {
+    def validate(a: Any): Int = {
         a match {
-            case s:String => 
-                if( s == null || s == "")
+            case s: String =>
+                if (s == null || s == "")
                     return returnCode
-                if( !p.matcher(s).matches() )  {
-                    return returnCode
-                }
-            case i:Int => 
-                if( !p.matcher(i.toString).matches() ) {
+                if (!p.matcher(s).matches()) {
                     return returnCode
                 }
-            case _  => 
+            case i: Int =>
+                if (!p.matcher(i.toString).matches()) {
+                    return returnCode
+                }
+            case _ =>
                 return returnCode
         }
         0
@@ -308,75 +310,75 @@ AttackFilter        无	                    无	        基于NocaseEncoder,等�
 
 object Encoder extends Logging {
 
-    val cache = new HashMap[String,Encoder]()
+    val cache = new HashMap[String, Encoder]()
     val htmlParam = """&,&amp;|<,&lt;|>,&gt;|",&quot;|',&#x27;|/,&#x2f;"""
     val htmlFilterParam = """&,|<,|>,|",|',|/,|\\,"""
     val attackFilterParam = """script,|exec,|select,|update,|delete,|insert,|create,|alter,|drop,|truncate,|&,|<,|>,|",|',|/,|\\,"""
 
-    def getEncoder(cls:String, param:String) : Encoder = {
-        if( cls == null || cls == "" ) return null
+    def getEncoder(cls: String, param: String): Encoder = {
+        if (cls == null || cls == "") return null
 
         val key = cls.toLowerCase + ":" + param
-        val encoder = cache.getOrElse(key,null)
-        if( encoder != null ) return encoder
+        val encoder = cache.getOrElse(key, null)
+        if (encoder != null) return encoder
 
         val v = cls.toLowerCase match {
             case "escapeencoder" | "dummyencoder" =>
-                new DummyEncoder(cls.toLowerCase,param)
+                new DummyEncoder(cls.toLowerCase, param)
             case "normalencoder" =>
-                new NormalEncoder(cls.toLowerCase,param)
+                new NormalEncoder(cls.toLowerCase, param)
             case "htmlencoder" =>
-                new HtmlEncoder(cls.toLowerCase,htmlParam)
+                new HtmlEncoder(cls.toLowerCase, htmlParam)
             case "htmlfilter" =>
-                new NormalEncoder(cls.toLowerCase,htmlFilterParam)
+                new NormalEncoder(cls.toLowerCase, htmlFilterParam)
             case "nocaseencoder" =>
-                new NoCaseEncoder(cls.toLowerCase,param)
+                new NoCaseEncoder(cls.toLowerCase, param)
             case "attackfilter" =>
-                new NoCaseEncoder(cls.toLowerCase,attackFilterParam)
+                new NoCaseEncoder(cls.toLowerCase, attackFilterParam)
             case "maskencoder" =>
-                new MaskEncoder(cls.toLowerCase,param)
+                new MaskEncoder(cls.toLowerCase, param)
             case _ =>
-                log.error("unknown encoder, cls="+cls)
-                throw new CodecException("unknown encoder, cls="+cls)
+                log.error("unknown encoder, cls=" + cls)
+                throw new CodecException("unknown encoder, cls=" + cls)
         }
-        cache.put(key,v)
+        cache.put(key, v)
         return v
     }
 }
 
 trait Encoder {
-    val cls:String
-    val param:String
-    def encode(a:Any):Any
+    val cls: String
+    val param: String
+    def encode(a: Any): Any
 }
 
-class DummyEncoder(val cls:String, val param:String) extends Encoder with Logging {
-    def encode(a:Any):Any = a
+class DummyEncoder(val cls: String, val param: String) extends Encoder with Logging {
+    def encode(a: Any): Any = a
 }
 
-class NormalEncoder(val cls:String, val param:String) extends Encoder with Logging {
+class NormalEncoder(val cls: String, val param: String) extends Encoder with Logging {
 
-    val js = Array[String] ("\\\\","\\|","\\,")
-    val ks = Array[String] ( new String(Array[Byte](1)), new String(Array[Byte](2)), new String(Array[Byte](3)))
-    val ls = Array[String] ("\\","|",",")
+    val js = Array[String]("\\\\", "\\|", "\\,")
+    val ks = Array[String](new String(Array[Byte](1)), new String(Array[Byte](2)), new String(Array[Byte](3)))
+    val ls = Array[String]("\\", "|", ",")
 
-    var p1 : Array[String] = _
-    var p2 : Array[String] = _
+    var p1: Array[String] = _
+    var p2: Array[String] = _
 
     init
 
     def init() {
-        if( param == null || param == "" ) return
+        if (param == null || param == "") return
         var t = j2k(param)
         val ss = t.split("\\|")
         val p1b = ArrayBufferString()
         val p2b = ArrayBufferString()
 
-        for( s <- ss ) {
+        for (s <- ss) {
             val p = s.indexOf(",")
-            if( p <= 0 ) throw new CodecException("encoder param not valid, comma not found, param="+param)
-            val k = k2j( s.substring(0,p) )
-            val v = k2j( s.substring(p+1) )
+            if (p <= 0) throw new CodecException("encoder param not valid, comma not found, param=" + param)
+            val k = k2j(s.substring(0, p))
+            val v = k2j(s.substring(p + 1))
             p1b += k
             p2b += v
         }
@@ -384,62 +386,62 @@ class NormalEncoder(val cls:String, val param:String) extends Encoder with Loggi
         p2 = p2b.toArray
     }
 
-    def j2k(s:String):String= {
-        StringUtils.replaceEach(s,js,ks)
+    def j2k(s: String): String = {
+        StringUtils.replaceEach(s, js, ks)
     }
-    def k2j(s:String):String= {
-        StringUtils.replaceEach(s,ks,ls)
-    }
-
-    def encodeString(s:String):String = {
-        if( s == null ) return s
-        StringUtils.replaceEach(s,p1,p2)
+    def k2j(s: String): String = {
+        StringUtils.replaceEach(s, ks, ls)
     }
 
-    def encodeInt(i:Int):Int = {
+    def encodeString(s: String): String = {
+        if (s == null) return s
+        StringUtils.replaceEach(s, p1, p2)
+    }
+
+    def encodeInt(i: Int): Int = {
         try {
             encodeString(i.toString).toInt
         } catch {
-            case e:Throwable => 
-                log.error("encoder int error, i="+i+",cls="+cls+",param="+param)
+            case e: Throwable =>
+                log.error("encoder int error, i=" + i + ",cls=" + cls + ",param=" + param)
                 i
         }
     }
 
-    def encode(a:Any):Any = {
+    def encode(a: Any): Any = {
         a match {
-            case s:String => encodeString(s)
-            case i:Int => encodeInt(i)
-            case _ => a
+            case s: String => encodeString(s)
+            case i: Int    => encodeInt(i)
+            case _         => a
         }
     }
 }
 
-class NoCaseEncoder(override val cls:String, override val param:String) extends NormalEncoder(cls,param) with Logging {
+class NoCaseEncoder(override val cls: String, override val param: String) extends NormalEncoder(cls, param) with Logging {
 
     override def init() {
         super.init()
-        p1 = p1.map( _.toLowerCase )
+        p1 = p1.map(_.toLowerCase)
     }
 
-    override def encodeString(s:String):String = {
-        if( s == null ) return s
-        val b = new StringBuilder(s) 
+    override def encodeString(s: String): String = {
+        if (s == null) return s
+        val b = new StringBuilder(s)
         var i = 0
-        while( i < p1.size ) {
-            replace(b,p1(i),p2(i))
+        while (i < p1.size) {
+            replace(b, p1(i), p2(i))
             i += 1
         }
         b.toString
     }
 
-    def replace(b:StringBuilder,s:String,d:String):Unit = {
+    def replace(b: StringBuilder, s: String, d: String): Unit = {
         val slen = s.length
         val dlen = d.length
-        var p = org.apache.commons.lang3.StringUtils.indexOfIgnoreCase(b,s,0)
-        while( p >= 0 ) {
-            b.replace(p,p+slen,d)
-            p = org.apache.commons.lang3.StringUtils.indexOfIgnoreCase(b,s,p+dlen)
+        var p = org.apache.commons.lang3.StringUtils.indexOfIgnoreCase(b, s, 0)
+        while (p >= 0) {
+            b.replace(p, p + slen, d)
+            p = org.apache.commons.lang3.StringUtils.indexOfIgnoreCase(b, s, p + dlen)
         }
     }
 }
@@ -447,32 +449,32 @@ class NoCaseEncoder(override val cls:String, override val param:String) extends 
 // 注意: 
 // NormalEncoder类在处理源和目标有重叠的情况，多次encoder会有问题
 // HtmlEncoder对这个做了特殊处理，多次encoder不会引起问题
-class HtmlEncoder(override val cls:String, override val param:String) extends NormalEncoder(cls,param) with Logging {
+class HtmlEncoder(override val cls: String, override val param: String) extends NormalEncoder(cls, param) with Logging {
 
-    var p3 : Array[String] = _
+    var p3: Array[String] = _
 
     override def init() {
         super.init
         p3 = new Array[String](p2.size)
-        for( i <- 0 until p3.size ) {
-            p3(i) = new String(Array[Byte]((i+1).toByte))
+        for (i <- 0 until p3.size) {
+            p3(i) = new String(Array[Byte]((i + 1).toByte))
         }
     }
 
-    override def encodeString(s:String):String = {
-        if( s == null ) return s
-        var t = StringUtils.replaceEach(s,p2,p3)
+    override def encodeString(s: String): String = {
+        if (s == null) return s
+        var t = StringUtils.replaceEach(s, p2, p3)
         t = super.encodeString(t)
-        t = StringUtils.replaceEach(t,p3,p2)
+        t = StringUtils.replaceEach(t, p3, p2)
         t
     }
 
 }
 
-class MaskEncoder(override val cls:String, override val param:String) extends Encoder with Logging {
+class MaskEncoder(override val cls: String, override val param: String) extends Encoder with Logging {
 
     val commonRegex = """^common:([0-9]+):([0-9]+)$""".r
-    var tp = if( param == null ) "" else param.toLowerCase 
+    var tp = if (param == null) "" else param.toLowerCase
     var start = 3
     var end = 4
 
@@ -481,98 +483,98 @@ class MaskEncoder(override val cls:String, override val param:String) extends En
     def init() {
         tp match {
             case "phone" | "email" | "account" =>
-            case commonRegex(s,e) =>
+            case commonRegex(s, e) =>
                 tp = "common"
                 start = s.toInt
                 end = e.toInt
             case _ =>
-                log.error("unknown encoder param, param="+param)
-                throw new CodecException("unknown encoder param, param="+param)
+                log.error("unknown encoder param, param=" + param)
+                throw new CodecException("unknown encoder param, param=" + param)
         }
     }
 
-    def encode(a:Any):Any = {
+    def encode(a: Any): Any = {
         a match {
-            case s:String => encodeString(s)
-            case i:Int => i
-            case _ => a
+            case s: String => encodeString(s)
+            case i: Int    => i
+            case _         => a
         }
     }
-    def encodeString(s:String):String = {
-        if( s == null ) return s
+    def encodeString(s: String): String = {
+        if (s == null) return s
 
         tp match {
-            case "phone" => getCommonMaskForPhone(s)
-            case "email" => getCommonMaskForEmail(s)
+            case "phone"   => getCommonMaskForPhone(s)
+            case "email"   => getCommonMaskForEmail(s)
             case "account" => getCommonMaskForCustomAccount(s)
-            case "common" => getCommonMask(s,start,end)
-            case _ => s
+            case "common"  => getCommonMask(s, start, end)
+            case _         => s
         }
     }
 
-    def getCommonMaskForPhone(phone:String):String = {
-        getCommonMask(phone,3,4)
+    def getCommonMaskForPhone(phone: String): String = {
+        getCommonMask(phone, 3, 4)
     }
-    def getCommonMaskForEmail(s:String):String = {
-        if( s == null ) return null
-        if( s.length <= 2 ) return s
+    def getCommonMaskForEmail(s: String): String = {
+        if (s == null) return null
+        if (s.length <= 2) return s
         val p = s.indexOf("@")
-        val name = s.substring(0,p)
+        val name = s.substring(0, p)
         val suffix = s.substring(p)
-        if( name.length <= 2 ) return s
+        if (name.length <= 2) return s
         name.length match {
-            case 3 => getCommonMask(name,1,1)+suffix
-            case 4 => getCommonMask(name,2,1)+suffix
-            case 5 => getCommonMask(name,2,2)+suffix
-            case 6 => getCommonMask(name,3,2)+suffix
-            case _ => getCommonMask(name,3,3)+suffix
+            case 3 => getCommonMask(name, 1, 1) + suffix
+            case 4 => getCommonMask(name, 2, 1) + suffix
+            case 5 => getCommonMask(name, 2, 2) + suffix
+            case 6 => getCommonMask(name, 3, 2) + suffix
+            case _ => getCommonMask(name, 3, 3) + suffix
         }
     }
-    def getCommonMaskForCustomAccount(s:String):String = {
-        if( s == null ) return null
-        if( s.length <= 2 ) return s
+    def getCommonMaskForCustomAccount(s: String): String = {
+        if (s == null) return null
+        if (s.length <= 2) return s
         s.length match {
-            case 3 => getCommonMask(s,1,1)
-            case 4 => getCommonMask(s,2,1)
-            case 5 => getCommonMask(s,2,2)
-            case 6 => getCommonMask(s,3,2)
-            case _ => getCommonMask(s,3,3)
+            case 3 => getCommonMask(s, 1, 1)
+            case 4 => getCommonMask(s, 2, 1)
+            case 5 => getCommonMask(s, 2, 2)
+            case 6 => getCommonMask(s, 3, 2)
+            case _ => getCommonMask(s, 3, 3)
         }
     }
-    def getCommonMask(s:String,start:Int,end:Int):String = {
-        if( s == null ) return null
-        if( s.length <= start+end ) return s
-        return s.substring(0,start) + "****" + s.substring(s.length - end)
+    def getCommonMask(s: String, start: Int, end: Int): String = {
+        if (s == null) return null
+        if (s.length <= start + end) return s
+        return s.substring(0, start) + "****" + s.substring(s.length - end)
     }
 }
 
-class TlvFieldInfo(val defaultValue:String, 
-    val validatorCls:String, val validatorParam:String, val validatorReturnCode:String, 
-    val encoderCls:String, val encoderParam:String) {
-        val validator = Validator.getValidator(validatorCls,validatorParam,validatorReturnCode)
-        val encoder = Encoder.getEncoder(encoderCls,encoderParam) 
-    override def toString():String = {
-        "defaultValue=%s,validatorCls=%s,encoderCls=%s".format(defaultValue,validatorCls,encoderCls)
+class TlvFieldInfo(val defaultValue: String,
+                   val validatorCls: String, val validatorParam: String, val validatorReturnCode: String,
+                   val encoderCls: String, val encoderParam: String) {
+    val validator = Validator.getValidator(validatorCls, validatorParam, validatorReturnCode)
+    val encoder = Encoder.getEncoder(encoderCls, encoderParam)
+    override def toString(): String = {
+        "defaultValue=%s,validatorCls=%s,encoderCls=%s".format(defaultValue, validatorCls, encoderCls)
     }
 }
 
 object TlvFieldInfo extends Logging {
 
-    val cache = new HashMap[String,TlvFieldInfo]()
+    val cache = new HashMap[String, TlvFieldInfo]()
 
-    def getTlvFieldInfo(defaultValue:String, 
-        validatorCls:String, validatorParam:String, validatorReturnCode:String,
-        encoderCls:String, encoderParam:String  ):TlvFieldInfo =  {
+    def getTlvFieldInfo(defaultValue: String,
+                        validatorCls: String, validatorParam: String, validatorReturnCode: String,
+                        encoderCls: String, encoderParam: String): TlvFieldInfo = {
 
-            if( defaultValue == null && validatorCls == null && encoderCls == null ) return null
+        if (defaultValue == null && validatorCls == null && encoderCls == null) return null
 
-            val key = "defaultValue="+defaultValue+",validatorCls="+validatorCls+",validatorParam="+validatorParam+",validatorReturnCode="+validatorReturnCode+",encoderCls="+encoderCls+",encoderParam="+encoderParam 
-            var v = cache.getOrElse(key,null)
-            if( v != null ) return v
+        val key = "defaultValue=" + defaultValue + ",validatorCls=" + validatorCls + ",validatorParam=" + validatorParam + ",validatorReturnCode=" + validatorReturnCode + ",encoderCls=" + encoderCls + ",encoderParam=" + encoderParam
+        var v = cache.getOrElse(key, null)
+        if (v != null) return v
 
-            v = new TlvFieldInfo(defaultValue,validatorCls,validatorParam,validatorReturnCode,encoderCls,encoderParam)
-            cache.put(key,v)
-            return v
+        v = new TlvFieldInfo(defaultValue, validatorCls, validatorParam, validatorReturnCode, encoderCls, encoderParam)
+        cache.put(key, v)
+        return v
     }
 }
 

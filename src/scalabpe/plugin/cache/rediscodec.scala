@@ -1,29 +1,38 @@
 package scalabpe.plugin.cache
 
-import org.jboss.netty.buffer._;
+import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.HashMap
 
-import scala.collection.mutable.{ArrayBuffer,HashMap}
-import org.jboss.netty.channel._;
-import org.jboss.netty.handler.codec.frame.FrameDecoder;
+import org.jboss.netty.buffer.ChannelBuffer
+import org.jboss.netty.buffer.ChannelBuffers
+import org.jboss.netty.channel.Channel
+import org.jboss.netty.channel.ChannelHandlerContext
+import org.jboss.netty.handler.codec.frame.FrameDecoder
 
-import scalabpe.core._
+import scalabpe.core.ArrayBufferMap
+import scalabpe.core.ArrayBufferString
+import scalabpe.core.HashMapStringAny
+import scalabpe.core.Logging
+import scalabpe.core.Request
+import scalabpe.core.ResultCodes
+import scalabpe.core.SelfCheckResult
 
 object RedisType {
     val TYPE_UNKNOWN = -1
     val TYPE_ARRAYHASH = 1
     val TYPE_CONHASH = 2
-    val TYPE_MASTERSLAVE = 3   // 这个是客户端自己实现的master/slave模式，不是redis服务端的主备模式
+    val TYPE_MASTERSLAVE = 3 // 这个是客户端自己实现的master/slave模式，不是redis服务端的主备模式
     val TYPE_CLUSTER = 4
 }
 
 trait RedisSocTrait {
-    def send(req:Request,timeout:Int):Unit
-    def close():Unit
-    def dump():Unit
-    def selfcheck():ArrayBuffer[SelfCheckResult] 
+    def send(req: Request, timeout: Int): Unit
+    def close(): Unit
+    def dump(): Unit
+    def selfcheck(): ArrayBuffer[SelfCheckResult]
 }
 
-class RedisResponse(val ok:Boolean,val value:String,val arr:ArrayBuffer[RedisResponse] = null)
+class RedisResponse(val ok: Boolean, val value: String, val arr: ArrayBuffer[RedisResponse] = null)
 
 object RedisCodec {
 
@@ -98,7 +107,7 @@ object RedisCodec {
     val CRNL = "\r\n"
     val CRNL_BS = CRNL.getBytes()
 
-    val cmdMap = HashMap[Int,String] (
+    val cmdMap = HashMap[Int, String](
         MSGID_DEL -> "del",
         MSGID_EXPIRE -> "expire",
         MSGID_EXPIREAT -> "expireat",
@@ -158,62 +167,61 @@ object RedisCodec {
         MSGID_BRPOPLPUSH -> "brpoplpush",
         MSGID_LRANGE -> "lrange",
         MSGID_LLEN -> "llen",
-        MSGID_LINDEX -> "lindex"
-    )
+        MSGID_LINDEX -> "lindex")
 
-    def isSetOp(msgId:Int):Boolean = {
+    def isSetOp(msgId: Int): Boolean = {
         msgId == MSGID_SET
     }
-    def isMultiKeyOp(msgId:Int):Boolean = {
+    def isMultiKeyOp(msgId: Int): Boolean = {
         msgId == MSGID_MGET ||
-        msgId == MSGID_SDIFF ||
-        msgId == MSGID_SINTER ||
-        msgId == MSGID_SUNION ||
-        msgId == MSGID_SDIFFSTORE ||
-        msgId == MSGID_SINTERSTORE ||
-        msgId == MSGID_SUNIONSTORE || 
-        msgId == MSGID_RPOPLPUSH || 
-        msgId == MSGID_BLPOP || 
-        msgId == MSGID_BRPOP || 
-        msgId == MSGID_BRPOPLPUSH 
+            msgId == MSGID_SDIFF ||
+            msgId == MSGID_SINTER ||
+            msgId == MSGID_SUNION ||
+            msgId == MSGID_SDIFFSTORE ||
+            msgId == MSGID_SINTERSTORE ||
+            msgId == MSGID_SUNIONSTORE ||
+            msgId == MSGID_RPOPLPUSH ||
+            msgId == MSGID_BLPOP ||
+            msgId == MSGID_BRPOP ||
+            msgId == MSGID_BRPOPLPUSH
     }
 
-    def isWriteOp(msgId:Int):Boolean = {
+    def isWriteOp(msgId: Int): Boolean = {
         !isReadOp(msgId)
     }
 
-    def isReadOp(msgId:Int):Boolean = {
-        ( msgId % 100 ) >= 20
+    def isReadOp(msgId: Int): Boolean = {
+        (msgId % 100) >= 20
     }
 
-    def buildCmd(cmd:String):ChannelBuffer = {
+    def buildCmd(cmd: String): ChannelBuffer = {
         buildCmd(ArrayBufferString(cmd))
     }
-    def buildCmd(cmd:String,key:String):ChannelBuffer = {
-        buildCmd(ArrayBufferString(cmd,key))
+    def buildCmd(cmd: String, key: String): ChannelBuffer = {
+        buildCmd(ArrayBufferString(cmd, key))
     }
-    def buildCmd(cmd:String,key:String,p3:String):ChannelBuffer = {
-        buildCmd(ArrayBufferString(cmd,key,p3))
+    def buildCmd(cmd: String, key: String, p3: String): ChannelBuffer = {
+        buildCmd(ArrayBufferString(cmd, key, p3))
     }
-    def buildCmd(cmd:String,key:String,p3:String,p4:String):ChannelBuffer = {
-        buildCmd(ArrayBufferString(cmd,key,p3,p4))
+    def buildCmd(cmd: String, key: String, p3: String, p4: String): ChannelBuffer = {
+        buildCmd(ArrayBufferString(cmd, key, p3, p4))
     }
-    def buildCmd(cmd:String,key:String,a3:ArrayBufferString):ChannelBuffer = {
-        val s = ArrayBufferString(cmd,key)
+    def buildCmd(cmd: String, key: String, a3: ArrayBufferString): ChannelBuffer = {
+        val s = ArrayBufferString(cmd, key)
         s ++= a3
         buildCmd(s)
     }
-    def buildCmd(params:ArrayBufferString):ChannelBuffer = {
+    def buildCmd(params: ArrayBufferString): ChannelBuffer = {
         val cnt = params.size
-        if( params(0) == "" ) return null // cmd cannot be empty
+        if (params(0) == "") return null // cmd cannot be empty
 
         val d = ChannelBuffers.dynamicBuffer()
 
-        var l = "*"+cnt+CRNL
+        var l = "*" + cnt + CRNL
         d.writeBytes(l.getBytes("utf-8"))
-        for(i <- 0 until cnt ) {
+        for (i <- 0 until cnt) {
             val v = params(i).getBytes("utf-8")
-            l = "$"+v.length+CRNL
+            l = "$" + v.length + CRNL
             d.writeBytes(l.getBytes("utf-8"))
             d.writeBytes(v)
             d.writeBytes(CRNL_BS)
@@ -222,35 +230,35 @@ object RedisCodec {
         return d
     }
 
-    def encode(msgId:Int,map:HashMapStringAny):Tuple2[Boolean,ChannelBuffer] = {
+    def encode(msgId: Int, map: HashMapStringAny): Tuple2[Boolean, ChannelBuffer] = {
 
-        if( msgId == MSGID_PING ) {
-            return (true,buildCmd("ping"))
+        if (msgId == MSGID_PING) {
+            return (true, buildCmd("ping"))
         }
-        if( msgId == MSGID_ASKING) {
-            return (true,buildCmd("asking"))
+        if (msgId == MSGID_ASKING) {
+            return (true, buildCmd("asking"))
         }
-        if( msgId == MSGID_CLUSTER_SLOTS ) {
-            return (true,buildCmd("cluster","slots"))
-        }
-
-        val cmd = cmdMap.getOrElse(msgId,"")
-        if( cmd == "" ) return (false,null)
-
-        val key = map.s("key","")
-        if( !isMultiKeyOp(msgId) ) {
-            if( key == "" ) return (false,null)
+        if (msgId == MSGID_CLUSTER_SLOTS) {
+            return (true, buildCmd("cluster", "slots"))
         }
 
-        var b : ChannelBuffer = null
+        val cmd = cmdMap.getOrElse(msgId, "")
+        if (cmd == "") return (false, null)
+
+        val key = map.s("key", "")
+        if (!isMultiKeyOp(msgId)) {
+            if (key == "") return (false, null)
+        }
+
+        var b: ChannelBuffer = null
         msgId match {
             case MSGID_EXISTS |
-                MSGID_DEL | 
+                MSGID_DEL |
                 MSGID_GET |
-                MSGID_SMEMBERS | 
-                MSGID_SCARD | 
-                MSGID_SPOP | 
-                MSGID_SRANDMEMBER | 
+                MSGID_SMEMBERS |
+                MSGID_SCARD |
+                MSGID_SPOP |
+                MSGID_SRANDMEMBER |
                 MSGID_HLEN |
                 MSGID_HKEYS |
                 MSGID_HVALS |
@@ -258,25 +266,25 @@ object RedisCodec {
                 MSGID_LPOP |
                 MSGID_RPOP |
                 MSGID_LLEN =>
-                b = buildCmd(cmd,key)
+                b = buildCmd(cmd, key)
             case MSGID_EXPIRE =>
                 val expire = map.i("expire")
-                if( expire != 0 )
-                    b = buildCmd(cmd,key,expire.toString)
+                if (expire != 0)
+                    b = buildCmd(cmd, key, expire.toString)
             case MSGID_EXPIREAT =>
-                val timestamp = map.s("timestamp","")
-                if( timestamp != "" )
-                    b = buildCmd(cmd,key,timestamp)
+                val timestamp = map.s("timestamp", "")
+                if (timestamp != "")
+                    b = buildCmd(cmd, key, timestamp)
             case MSGID_SET =>
-                val value = map.s("value","")
+                val value = map.s("value", "")
                 val expire = map.i("expire")
-                val nxxx = map.s("nxxx","").toUpperCase()
-                val arr = ArrayBufferString(cmd,key,value)
-                if( expire > 0 ) {
+                val nxxx = map.s("nxxx", "").toUpperCase()
+                val arr = ArrayBufferString(cmd, key, value)
+                if (expire > 0) {
                     arr += "EX"
                     arr += expire.toString
                 }
-                if( nxxx == "NX" || nxxx == "XX")
+                if (nxxx == "NX" || nxxx == "XX")
                     arr += nxxx
                 b = buildCmd(arr)
             case MSGID_GETSET |
@@ -284,38 +292,38 @@ object RedisCodec {
                 MSGID_LPUSHX |
                 MSGID_RPUSH |
                 MSGID_RPUSHX =>
-                val value = map.s("value","")
-                b = buildCmd(cmd,key,value)
+                val value = map.s("value", "")
+                b = buildCmd(cmd, key, value)
             case MSGID_INCRBY =>
-                val value = map.s("value","")
-                if( value == "1" || value == "")
-                    b = buildCmd("incr",key)
-                else 
-                    b = buildCmd("incrby",key,value)
-            case MSGID_DECRBY =>
-                val value = map.s("value","")
-                if( value == "1" || value == "")
-                    b = buildCmd("decr",key)
+                val value = map.s("value", "")
+                if (value == "1" || value == "")
+                    b = buildCmd("incr", key)
                 else
-                    b = buildCmd("decrby",key,value)
+                    b = buildCmd("incrby", key, value)
+            case MSGID_DECRBY =>
+                val value = map.s("value", "")
+                if (value == "1" || value == "")
+                    b = buildCmd("decr", key)
+                else
+                    b = buildCmd("decrby", key, value)
             case MSGID_MGET =>
                 val keys = map.ls("keys")
-                if( keys != null && keys.size > 0) {
+                if (keys != null && keys.size > 0) {
                     val arr = ArrayBufferString(cmd)
                     arr ++= keys
                     b = buildCmd(arr)
                 }
-            case MSGID_SADD | 
+            case MSGID_SADD |
                 MSGID_SREM |
                 MSGID_LPUSHM |
                 MSGID_RPUSHM =>
                 val values = map.ls("values")
-                if( values != null && values.size > 0)
-                    b = buildCmd(cmd,key,values)
+                if (values != null && values.size > 0)
+                    b = buildCmd(cmd, key, values)
             case MSGID_SISMEMBER =>
-                val value = map.s("value","")
-                if( value != "" )
-                    b = buildCmd(cmd,key,value)
+                val value = map.s("value", "")
+                if (value != "")
+                    b = buildCmd(cmd, key, value)
             case MSGID_SDIFFSTORE |
                 MSGID_SINTERSTORE |
                 MSGID_SUNIONSTORE |
@@ -323,146 +331,146 @@ object RedisCodec {
                 MSGID_SINTER |
                 MSGID_SUNION =>
                 val keys = map.ls("keys")
-                if( keys != null && keys.size >= 2) {
+                if (keys != null && keys.size >= 2) {
                     val arr = ArrayBufferString(cmd)
                     arr ++= keys
                     b = buildCmd(arr)
                 }
-            case MSGID_HSET | 
+            case MSGID_HSET |
                 MSGID_HSETNX =>
-                val field = map.s("field","")
-                val value = map.s("value","")
-                if( field != "")
-                    b = buildCmd(cmd,key,field,value)
+                val field = map.s("field", "")
+                val value = map.s("value", "")
+                if (field != "")
+                    b = buildCmd(cmd, key, field, value)
             case MSGID_HMSET =>
                 val keyvalues = map.lm("fieldvalues")
-                if( keyvalues != null && keyvalues.size > 0 ) {
-                    val arr = ArrayBufferString(cmd,key)
-                    for( m <- keyvalues ) {
-                        arr += m.s("key","")
-                        arr += m.s("value","")
+                if (keyvalues != null && keyvalues.size > 0) {
+                    val arr = ArrayBufferString(cmd, key)
+                    for (m <- keyvalues) {
+                        arr += m.s("key", "")
+                        arr += m.s("value", "")
                     }
                     b = buildCmd(arr)
                 }
-            case MSGID_HDEL | 
-                MSGID_HEXISTS | 
+            case MSGID_HDEL |
+                MSGID_HEXISTS |
                 MSGID_HGET =>
-                val field = map.s("field","")
-                if( field != "")
-                    b = buildCmd(cmd,key,field)
+                val field = map.s("field", "")
+                if (field != "")
+                    b = buildCmd(cmd, key, field)
             case MSGID_HMDEL |
                 MSGID_HMGET =>
                 val fields = map.ls("fields")
-                if( fields != null && fields.size > 0 ) {
-                    val arr = ArrayBufferString(cmd,key)
+                if (fields != null && fields.size > 0) {
+                    val arr = ArrayBufferString(cmd, key)
                     arr ++= fields
                     b = buildCmd(arr)
                 }
             case MSGID_HINCRBY =>
-                val field = map.s("field","")
-                val value = map.s("value","")
-                if( field != "" && value != "" )
-                    b = buildCmd(cmd,key,field,value)
+                val field = map.s("field", "")
+                val value = map.s("value", "")
+                if (field != "" && value != "")
+                    b = buildCmd(cmd, key, field, value)
             case MSGID_LREM =>
                 val count = map.i("count")
-                val value = map.s("value","")
-                b = buildCmd(cmd,key,count.toString,value)
+                val value = map.s("value", "")
+                b = buildCmd(cmd, key, count.toString, value)
             case MSGID_LSET =>
                 val index = map.i("index")
-                val value = map.s("value","")
-                b = buildCmd(cmd,key,index.toString,value)
+                val value = map.s("value", "")
+                b = buildCmd(cmd, key, index.toString, value)
             case MSGID_LTRIM |
                 MSGID_LRANGE =>
                 val start = map.i("start")
                 val stop = map.i("stop")
-                b = buildCmd(cmd,key,start.toString,stop.toString)
+                b = buildCmd(cmd, key, start.toString, stop.toString)
             case MSGID_LINSERT =>
-                val beforeAfter = map.s("beforeAfter","").toLowerCase()
-                val pivot = map.s("pivot","")
-                val value = map.s("value","")
-                if( beforeAfter == "before" || beforeAfter == "after" ) {
-                    val arr = ArrayBufferString(cmd,key)
+                val beforeAfter = map.s("beforeAfter", "").toLowerCase()
+                val pivot = map.s("pivot", "")
+                val value = map.s("value", "")
+                if (beforeAfter == "before" || beforeAfter == "after") {
+                    val arr = ArrayBufferString(cmd, key)
                     arr += beforeAfter
                     arr += pivot
                     arr += value
                     b = buildCmd(arr)
                 }
             case MSGID_RPOPLPUSH =>
-                val source = map.s("source","")
-                val destination = map.s("destination","")
-                if( source != "" && destination != "")
-                    b = buildCmd(cmd,source,destination)
+                val source = map.s("source", "")
+                val destination = map.s("destination", "")
+                if (source != "" && destination != "")
+                    b = buildCmd(cmd, source, destination)
             case MSGID_BLPOP |
                 MSGID_BRPOP =>
                 val keys = map.ls("keys")
                 val timeout = map.i("timeout")
-                if( keys != null && keys.size >= 1) {
+                if (keys != null && keys.size >= 1) {
                     val arr = ArrayBufferString(cmd)
                     arr ++= keys
                     arr += timeout.toString
                     b = buildCmd(arr)
                 }
             case MSGID_BRPOPLPUSH =>
-                val source = map.s("source","")
-                val destination = map.s("destination","")
+                val source = map.s("source", "")
+                val destination = map.s("destination", "")
                 val timeout = map.i("timeout")
-                if( source != "" && destination != "")
-                    b = buildCmd(cmd,source,destination,timeout.toString)
+                if (source != "" && destination != "")
+                    b = buildCmd(cmd, source, destination, timeout.toString)
             case MSGID_LINDEX =>
                 val index = map.i("index")
-                b = buildCmd(cmd,key,index.toString)
+                b = buildCmd(cmd, key, index.toString)
             case _ =>
         }
 
-        (b != null,b)
+        (b != null, b)
     }
 
-    def decode(msgId:Int,buf:ChannelBuffer,req:Request):Tuple2[Int,HashMapStringAny] = {
+    def decode(msgId: Int, buf: ChannelBuffer, req: Request): Tuple2[Int, HashMapStringAny] = {
 
         val map = HashMapStringAny()
         val res = decodeInternal(buf)
-        if( res == null ) {
-            return new Tuple2(ResultCodes.TLV_DECODE_ERROR,map)
+        if (res == null) {
+            return new Tuple2(ResultCodes.TLV_DECODE_ERROR, map)
         }
-        if( !res.ok && res.value != null && res.value.startsWith("MOVED")) {
+        if (!res.ok && res.value != null && res.value.startsWith("MOVED")) {
             val ss = res.value.split(" ")
-            map.put("cmd",ss(0))
-            map.put("slot",ss(1))
-            map.put("addr",ss(2))
-            return new Tuple2(MOVED_ERROR,map)
+            map.put("cmd", ss(0))
+            map.put("slot", ss(1))
+            map.put("addr", ss(2))
+            return new Tuple2(MOVED_ERROR, map)
         }
-        if( !res.ok && res.value != null && res.value.startsWith("ASK")) {
+        if (!res.ok && res.value != null && res.value.startsWith("ASK")) {
             val ss = res.value.split(" ")
-            map.put("cmd",ss(0))
-            map.put("slot",ss(1))
-            map.put("addr",ss(2))
-            return new Tuple2(ASK_ERROR,map)
+            map.put("cmd", ss(0))
+            map.put("slot", ss(1))
+            map.put("addr", ss(2))
+            return new Tuple2(ASK_ERROR, map)
         }
 
-        var code = if( res.ok ) 0 else ResultCodes.CACHE_UPDATEFAILED
+        var code = if (res.ok) 0 else ResultCodes.CACHE_UPDATEFAILED
 
         msgId match {
             case MSGID_PING |
-                MSGID_SET | 
+                MSGID_SET |
                 MSGID_HMSET |
                 MSGID_LSET |
                 MSGID_LTRIM =>
-            case MSGID_EXISTS | 
-                MSGID_DEL | 
-                MSGID_EXPIRE | 
-                MSGID_EXPIREAT | 
-                MSGID_SADD | 
-                MSGID_SREM | 
-                MSGID_SCARD | 
-                MSGID_SISMEMBER | 
+            case MSGID_EXISTS |
+                MSGID_DEL |
+                MSGID_EXPIRE |
+                MSGID_EXPIREAT |
+                MSGID_SADD |
+                MSGID_SREM |
+                MSGID_SCARD |
+                MSGID_SISMEMBER |
                 MSGID_SDIFFSTORE |
                 MSGID_SINTERSTORE |
                 MSGID_SUNIONSTORE |
-                MSGID_HSET | 
-                MSGID_HSETNX | 
-                MSGID_HDEL | 
-                MSGID_HMDEL | 
-                MSGID_HEXISTS | 
+                MSGID_HSET |
+                MSGID_HSETNX |
+                MSGID_HDEL |
+                MSGID_HMDEL |
+                MSGID_HEXISTS |
                 MSGID_HLEN |
                 MSGID_LPUSH |
                 MSGID_LPUSHM |
@@ -473,179 +481,179 @@ object RedisCodec {
                 MSGID_RPUSHM |
                 MSGID_RPUSHX |
                 MSGID_LLEN =>
-                if( res.ok ) {
+                if (res.ok) {
                     try {
-                        map.put("count",res.value.toInt)
-                    } catch { case e:Throwable => }
+                        map.put("count", res.value.toInt)
+                    } catch { case e: Throwable => }
                 }
-            case MSGID_GET | 
-                MSGID_GETSET | 
-                MSGID_SPOP | 
-                MSGID_SRANDMEMBER | 
+            case MSGID_GET |
+                MSGID_GETSET |
+                MSGID_SPOP |
+                MSGID_SRANDMEMBER |
                 MSGID_HGET |
                 MSGID_LPOP |
                 MSGID_RPOP |
                 MSGID_RPOPLPUSH |
                 MSGID_BRPOPLPUSH |
                 MSGID_LINDEX =>
-                if( res.ok && res.value != null ) 
-                    map.put("value",res.value)
-                else if( res.ok && res.value == null ) 
+                if (res.ok && res.value != null)
+                    map.put("value", res.value)
+                else if (res.ok && res.value == null)
                     code = ResultCodes.CACHE_NOT_FOUND
-            case MSGID_INCRBY | 
-                MSGID_DECRBY | 
+            case MSGID_INCRBY |
+                MSGID_DECRBY |
                 MSGID_HINCRBY =>
-            if( res.ok ){
-                try {
-                    map.put("value",res.value.toInt)
-                } catch { case e:Throwable => }
-            }
-            case MSGID_MGET | 
+                if (res.ok) {
+                    try {
+                        map.put("value", res.value.toInt)
+                    } catch { case e: Throwable => }
+                }
+            case MSGID_MGET |
                 MSGID_HMGET =>
-                val fieldKeys = if( msgId == MSGID_MGET ) "keys" else "fields"
-                val fieldValues = if( msgId == MSGID_MGET ) "keyvalues" else "fieldvalues"
-                if( res.ok ) {
+                val fieldKeys = if (msgId == MSGID_MGET) "keys" else "fields"
+                val fieldValues = if (msgId == MSGID_MGET) "keyvalues" else "fieldvalues"
+                if (res.ok) {
                     val arr = res.arr
-                    if( arr != null && arr.size > 0 ) {
+                    if (arr != null && arr.size > 0) {
                         val values = ArrayBufferString()
-                        for(a <- arr) {
+                        for (a <- arr) {
                             values += a.value
                         }
                         val keys = req.ls(fieldKeys)
-                        var i = 0 
+                        var i = 0
                         val buf = ArrayBufferMap()
-                        while( i < keys.size ) {
-                            buf += HashMapStringAny( "key" -> keys(i), "value" -> values(i) )
+                        while (i < keys.size) {
+                            buf += HashMapStringAny("key" -> keys(i), "value" -> values(i))
                             i += 1
                         }
-                        map.put(fieldValues,buf)
+                        map.put(fieldValues, buf)
                     }
                 }
-            case MSGID_SMEMBERS | 
+            case MSGID_SMEMBERS |
                 MSGID_SDIFF |
                 MSGID_SINTER |
                 MSGID_SUNION |
                 MSGID_HKEYS |
-                MSGID_HVALS | 
-                MSGID_LRANGE => 
-                val fieldValues = if( msgId == MSGID_HKEYS ) "fields" else "values"
-                if( res.ok ) {
+                MSGID_HVALS |
+                MSGID_LRANGE =>
+                val fieldValues = if (msgId == MSGID_HKEYS) "fields" else "values"
+                if (res.ok) {
                     val arr = res.arr
-                    if( arr != null && arr.size > 0 ) {
+                    if (arr != null && arr.size > 0) {
                         val values = ArrayBufferString()
-                        for(a <- arr) {
+                        for (a <- arr) {
                             values += a.value
                         }
-                        map.put(fieldValues,values)
+                        map.put(fieldValues, values)
                     }
                 }
             case MSGID_HGETALL =>
-                if( res.ok ) {
+                if (res.ok) {
                     val arr = res.arr
-                    if( arr != null && arr.size > 0 ) {
-                        var i = 0 
+                    if (arr != null && arr.size > 0) {
+                        var i = 0
                         val buf = ArrayBufferMap()
-                        while( i < arr.size ) {
-                            buf += HashMapStringAny( "key" -> arr(i).value, "value" -> arr(i+1).value )
+                        while (i < arr.size) {
+                            buf += HashMapStringAny("key" -> arr(i).value, "value" -> arr(i + 1).value)
                             i += 2
                         }
-                        map.put("fieldvalues",buf)
+                        map.put("fieldvalues", buf)
                     }
                 }
             case MSGID_BLPOP |
                 MSGID_BRPOP =>
-                if( res.ok ) {
+                if (res.ok) {
                     val arr = res.arr
-                    if( arr != null && arr.size == 2 ) {
-                        map.put("key",arr(0).value)
-                        map.put("value",arr(1).value)
+                    if (arr != null && arr.size == 2) {
+                        map.put("key", arr(0).value)
+                        map.put("value", arr(1).value)
                     }
                 }
-            case MSGID_CLUSTER_SLOTS => 
-                if( res.ok ) {
+            case MSGID_CLUSTER_SLOTS =>
+                if (res.ok) {
                     val arr = res.arr
-                    if( arr != null && arr.size > 0 ) {
+                    if (arr != null && arr.size > 0) {
 
-                        map.put("slots",arr.size)
-                        for(i <- 0 until arr.size) {
+                        map.put("slots", arr.size)
+                        for (i <- 0 until arr.size) {
                             val slot_arr = arr(i).arr
                             val min = slot_arr(0).value.toInt
                             val max = slot_arr(1).value.toInt
                             val ip = slot_arr(2).arr(0).value
                             val port = slot_arr(2).arr(1).value
-                            map.put("slot-"+i+"-min",min)
-                            map.put("slot-"+i+"-max",max)
-                            map.put("slot-"+i+"-addr",ip+":"+port)
+                            map.put("slot-" + i + "-min", min)
+                            map.put("slot-" + i + "-max", max)
+                            map.put("slot-" + i + "-addr", ip + ":" + port)
                         }
                     } else {
-                        map.put("slots",0)
+                        map.put("slots", 0)
                     }
                 }
             case _ =>
                 code = ResultCodes.TLV_DECODE_ERROR
         }
-        (code,map)
+        (code, map)
     }
 
-    def decodeInternal(buf:ChannelBuffer):RedisResponse = {
+    def decodeInternal(buf: ChannelBuffer): RedisResponse = {
         val len = buf.readableBytes()
-        if ( len < 4) {
+        if (len < 4) {
             return null;
         }
 
-        var s = buf.readerIndex() 
+        var s = buf.readerIndex()
         val max = s + len - 1
 
-        val (valid,res) = decodeRecur(buf,s,max)
+        val (valid, res) = decodeRecur(buf, s, max)
         res
     }
 
-    def decodeRecur(buf:ChannelBuffer,s:Int,max:Int):Tuple2[Int,RedisResponse] = {
+    def decodeRecur(buf: ChannelBuffer, s: Int, max: Int): Tuple2[Int, RedisResponse] = {
 
         val len = max - s + 1
         val ch = buf.getByte(s).toChar
-        var e = findCrNl(buf,s,max)
-        if( e < 0 ) return new Tuple2(-1,null)
+        var e = findCrNl(buf, s, max)
+        if (e < 0) return new Tuple2(-1, null)
 
         var valid = e - s + 1
         ch match {
             case '+' | ':' =>
-                val str = parseStr(buf,s+1,e-2)
-                return new Tuple2(valid,new RedisResponse(true,str))
+                val str = parseStr(buf, s + 1, e - 2)
+                return new Tuple2(valid, new RedisResponse(true, str))
             case '-' =>
-                val str = parseStr(buf,s+1,e-2)
-                return new Tuple2(valid,new RedisResponse(false,str))
+                val str = parseStr(buf, s + 1, e - 2)
+                return new Tuple2(valid, new RedisResponse(false, str))
             case '$' =>
-                val num = parseNumber(buf,s,e)
-                if( num < -1 ) 
-                    return new Tuple2(-1,null)
+                val num = parseNumber(buf, s, e)
+                if (num < -1)
+                    return new Tuple2(-1, null)
 
-                if( num >= 0 ) {
-                    if( len < valid + num + 2) return new Tuple2(-1,null)
-                    val cr = buf.getByte(s+valid+num).toChar
-                    val nl = buf.getByte(s+valid+num+1).toChar
-                    if( cr != '\r' || nl != '\n' )
-                        return new Tuple2(-1,null)
-                    val str = parseStr(buf,s+valid,s+valid+num-1)
+                if (num >= 0) {
+                    if (len < valid + num + 2) return new Tuple2(-1, null)
+                    val cr = buf.getByte(s + valid + num).toChar
+                    val nl = buf.getByte(s + valid + num + 1).toChar
+                    if (cr != '\r' || nl != '\n')
+                        return new Tuple2(-1, null)
+                    val str = parseStr(buf, s + valid, s + valid + num - 1)
                     valid += num + 2
-                    return new Tuple2(valid,new RedisResponse(true,str))
+                    return new Tuple2(valid, new RedisResponse(true, str))
                 } else { // -1
-                    return new Tuple2(valid,new RedisResponse(true,null))
+                    return new Tuple2(valid, new RedisResponse(true, null))
                 }
 
             case '*' =>
-                val params = parseNumber(buf,s,e)
-                if( params < -1 )
-                    return new Tuple2(-1,null)
-                if( params == -1 )
-                    return new Tuple2(valid,new RedisResponse(true,null,null))
+                val params = parseNumber(buf, s, e)
+                if (params < -1)
+                    return new Tuple2(-1, null)
+                if (params == -1)
+                    return new Tuple2(valid, new RedisResponse(true, null, null))
                 val arr = new ArrayBuffer[RedisResponse]()
                 var i = 0
                 var ts = e + 1
-                while( i < params ) {
+                while (i < params) {
 
-                    val (v,res2) = decodeRecur(buf,ts,max)
-                    if( v < 0 || res2 == null ) return new Tuple2(-1,null)
+                    val (v, res2) = decodeRecur(buf, ts, max)
+                    if (v < 0 || res2 == null) return new Tuple2(-1, null)
                     arr += res2
 
                     valid += v
@@ -654,22 +662,22 @@ object RedisCodec {
                     i += 1
                 }
 
-                return new Tuple2(valid,new RedisResponse(true,null,arr))
+                return new Tuple2(valid, new RedisResponse(true, null, arr))
             case _ =>
-                return new Tuple2(-1,null)
+                return new Tuple2(-1, null)
         }
 
-        return new Tuple2(-1,null)
+        return new Tuple2(-1, null)
     }
 
     // find last position of ...\r\n
-    def findCrNl(buf:ChannelBuffer,min:Int,max:Int):Int = { 
-        var i = min 
-        while( i <= max ) {
+    def findCrNl(buf: ChannelBuffer, min: Int, max: Int): Int = {
+        var i = min
+        while (i <= max) {
             val ch = buf.getByte(i)
-            if( ch == '\n' ) {
-                val lastbyte = buf.getByte(i-1)
-                if( lastbyte == '\r') {
+            if (ch == '\n') {
+                val lastbyte = buf.getByte(i - 1)
+                if (lastbyte == '\r') {
                     return i
                 }
             }
@@ -678,55 +686,54 @@ object RedisCodec {
         -1
     }
 
-    def parseStr(buf:ChannelBuffer,min:Int,max:Int):String = {
+    def parseStr(buf: ChannelBuffer, min: Int, max: Int): String = {
         val len = max - min + 1
         val bs = new Array[Byte](len)
-        buf.getBytes(min,bs)
-        new String(bs,"utf-8")
+        buf.getBytes(min, bs)
+        new String(bs, "utf-8")
     }
 
-    def parseNumber(buf:ChannelBuffer,min:Int,max:Int):Int = {
-        var i = min 
+    def parseNumber(buf: ChannelBuffer, min: Int, max: Int): Int = {
+        var i = min
         var s = ""
-        while( i <= max ) {
+        while (i <= max) {
             val ch = buf.getByte(i).toChar
-            if( ch == '-' || ch >= '0' && ch <= '9' ) s += ch
+            if (ch == '-' || ch >= '0' && ch <= '9') s += ch
             i += 1
         }
         try {
             s.toInt
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
                 Int.MinValue
         }
     }
 
 }
 
-
 class RedisFrameDecoder extends FrameDecoder with Logging {
 
-    override def decode(ctx:ChannelHandlerContext,channel:Channel,buf:ChannelBuffer):Object = {
+    override def decode(ctx: ChannelHandlerContext, channel: Channel, buf: ChannelBuffer): Object = {
 
         try {
             val len = buf.readableBytes()
-            if ( len < 4) {
+            if (len < 4) {
                 return null;
             }
 
-            var s = buf.readerIndex() 
+            var s = buf.readerIndex()
             val max = s + len - 1
 
-            val valid = getValid(buf,s,max)
-            if( valid < 0 ) {
+            val valid = getValid(buf, s, max)
+            if (valid < 0) {
                 return null
             }
 
             val frame = buf.readBytes(valid);
             return frame
         } catch {
-            case e:Throwable => 
-                log.error("redis frame decode exception e="+e.getMessage,e)
+            case e: Throwable =>
+                log.error("redis frame decode exception e=" + e.getMessage, e)
                 throw e
         }
     }
@@ -747,45 +754,45 @@ class RedisFrameDecoder extends FrameDecoder with Logging {
      -Bar\r\n
      */
 
-    def getValid(buf:ChannelBuffer,s:Int,max:Int):Int = {
+    def getValid(buf: ChannelBuffer, s: Int, max: Int): Int = {
 
         val len = max - s + 1
         val ch = buf.getByte(s).toChar
-        var e = findCrNl(buf,s,max)
-        if( e < 0 ) return -1
+        var e = findCrNl(buf, s, max)
+        if (e < 0) return -1
 
         var valid = e - s + 1
         ch match {
             case '+' | '-' | ':' =>
                 return valid
             case '$' =>
-                val num = parseNumber(buf,s,e)
-                if( num < -1 ) // can be -1
+                val num = parseNumber(buf, s, e)
+                if (num < -1) // can be -1
                     throw new Exception("number is not valid")
 
-                if( num >= 0 ) {
-                    if( len < valid + num + 2) return -1
-                    val cr = buf.getByte(s+valid+num).toChar
-                    val nl = buf.getByte(s+valid+num+1).toChar
-                    if( cr != '\r' || nl != '\n' )
+                if (num >= 0) {
+                    if (len < valid + num + 2) return -1
+                    val cr = buf.getByte(s + valid + num).toChar
+                    val nl = buf.getByte(s + valid + num + 1).toChar
+                    if (cr != '\r' || nl != '\n')
                         throw new Exception("not a valid cr nl")
                     valid += num + 2
                     return valid
-                } else if( num == -1 ) {
+                } else if (num == -1) {
                     return valid
                 }
                 return valid
             case '*' =>
-                val params = parseNumber(buf,s,e)
-                if( params < -1 ) // can be -1
+                val params = parseNumber(buf, s, e)
+                if (params < -1) // can be -1
                     throw new Exception("number is not valid")
 
                 var i = 0
                 var ts = e + 1
-                while( i < params ) {
-                    if( ts > max ) return -1
-                    val v = getValid(buf,ts,max)
-                    if( v < 0 ) return -1
+                while (i < params) {
+                    if (ts > max) return -1
+                    val v = getValid(buf, ts, max)
+                    if (v < 0) return -1
                     valid += v
                     ts += v
 
@@ -799,13 +806,13 @@ class RedisFrameDecoder extends FrameDecoder with Logging {
         return -1
     }
 
-    def findCrNl(buf:ChannelBuffer,min:Int,max:Int):Int = { // find last position of ...\r\n
-        var i = min 
-        while( i <= max ) {
+    def findCrNl(buf: ChannelBuffer, min: Int, max: Int): Int = { // find last position of ...\r\n
+        var i = min
+        while (i <= max) {
             val ch = buf.getByte(i)
-            if( ch == '\n' ) {
-                val lastbyte = buf.getByte(i-1)
-                if( lastbyte == '\r') {
+            if (ch == '\n') {
+                val lastbyte = buf.getByte(i - 1)
+                if (lastbyte == '\r') {
                     return i
                 }
             }
@@ -814,21 +821,21 @@ class RedisFrameDecoder extends FrameDecoder with Logging {
         -1
     }
 
-    def parseNumber(buf:ChannelBuffer,min:Int,max:Int):Int = { // read ($|*){number}\r\n skip chars not in [0-9-]
-       var i = min 
-       var s = ""
-       while( i <= max ) {
-           val ch = buf.getByte(i).toChar
-           if( ch == '-' || ch >= '0' && ch <= '9' ) s += ch
-           i += 1
-       }
+    def parseNumber(buf: ChannelBuffer, min: Int, max: Int): Int = { // read ($|*){number}\r\n skip chars not in [0-9-]
+        var i = min
+        var s = ""
+        while (i <= max) {
+            val ch = buf.getByte(i).toChar
+            if (ch == '-' || ch >= '0' && ch <= '9') s += ch
+            i += 1
+        }
 
-       try {
-           s.toInt
-       } catch {
-           case e:Throwable =>
-               throw new Exception("number is not correct, s="+s)
-       }
+        try {
+            s.toInt
+        } catch {
+            case e: Throwable =>
+                throw new Exception("number is not correct, s=" + s)
+        }
     }
 
 }

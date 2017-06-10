@@ -2,7 +2,7 @@ package scalabpe.core
 
 import java.nio.ByteBuffer
 
-class CodecException(val msg:String) extends RuntimeException(msg)
+class CodecException(val msg: String) extends RuntimeException(msg)
 
 object AvenueCodec {
 
@@ -60,14 +60,14 @@ object AvenueCodec {
     val CODE_HTTP_TYPE = 12
     val CODE_LOG_ID = 13
 
-    var encrypt_f: (ByteBuffer,String)=>ByteBuffer = null
-    var decrypt_f: (ByteBuffer,String)=>ByteBuffer = null
+    var encrypt_f: (ByteBuffer, String) => ByteBuffer = null
+    var decrypt_f: (ByteBuffer, String) => ByteBuffer = null
 
-    def parseEncoding(s:String):Int = {
+    def parseEncoding(s: String): Int = {
 
         s.toLowerCase match {
             case "utf8" | "utf-8" => ENCODING_UTF8
-            case _ => ENCODING_GBK
+            case _                => ENCODING_GBK
         }
     }
 }
@@ -76,7 +76,7 @@ class AvenueCodec {
 
     import AvenueCodec._
 
-    def decode(req : ByteBuffer,key:String="") : AvenueData = {
+    def decode(req: ByteBuffer, key: String = ""): AvenueData = {
 
         req.position(0)
 
@@ -93,7 +93,7 @@ class AvenueCodec {
 
         val headLen = req.get() & MASK
         if (headLen < STANDARD_HEADLEN || headLen > length) {
-            throw new CodecException("package_headlen_error, headLen="+headLen+",length="+length)
+            throw new CodecException("package_headlen_error, headLen=" + headLen + ",length=" + length)
         }
 
         val version = req.get() & MASK
@@ -150,7 +150,7 @@ class AvenueCodec {
             }
         }
 
-        val xhead  = ByteBuffer.allocate(headLen - STANDARD_HEADLEN)
+        val xhead = ByteBuffer.allocate(headLen - STANDARD_HEADLEN)
         req.get(xhead.array())
         xhead.position(0)
 
@@ -158,15 +158,15 @@ class AvenueCodec {
         req.get(body.array())
         body.position(0)
 
-        if( key != null && key != "" && AvenueCodec.decrypt_f != null && body != null && body.limit()>0 ) {
-            body = AvenueCodec.decrypt_f(body,key)
+        if (key != null && key != "" && AvenueCodec.decrypt_f != null && body != null && body.limit() > 0) {
+            body = AvenueCodec.decrypt_f(body, key)
         }
 
         val r = new AvenueData(
-            flag,serviceId,msgId,sequence,
-            mustReach,encoding,
+            flag, serviceId, msgId, sequence,
+            mustReach, encoding,
             if (flag == TYPE_REQUEST) 0 else code,
-            xhead,body )
+            xhead, body)
 
         r
     }
@@ -174,17 +174,17 @@ class AvenueCodec {
     val ONE = 1.toByte
     val ZERO = 0.toByte
 
-    def encode(res: AvenueData,key:String="") : ByteBuffer = {
+    def encode(res: AvenueData, key: String = ""): ByteBuffer = {
 
         var body = res.body
-        if( key != null && key != "" && AvenueCodec.encrypt_f != null && body != null && body.limit()>0  ) {
-            body = AvenueCodec.encrypt_f(body,key)
+        if (key != null && key != "" && AvenueCodec.encrypt_f != null && body != null && body.limit() > 0) {
+            body = AvenueCodec.encrypt_f(body, key)
         }
 
         res.xhead.position(0)
         body.position(0)
-        val headLen = STANDARD_HEADLEN+res.xhead.remaining()
-        val packLen = headLen+body.remaining()
+        val headLen = STANDARD_HEADLEN + res.xhead.remaining()
+        val packLen = headLen + body.remaining()
 
         val b = ByteBuffer.allocate(packLen)
 

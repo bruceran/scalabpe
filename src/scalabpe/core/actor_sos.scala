@@ -1,45 +1,51 @@
 package scalabpe.core
 
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent._
-import java.util.concurrent.locks.ReentrantLock;
-
 import java.nio.ByteBuffer
-import scala.collection.mutable.{ArrayBuffer,HashMap,SynchronizedQueue,HashSet}
+import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.RejectedExecutionException
+import java.util.concurrent.ThreadFactory
+import java.util.concurrent.ThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.ReentrantLock
 
-class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor with Sos4Netty with Logging with Dumpable {
+import scala.collection.mutable.HashMap
+import scala.collection.mutable.HashSet
+
+class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor with Sos4Netty with Logging with Dumpable {
 
     val EMPTY_BUFFER = ByteBuffer.allocate(0)
-    var nettyServer : NettyServer = _
+    var nettyServer: NettyServer = _
 
     val converter = new AvenueCodec
 
     var threadNum = 2
     val queueSize = 20000
-    var threadFactory : ThreadFactory = _
-    var pool : ThreadPoolExecutor = _
+    var threadFactory: ThreadFactory = _
+    var pool: ThreadPoolExecutor = _
 
     var timeout = 30000
     var idleTimeoutMillis: Int = 180000
     var maxPackageSize: Int = 2000000
     var maxConns = 500000
-    var host:String = "*"
-    var timerInterval :Int = 100
+    var host: String = "*"
+    var timerInterval: Int = 100
 
-    val dataMap = new ConcurrentHashMap[Int,CacheData]()
+    val dataMap = new ConcurrentHashMap[Int, CacheData]()
     val generator = new AtomicInteger(1)
     var codecs: TlvCodecs = _
-    var qte : QuickTimerEngine = null
+    var qte: QuickTimerEngine = null
 
     var reverseServiceIds = "0"
     var hasReverseServiceIds = false
     var spsDisconnectNotifyTo = "55605:111"
     var reverseIps: HashSet[String] = null
     var pushToIpPort: Boolean = false
-    val connsAddrMap = new HashMap[String,String]()
+    val connsAddrMap = new HashMap[String, String]()
     var pushToIp: Boolean = false
-    val connsIpMap = new HashMap[String,ArrayBufferString]()
-    val connsIpIdxMap = new HashMap[String,Int]()
+    val connsIpMap = new HashMap[String, ArrayBufferString]()
+    val connsIpIdxMap = new HashMap[String, Int]()
     var pushToAny: Boolean = false
     val allConns = new ArrayBufferString()
     var allConnsIdx = 0
@@ -48,12 +54,12 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
     var isSps = false
     var isEncrypted = false
     var shakeHandsServiceIdMsgId = "1:5"
-    var aesKeyMap = new ConcurrentHashMap[String,String]()
+    var aesKeyMap = new ConcurrentHashMap[String, String]()
 
     init
 
-    def isTrue(s:String):Boolean = {
-        s == "1"  || s == "t"  || s == "T" || s == "true"  || s == "TRUE" || s == "y"  || s == "Y" || s == "yes" || s == "YES" 
+    def isTrue(s: String): Boolean = {
+        s == "1" || s == "t" || s == "T" || s == "true" || s == "TRUE" || s == "y" || s == "Y" || s == "yes" || s == "YES"
     }
 
     def init() {
@@ -61,93 +67,93 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
         codecs = router.codecs
 
         val cfgNode = router.cfgXml \ "ServerSos"
-        if( cfgNode != null ) {
+        if (cfgNode != null) {
 
             var s = (cfgNode \ "@threadNum").text
-            if( s != "" ) threadNum = s.toInt
+            if (s != "") threadNum = s.toInt
 
             s = (cfgNode \ "@host").text
-            if( s != "" ) host = s
+            if (s != "") host = s
 
             s = (cfgNode \ "@timeout").text
-            if( s != "" ) timeout = s.toInt
+            if (s != "") timeout = s.toInt
 
             s = (cfgNode \ "@timerInterval").text
-            if( s != "" ) timerInterval = s.toInt
+            if (s != "") timerInterval = s.toInt
 
             s = (cfgNode \ "@maxPackageSize").text
-            if( s != "" ) maxPackageSize = s.toInt
+            if (s != "") maxPackageSize = s.toInt
 
             s = (cfgNode \ "@maxConns").text
-            if( s != "" ) maxConns = s.toInt
+            if (s != "") maxConns = s.toInt
 
             s = (cfgNode \ "@idleTimeoutMillis").text
-            if( s != "" ) idleTimeoutMillis = s.toInt
+            if (s != "") idleTimeoutMillis = s.toInt
 
             s = (cfgNode \ "@isEncrypted").text
-            if( s != "" ) isEncrypted = isTrue(s)
+            if (s != "") isEncrypted = isTrue(s)
 
             s = (cfgNode \ "@shakeHandsServiceIdMsgId").text
-            if( s != "" ) shakeHandsServiceIdMsgId = s
+            if (s != "") shakeHandsServiceIdMsgId = s
 
             s = (cfgNode \ "@reverseServiceIds").text
-            if( s != "" ) { 
+            if (s != "") {
                 reverseServiceIds = s
-            } 
-            hasReverseServiceIds = ( reverseServiceIds != "0" )
-            router.parameters.put("reverseServiceIds",reverseServiceIds)
+            }
+            hasReverseServiceIds = (reverseServiceIds != "0")
+            router.parameters.put("reverseServiceIds", reverseServiceIds)
 
             s = (cfgNode \ "@spsReportTo").text
-            if( s != "" ) { 
-                router.parameters.put("spsReportTo",s)
-        } 
+            if (s != "") {
+                router.parameters.put("spsReportTo", s)
+            }
 
-        s = (cfgNode \ "@spsDisconnectNotifyTo").text
-        if( s != "" ) { 
-            spsDisconnectNotifyTo = s
-        } 
+            s = (cfgNode \ "@spsDisconnectNotifyTo").text
+            if (s != "") {
+                spsDisconnectNotifyTo = s
+            }
 
-        s = (cfgNode \ "@pushToIpPort").text
-        if( s != "" ) pushToIpPort = isTrue(s)
+            s = (cfgNode \ "@pushToIpPort").text
+            if (s != "") pushToIpPort = isTrue(s)
 
-        s = (cfgNode \ "@pushToIp").text
-        if( s != "" ) pushToIp = isTrue(s)
+            s = (cfgNode \ "@pushToIp").text
+            if (s != "") pushToIp = isTrue(s)
 
-        s = (cfgNode \ "@pushToAny").text
-        if( s != "" ) pushToAny = isTrue(s)
+            s = (cfgNode \ "@pushToAny").text
+            if (s != "") pushToAny = isTrue(s)
 
-        s = (cfgNode \ "@isSps").text
-        if( s != "" ) { 
-            isSps = isTrue(s)
-            router.parameters.put("isSps",if(isSps) "1" else "0")
-        }
+            s = (cfgNode \ "@isSps").text
+            if (s != "") {
+                isSps = isTrue(s)
+                router.parameters.put("isSps", if (isSps) "1" else "0")
+            }
 
-        if(!isSps) {
-            isEncrypted = false
-        } else {
-            pushToIpPort = true
-            pushToIp = false
-            pushToAny = false
-        }
+            if (!isSps) {
+                isEncrypted = false
+            } else {
+                pushToIpPort = true
+                pushToIp = false
+                pushToAny = false
+            }
 
-        val reverseIpList = (cfgNode \ "ReverseIp").map(_.text).toList
-        if( reverseIpList.size > 0 ) {
-            reverseIps = new HashSet[String]()
-            reverseIpList.foreach( reverseIps.add )
-            log.info("reverseIps="+reverseIps.mkString(","))
-        }
+            val reverseIpList = (cfgNode \ "ReverseIp").map(_.text).toList
+            if (reverseIpList.size > 0) {
+                reverseIps = new HashSet[String]()
+                reverseIpList.foreach(reverseIps.add)
+                log.info("reverseIps=" + reverseIps.mkString(","))
+            }
 
         }
 
         nettyServer = new NettyServer(this,
             port,
-            host,idleTimeoutMillis,maxPackageSize,maxConns)
+            host, idleTimeoutMillis, maxPackageSize, maxConns)
 
         threadFactory = new NamedThreadFactory("serversos")
-        pool = new ThreadPoolExecutor(threadNum, threadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize),threadFactory)
+        pool = new ThreadPoolExecutor(threadNum, threadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize), threadFactory)
         pool.prestartAllCoreThreads()
 
-        qte = new QuickTimerEngine(onTimeout,timerInterval)
+        qte = new QuickTimerEngine(onTimeout, timerInterval)
 
         log.info("sos started")
     }
@@ -158,18 +164,18 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
 
     def close() {
 
-        if( pool != null ) {
+        if (pool != null) {
             val t1 = System.currentTimeMillis
             pool.shutdown()
-            pool.awaitTermination(5,TimeUnit.SECONDS)
+            pool.awaitTermination(5, TimeUnit.SECONDS)
             val t2 = System.currentTimeMillis
-            if( t2 - t1 > 100 )
-                log.warn("long time to close sos threadpool, ts={}",t2-t1)
+            if (t2 - t1 > 100)
+                log.warn("long time to close sos threadpool, ts={}", t2 - t1)
         }
 
         nettyServer.close()
 
-        if( qte != null ) {
+        if (qte != null) {
             qte.close()
             qte = null
         }
@@ -181,7 +187,7 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
         nettyServer.start()
     }
 
-    def stats() : Array[Int] = {
+    def stats(): Array[Int] = {
         nettyServer.stats
     }
 
@@ -202,80 +208,80 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
         qte.dump()
     }
 
-    override def connected(connId:String) {
+    override def connected(connId: String) {
 
-        if( !hasReverseServiceIds ) return
+        if (!hasReverseServiceIds) return
 
-        if( !pushToIpPort && !pushToIp && !pushToAny ) return
+        if (!pushToIpPort && !pushToIp && !pushToAny) return
 
         val remoteIp = parseRemoteIp(connId)
-        if( reverseIps != null ) {
-            if( !reverseIps.contains(remoteIp) )  return
+        if (reverseIps != null) {
+            if (!reverseIps.contains(remoteIp)) return
         }
 
         connsLock.lock()
         try {
 
-            if( pushToIpPort ) {
-                connsAddrMap.put(parseRemoteAddr(connId),connId)
+            if (pushToIpPort) {
+                connsAddrMap.put(parseRemoteAddr(connId), connId)
             }
 
-            if( pushToAny ) {
-                if(!allConns.contains(connId)) allConns += connId
+            if (pushToAny) {
+                if (!allConns.contains(connId)) allConns += connId
             }
 
-            if( pushToIp) {
-                var buff = connsIpMap.getOrElse(remoteIp,null)
-                if( buff == null ) {
+            if (pushToIp) {
+                var buff = connsIpMap.getOrElse(remoteIp, null)
+                if (buff == null) {
                     buff = new ArrayBufferString()
-                    connsIpMap.put(remoteIp,buff)
-                    connsIpIdxMap.put(remoteIp,0)
+                    connsIpMap.put(remoteIp, buff)
+                    connsIpIdxMap.put(remoteIp, 0)
                 }
 
-                if(!buff.contains(connId)) buff += connId
+                if (!buff.contains(connId)) buff += connId
             }
 
-            } finally {
-                connsLock.unlock()
-            }
+        } finally {
+            connsLock.unlock()
+        }
 
     }
 
-    override def disconnected(connId:String) {
+    override def disconnected(connId: String) {
 
-        if( isEncrypted ) {
+        if (isEncrypted) {
             aesKeyMap.remove(connId)
         }
 
-        if(isSps)
+        if (isSps)
             notifyDisconnected(connId)
 
-        if( !hasReverseServiceIds ) return
+        if (!hasReverseServiceIds) return
 
-        if( !pushToIpPort && !pushToIp && !pushToAny ) return
+        if (!pushToIpPort && !pushToIp && !pushToAny) return
 
         val remoteIp = parseRemoteIp(connId)
-        if( reverseIps != null ) {
-            if( !reverseIps.contains(remoteIp) ) return
+        if (reverseIps != null) {
+            if (!reverseIps.contains(remoteIp)) return
         }
 
         connsLock.lock()
         try {
 
-            if( pushToIpPort ) {
+            if (pushToIpPort) {
                 connsAddrMap.remove(parseRemoteAddr(connId))
             }
 
-            if( pushToAny ) {
-                if(allConns.contains(connId)) allConns -= connId
+            if (pushToAny) {
+                if (allConns.contains(connId)) allConns -= connId
             }
 
-            if( pushToIp) {
-                var buff = connsIpMap.getOrElse(remoteIp,null)
-                if( buff != null ) {
-                    if(buff.contains(connId)) {
+            if (pushToIp) {
+                var buff = connsIpMap.getOrElse(remoteIp, null)
+                if (buff != null) {
+                    if (buff.contains(connId)) {
                         buff -= connId
-                        if( buff.size == 0 ) {
+                        if (buff.size == 0) {
                             connsIpMap.remove(remoteIp)
                             connsIpIdxMap.remove(remoteIp)
                         }
@@ -283,14 +289,14 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
                 }
             }
 
-            } finally {
-                connsLock.unlock()
-            }
+        } finally {
+            connsLock.unlock()
+        }
 
     }
 
-    def notifyDisconnected(connId:String) {
-        if( spsDisconnectNotifyTo == "0:0" ) return
+    def notifyDisconnected(connId: String) {
+        if (spsDisconnectNotifyTo == "0:0") return
         val sequence = generateSequence()
         val notifyInfo = spsDisconnectNotifyTo.split(":")
         val data = new AvenueData(
@@ -301,37 +307,37 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             0,
             1,
             0,
-            EMPTY_BUFFER, EMPTY_BUFFER )
+            EMPTY_BUFFER, EMPTY_BUFFER)
 
         try {
-            data.xhead = TlvCodec4Xhead.appendGsInfo(data.xhead,parseRemoteAddr(connId),isSps)
+            data.xhead = TlvCodec4Xhead.appendGsInfo(data.xhead, parseRemoteAddr(connId), isSps)
         } catch {
-            case e:Throwable =>
+            case e: Throwable =>
         }
-        val requestId = "SOS"+RequestIdGenerator.nextId()
+        val requestId = "SOS" + RequestIdGenerator.nextId()
         val rr = new RawRequest(requestId, data, connId, this)
         receive(rr)
     }
 
-    def selectConnId(t:String,socId:String = null):String = {
+    def selectConnId(t: String, socId: String = null): String = {
 
         var toAddr = t
-        if( toAddr == null || toAddr == "" || toAddr == "*") {
+        if (toAddr == null || toAddr == "" || toAddr == "*") {
             toAddr = socId
         }
 
-        if( toAddr == null || toAddr == "" || toAddr == "*") {
+        if (toAddr == null || toAddr == "" || toAddr == "*") {
 
-            if( !pushToAny ) {
+            if (!pushToAny) {
                 return null
             }
 
             connsLock.lock()
             try {
 
-                if( allConns.size == 0 ) return null
+                if (allConns.size == 0) return null
 
-                if( allConnsIdx < 0 || allConnsIdx >= allConns.size ) allConnsIdx = 0
+                if (allConnsIdx < 0 || allConnsIdx >= allConns.size) allConnsIdx = 0
                 val connId = allConns(allConnsIdx)
 
                 allConnsIdx += 1
@@ -345,41 +351,41 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
         }
 
         val toAddrTokenArray = toAddr.split(":")
-        if(toAddrTokenArray.length >= 3 ) {
-            return toAddr  // treat as connId
+        if (toAddrTokenArray.length >= 3) {
+            return toAddr // treat as connId
         }
 
-        if(toAddrTokenArray.length == 2 && pushToIpPort ) {
+        if (toAddrTokenArray.length == 2 && pushToIpPort) {
             connsLock.lock()
             try {
-                val connId = connsAddrMap.getOrElse(toAddr,null) // find connId
+                val connId = connsAddrMap.getOrElse(toAddr, null) // find connId
                 return connId
             } finally {
                 connsLock.unlock()
             }
         }
 
-        if(toAddrTokenArray.length == 1 && pushToIp ) {
+        if (toAddrTokenArray.length == 1 && pushToIp) {
             val remoteIp = toAddr
             connsLock.lock()
             try {
 
-                var buff = connsIpMap.getOrElse(remoteIp,null)
-                if( buff == null ) {
+                var buff = connsIpMap.getOrElse(remoteIp, null)
+                if (buff == null) {
                     return null
                 }
-                var idx = connsIpIdxMap.getOrElse(remoteIp,-1)
-                if( idx == -1 ) {
+                var idx = connsIpIdxMap.getOrElse(remoteIp, -1)
+                if (idx == -1) {
                     return null
                 }
 
-                if( buff.size == 0 ) return null
+                if (buff.size == 0) return null
 
-                if( idx < 0 || idx >= buff.size ) idx = 0
+                if (idx < 0 || idx >= buff.size) idx = 0
                 val connId = buff(idx)
 
                 idx += 1
-                connsIpIdxMap.put(remoteIp,idx)
+                connsIpIdxMap.put(remoteIp, idx)
 
                 return connId
 
@@ -391,16 +397,16 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
         null
     }
 
-    override def receive(v:Any)  {
+    override def receive(v: Any) {
 
-        try{
-            pool.execute( new Runnable() {
+        try {
+            pool.execute(new Runnable() {
                 def run() {
                     try {
                         onReceive(v)
                     } catch {
-                        case e:Exception =>
-                            log.error("sos receive exception v={}",v,e)
+                        case e: Exception =>
+                            log.error("sos receive exception v={}", v, e)
                     }
                 }
             })
@@ -411,22 +417,22 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
 
     }
 
-    def onReceive(v:Any): Unit = {
+    def onReceive(v: Any): Unit = {
 
         v match {
 
             case rawReq: RawRequest =>
 
-                if(rawReq.sender eq this )
+                if (rawReq.sender eq this)
                     router.send(rawReq)
                 else
-                    send(rawReq,timeout)
+                    send(rawReq, timeout)
 
-            case reqResInfo : RawRequestResponseInfo =>
+            case reqResInfo: RawRequestResponseInfo =>
 
-                if( reqResInfo.rawReq.sender eq this ) {
-                    if( !reqResInfo.rawReq.requestId.startsWith("SOS")) // sent by sos itself
-                        reply(reqResInfo.rawRes.data,reqResInfo.rawRes.connId)
+                if (reqResInfo.rawReq.sender eq this) {
+                    if (!reqResInfo.rawReq.requestId.startsWith("SOS")) // sent by sos itself
+                        reply(reqResInfo.rawRes.data, reqResInfo.rawRes.connId)
                 } else {
                     router.reply(reqResInfo)
                 }
@@ -434,20 +440,20 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             case rawRes: RawResponse =>
 
                 val serviceIdMsgId = rawRes.data.serviceId + ":" + rawRes.data.msgId
-                if( !in(spsDisconnectNotifyTo,serviceIdMsgId) ) { // sent by sos itself
-                    reply(rawRes.data,rawRes.connId)
+                if (!in(spsDisconnectNotifyTo, serviceIdMsgId)) { // sent by sos itself
+                    reply(rawRes.data, rawRes.connId)
                 }
 
             case ackInfo: RawRequestAckInfo =>
 
-                if( ackInfo.rawReq.sender eq this )
-                    replyAck(ackInfo.rawReq.data,ackInfo.rawReq.connId)
+                if (ackInfo.rawReq.sender eq this)
+                    replyAck(ackInfo.rawReq.data, ackInfo.rawReq.connId)
                 else
-                    router.receiveAck( ackInfo )
+                    router.receiveAck(ackInfo)
 
             case req: Request =>
 
-                send(req,timeout)
+                send(req, timeout)
 
             case reqResInfo: RequestResponseInfo =>
 
@@ -455,64 +461,64 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
 
             case reqAckInfo: RequestAckInfo =>
 
-                router.receiveAck( reqAckInfo )
+                router.receiveAck(reqAckInfo)
 
-                //internal messages
+            //internal messages
 
             case SosSendTimeout(sequence) =>
 
                 val cachedata = dataMap.remove(sequence)
-                if( cachedata != null ) {
+                if (cachedata != null) {
                     cachedata.data match {
-                        case d : Request =>
-                            val res = createErrorResponse(ResultCodes.SOC_TIMEOUT,d)
-                            receive(new RequestResponseInfo(d,res))
-                        case d : RawRequest =>
-                            val res = createErrorResponse(ResultCodes.SOC_TIMEOUT,d)
-                            receive(new RawRequestResponseInfo(d,res))
+                        case d: Request =>
+                            val res = createErrorResponse(ResultCodes.SOC_TIMEOUT, d)
+                            receive(new RequestResponseInfo(d, res))
+                        case d: RawRequest =>
+                            val res = createErrorResponse(ResultCodes.SOC_TIMEOUT, d)
+                            receive(new RawRequestResponseInfo(d, res))
                     }
                 } else {
-                    log.error("timeout but sequence not found, seq={}",sequence)
+                    log.error("timeout but sequence not found, seq={}", sequence)
                 }
 
-            case SosSendAck(data,connId) =>
+            case SosSendAck(data, connId) =>
 
                 val saved = dataMap.get(data.sequence) // donot remove
-                if( saved != null ) {
+                if (saved != null) {
                     saved.data match {
-                        case d : Request =>
-                            receive( new RequestAckInfo(d) )
-                        case d : RawRequest =>
-                            receive( new RawRequestAckInfo(d) )
+                        case d: Request =>
+                            receive(new RequestAckInfo(d))
+                        case d: RawRequest =>
+                            receive(new RawRequestAckInfo(d))
                     }
                 } else {
-                    log.warn("receive but sequence not found, seq={}",data.sequence)
+                    log.warn("receive but sequence not found, seq={}", data.sequence)
                 }
 
-            case SosSendResponse(data,connId) =>
+            case SosSendResponse(data, connId) =>
 
                 val saved = dataMap.remove(data.sequence)
-                if( saved != null ) {
+                if (saved != null) {
                     saved.timer.cancel()
                     saved.data match {
-                        case req : Request =>
+                        case req: Request =>
                             val tlvCodec = codecs.findTlvCodec(req.serviceId)
-                            if( tlvCodec != null ) {
+                            if (tlvCodec != null) {
 
-                                val (body,ec) = tlvCodec.decodeResponse(req.msgId,data.body,data.encoding)
+                                val (body, ec) = tlvCodec.decodeResponse(req.msgId, data.body, data.encoding)
                                 var errorCode = data.code
-                                if( errorCode == 0 && ec != 0 ) {
+                                if (errorCode == 0 && ec != 0) {
                                     errorCode = ec
 
-                                    log.error("decode response error, serviceId="+req.serviceId+", msgId="+req.msgId)
+                                    log.error("decode response error, serviceId=" + req.serviceId + ", msgId=" + req.msgId)
                                 }
 
-                                val res = new Response(errorCode,body,req)
+                                val res = new Response(errorCode, body, req)
                                 res.remoteAddr = parseRemoteAddr(connId)
-                                receive(new RequestResponseInfo(req,res))
+                                receive(new RequestResponseInfo(req, res))
                             }
-                        case req : RawRequest =>
-                            val newdata = new AvenueData( AvenueCodec.TYPE_RESPONSE,
+                        case req: RawRequest =>
+                            val newdata = new AvenueData(AvenueCodec.TYPE_RESPONSE,
                                 req.data.serviceId,
                                 req.data.msgId,
                                 req.data.sequence,
@@ -520,14 +526,13 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
                                 req.data.encoding,
                                 data.code,
                                 data.xhead,
-                                data.body
-                                )
-                            val res = new RawResponse (newdata,req)
+                                data.body)
+                            val res = new RawResponse(newdata, req)
                             res.remoteAddr = parseRemoteAddr(connId)
-                            receive(new RawRequestResponseInfo(req,res))
+                            receive(new RawRequestResponseInfo(req, res))
                     }
                 } else {
-                    log.warn("receive but sequence not found, seq={}",data.sequence)
+                    log.warn("receive but sequence not found, seq={}", data.sequence)
                 }
 
             case _ =>
@@ -536,14 +541,14 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
         }
     }
 
-    def isAck(code:Int) = { code == AvenueCodec.ACK_CODE }
+    def isAck(code: Int) = { code == AvenueCodec.ACK_CODE }
 
-    def generateSequence():Int = {
+    def generateSequence(): Int = {
         generator.getAndIncrement()
     }
 
-    def createErrorResponse(code:Int,req:RawRequest):RawResponse = {
-        val data = new AvenueData( AvenueCodec.TYPE_RESPONSE,
+    def createErrorResponse(code: Int, req: RawRequest): RawResponse = {
+        val data = new AvenueData(AvenueCodec.TYPE_RESPONSE,
             req.data.serviceId,
             req.data.msgId,
             req.data.sequence,
@@ -551,34 +556,33 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             req.data.encoding,
             code,
             EMPTY_BUFFER,
-            EMPTY_BUFFER
-            )
-        val res = new RawResponse(data,req.connId)
+            EMPTY_BUFFER)
+        val res = new RawResponse(data, req.connId)
         res
     }
 
-    def createErrorResponse(code:Int,req:Request):Response = {
-        val res = new Response(code,new HashMapStringAny(),req)
+    def createErrorResponse(code: Int, req: Request): Response = {
+        val res = new Response(code, new HashMapStringAny(), req)
         res
     }
 
-    def send(req: Request, timeout: Int):Unit = {
+    def send(req: Request, timeout: Int): Unit = {
         val tlvCodec = codecs.findTlvCodec(req.serviceId)
-        if( tlvCodec == null ) {
-            val res = createErrorResponse(ResultCodes.TLV_ENCODE_ERROR,req)
-            router.reply(new RequestResponseInfo(req,res))
+        if (tlvCodec == null) {
+            val res = createErrorResponse(ResultCodes.TLV_ENCODE_ERROR, req)
+            router.reply(new RequestResponseInfo(req, res))
             return
         }
 
         val sequence = generateSequence()
 
         val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead)
-        val (body,ec) = tlvCodec.encodeRequest(req.msgId,req.body,req.encoding)
-        if( ec != 0 ) {
-            log.error("encode request error, serviceId="+req.serviceId+", msgId="+req.msgId)
+        val (body, ec) = tlvCodec.encodeRequest(req.msgId, req.body, req.encoding)
+        if (ec != 0) {
+            log.error("encode request error, serviceId=" + req.serviceId + ", msgId=" + req.msgId)
 
-            val res = createErrorResponse(ec,req)
-            router.reply(new RequestResponseInfo(req,res))
+            val res = createErrorResponse(ec, req)
+            router.reply(new RequestResponseInfo(req, res))
             return
         }
 
@@ -590,41 +594,41 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             0,
             req.encoding,
             0,
-            xhead, body )
+            xhead, body)
 
-        val connId = selectConnId(req.toAddr,req.xhead.s(AvenueCodec.KEY_SOC_ID))
-        if( connId == null || connId == "" ) {
-            val res = createErrorResponse(ResultCodes.SOC_NOCONNECTION,req)
-            router.reply(new RequestResponseInfo(req,res))
+        val connId = selectConnId(req.toAddr, req.xhead.s(AvenueCodec.KEY_SOC_ID))
+        if (connId == null || connId == "") {
+            val res = createErrorResponse(ResultCodes.SOC_NOCONNECTION, req)
+            router.reply(new RequestResponseInfo(req, res))
             return
         }
 
-        val bb = encode(data,connId)
+        val bb = encode(data, connId)
 
-        val t = qte.newTimer(timeout,sequence)
-        dataMap.put(sequence,new CacheData(req,t))
+        val t = qte.newTimer(timeout, sequence)
+        dataMap.put(sequence, new CacheData(req, t))
 
-        val ok = nettyServer.write(connId,bb)
+        val ok = nettyServer.write(connId, bb)
 
-        if( !ok ) {
+        if (!ok) {
             dataMap.remove(sequence)
             t.cancel()
-            val res = createErrorResponse(ResultCodes.SOC_NOCONNECTION,req)
-            router.reply(new RequestResponseInfo(req,res))
+            val res = createErrorResponse(ResultCodes.SOC_NOCONNECTION, req)
+            router.reply(new RequestResponseInfo(req, res))
         }
 
     }
 
-    def send(req: RawRequest, timeout: Int):Unit = {
+    def send(req: RawRequest, timeout: Int): Unit = {
 
         val sequence = generateSequence()
 
         val xhead = TlvCodec4Xhead.decode(req.data.serviceId, req.data.xhead)
 
-        val connId = selectConnId(null,xhead.s(AvenueCodec.KEY_SOC_ID))
-        if( connId == null || connId == "" ) {
-            val res = createErrorResponse(ResultCodes.SOC_NOCONNECTION,req)
-            router.reply(new RawRequestResponseInfo(req,res))
+        val connId = selectConnId(null, xhead.s(AvenueCodec.KEY_SOC_ID))
+        if (connId == null || connId == "") {
+            val res = createErrorResponse(ResultCodes.SOC_NOCONNECTION, req)
+            router.reply(new RawRequestResponseInfo(req, res))
             return
         }
 
@@ -636,80 +640,80 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             0,
             req.data.encoding,
             0,
-            EMPTY_BUFFER, req.data.body )
+            EMPTY_BUFFER, req.data.body)
 
-        val bb = encode(data,connId)
+        val bb = encode(data, connId)
 
-        val t = qte.newTimer(timeout,sequence)
-        dataMap.put(sequence,new CacheData(req,t))
+        val t = qte.newTimer(timeout, sequence)
+        dataMap.put(sequence, new CacheData(req, t))
 
-        val ok = nettyServer.write(connId,bb)
+        val ok = nettyServer.write(connId, bb)
 
-        if( !ok ) {
+        if (!ok) {
             dataMap.remove(sequence)
             t.cancel()
-            val res = createErrorResponse(ResultCodes.SOC_NOCONNECTION,req)
-            router.reply(new RawRequestResponseInfo(req,res))
+            val res = createErrorResponse(ResultCodes.SOC_NOCONNECTION, req)
+            router.reply(new RawRequestResponseInfo(req, res))
         }
 
     }
 
-    def onTimeout(data:Any):Unit = {
+    def onTimeout(data: Any): Unit = {
         val sequence = data.asInstanceOf[Int]
         receive(SosSendTimeout(sequence))
     }
 
-    def receive(bb:ByteBuffer,connId:String)  {
+    def receive(bb: ByteBuffer, connId: String) {
 
-        val data = decode(bb,connId)
+        val data = decode(bb, connId)
 
         data.flag match {
 
             case AvenueCodec.TYPE_REQUEST =>
 
-                if( isPing(data.serviceId, data.msgId)  ) {
+                if (isPing(data.serviceId, data.msgId)) {
 
-                    sendPong(data,connId)
+                    sendPong(data, connId)
 
                     return
                 }
 
                 // append remote addr to xhead, the last addr is always remote addr
                 try {
-                    data.xhead = TlvCodec4Xhead.appendGsInfo(data.xhead,parseRemoteAddr(connId),isSps)
+                    data.xhead = TlvCodec4Xhead.appendGsInfo(data.xhead, parseRemoteAddr(connId), isSps)
                 } catch {
-                    case e:Throwable =>
+                    case e: Throwable =>
                 }
 
                 val requestId = RequestIdGenerator.nextId()
-                val rr = new RawRequest(requestId, data,connId, this)
+                val rr = new RawRequest(requestId, data, connId, this)
                 receive(rr)
 
             case AvenueCodec.TYPE_RESPONSE =>
 
-                if( isAck(data.code)  ) {
+                if (isAck(data.code)) {
 
                     try {
-                        receive(SosSendAck(data,connId))
+                        receive(SosSendAck(data, connId))
                     } catch {
-                        case e:Throwable =>
-                            log.error("receive exception res={}",data,e)
+                        case e: Throwable =>
+                            log.error("receive exception res={}", data, e)
                     }
                     return
                 }
 
                 // append remote addr to xhead, the last addr is always remote addr
                 try {
-                    data.xhead = TlvCodec4Xhead.appendGsInfo(data.xhead,parseRemoteAddr(connId))
+                    data.xhead = TlvCodec4Xhead.appendGsInfo(data.xhead, parseRemoteAddr(connId))
                 } catch {
-                    case e:Throwable =>
+                    case e: Throwable =>
                 }
 
                 try {
-                    receive(SosSendResponse(data,connId))
+                    receive(SosSendResponse(data, connId))
                 } catch {
-                    case e:Throwable =>
-                        log.error("receive exception res={}",data,e)
+                    case e: Throwable =>
+                        log.error("receive exception res={}", data, e)
                 }
 
             case _ =>
@@ -720,19 +724,19 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
 
     }
 
-    def reply(data:AvenueData,connId:String):Unit = {
+    def reply(data: AvenueData, connId: String): Unit = {
 
-        if( connId == null || connId == "" ) return
+        if (connId == null || connId == "") return
 
-        val bb = encode(data,connId)
-        nettyServer.write(connId,bb)
+        val bb = encode(data, connId)
+        nettyServer.write(connId, bb)
     }
 
-    def replyWithErrorCode(code:Int, req: AvenueData, connId:String) {
+    def replyWithErrorCode(code: Int, req: AvenueData, connId: String) {
 
-        if( connId == null || connId == "" ) return
+        if (connId == null || connId == "") return
 
-        val res = new AvenueData (
+        val res = new AvenueData(
             AvenueCodec.TYPE_RESPONSE,
             req.serviceId,
             req.msgId,
@@ -741,17 +745,17 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             req.encoding,
             code,
             EMPTY_BUFFER,
-            EMPTY_BUFFER )
+            EMPTY_BUFFER)
 
         val bb = converter.encode(res)
-        nettyServer.write(connId,bb)
+        nettyServer.write(connId, bb)
     }
 
-    def replyAck(req: AvenueData, connId:String) {
+    def replyAck(req: AvenueData, connId: String) {
 
-        if( connId == null || connId == "" ) return
+        if (connId == null || connId == "") return
 
-        val res = new AvenueData (
+        val res = new AvenueData(
             AvenueCodec.TYPE_RESPONSE,
             req.serviceId,
             req.msgId,
@@ -760,17 +764,17 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             req.encoding,
             AvenueCodec.ACK_CODE, // ack
             EMPTY_BUFFER,
-            EMPTY_BUFFER )
+            EMPTY_BUFFER)
 
         val bb = converter.encode(res)
-        nettyServer.write(connId,bb)
+        nettyServer.write(connId, bb)
     }
 
     def sendPong(data: AvenueData, connId: String) {
 
-        if( connId == null || connId == "" ) return
+        if (connId == null || connId == "") return
 
-        val res = new AvenueData (
+        val res = new AvenueData(
             AvenueCodec.TYPE_RESPONSE,
             0,
             0,
@@ -779,90 +783,90 @@ class Sos(val router: Router, val port:Int) extends Actor with RawRequestActor w
             data.encoding,
             0,
             EMPTY_BUFFER,
-            EMPTY_BUFFER )
+            EMPTY_BUFFER)
 
         val bb = converter.encode(res)
-        nettyServer.write(connId,bb)
+        nettyServer.write(connId, bb)
     }
 
-    def isPing(serviceId:Int,msgId:Int) = { serviceId == 0 && msgId == 0 }
+    def isPing(serviceId: Int, msgId: Int) = { serviceId == 0 && msgId == 0 }
 
-    def parseRemoteAddr(connId:String):String = {
+    def parseRemoteAddr(connId: String): String = {
 
         val p = connId.lastIndexOf(":")
 
         if (p >= 0)
-            connId.substring(0,p)
+            connId.substring(0, p)
         else
             "0.0.0.0:0"
     }
-    def parseRemoteIp(connId:String):String = {
+    def parseRemoteIp(connId: String): String = {
 
         val p = connId.indexOf(":")
 
         if (p >= 0)
-            connId.substring(0,p)
+            connId.substring(0, p)
         else
             "0.0.0.0"
     }
 
-    def in(ss:String,s:String,t:String=","):Boolean={
-        if( ss == null || ss == "" ) return false
-        if( s == null || s == "" ) return true
-        (t+ss+t).indexOf(t+s+t) >= 0 
+    def in(ss: String, s: String, t: String = ","): Boolean = {
+        if (ss == null || ss == "") return false
+        if (s == null || s == "") return true
+        (t + ss + t).indexOf(t + s + t) >= 0
     }
 
-    def decode(bb:ByteBuffer,connId:String):AvenueData = {
-        var data : AvenueData = null
-        if( isEncrypted ) {
-                val key = aesKeyMap.get(connId)
-                try {
-                    data = converter.decode(bb,key)
-                } catch {
-                    case e:CodecException =>
-                        log.error("decode error,service=%d,msgId=%d".format(data.serviceId,data.msgId))
-                        throw e
-                }
+    def decode(bb: ByteBuffer, connId: String): AvenueData = {
+        var data: AvenueData = null
+        if (isEncrypted) {
+            val key = aesKeyMap.get(connId)
+            try {
+                data = converter.decode(bb, key)
+            } catch {
+                case e: CodecException =>
+                    log.error("decode error,service=%d,msgId=%d".format(data.serviceId, data.msgId))
+                    throw e
+            }
 
-                val serviceIdMsgId = data.serviceId + ":" + data.msgId
-                if( key == null && !in(shakeHandsServiceIdMsgId,serviceIdMsgId) && serviceIdMsgId != "0:0") { // heartbeat
-                    log.error("decode error, not shakehanded,service=%d,msgId=%d".format(data.serviceId,data.msgId))
-                    throw new RuntimeException("not shakehanded")
-                }
+            val serviceIdMsgId = data.serviceId + ":" + data.msgId
+            if (key == null && !in(shakeHandsServiceIdMsgId, serviceIdMsgId) && serviceIdMsgId != "0:0") { // heartbeat
+                log.error("decode error, not shakehanded,service=%d,msgId=%d".format(data.serviceId, data.msgId))
+                throw new RuntimeException("not shakehanded")
+            }
         } else {
             data = converter.decode(bb)
         }
         data
     }
 
-    def encode(data:AvenueData,connId:String):ByteBuffer = {
-        var bb : ByteBuffer = null
-        if( isEncrypted ) {
+    def encode(data: AvenueData, connId: String): ByteBuffer = {
+        var bb: ByteBuffer = null
+        if (isEncrypted) {
             var key = aesKeyMap.get(connId)
             val serviceIdMsgId = data.serviceId + ":" + data.msgId
-            if( key == null && !in(shakeHandsServiceIdMsgId,serviceIdMsgId) ) {
-                log.error("encode error, not shakehanded,service=%d,msgId=%d".format(data.serviceId,data.msgId))
+            if (key == null && !in(shakeHandsServiceIdMsgId, serviceIdMsgId)) {
+                log.error("encode error, not shakehanded,service=%d,msgId=%d".format(data.serviceId, data.msgId))
                 return null
             }
-            if( in(shakeHandsServiceIdMsgId,serviceIdMsgId) ) key = null
-            bb = converter.encode(data,key)
+            if (in(shakeHandsServiceIdMsgId, serviceIdMsgId)) key = null
+            bb = converter.encode(data, key)
         } else {
             bb = converter.encode(data)
         }
         bb
     }
 
-    case class SosSendAck(data:AvenueData,connId:String)
-    case class SosSendResponse(data:AvenueData,connId:String)
-    case class SosSendTimeout(sequence:Int)
+    case class SosSendAck(data: AvenueData, connId: String)
+    case class SosSendResponse(data: AvenueData, connId: String)
+    case class SosSendTimeout(sequence: Int)
 
-    class CacheData(val data:AnyRef, val timer: QuickTimer) {
+    class CacheData(val data: AnyRef, val timer: QuickTimer) {
         val sendTime = System.currentTimeMillis
     }
 
 }
 
-class DummySos() extends Sos(null,0) {
+class DummySos() extends Sos(null, 0) {
 
     override def init() {
         log.info("dummysos started")
@@ -875,12 +879,12 @@ class DummySos() extends Sos(null,0) {
     override def closeReadChannel() = {}
     override def start() = {}
 
-    override def stats() : Array[Int] = { Array(0,0,0) }
+    override def stats(): Array[Int] = { Array(0, 0, 0) }
 
-    override def receive(v:Any) = {}
+    override def receive(v: Any) = {}
 
     override def dump() = {}
 
-    override def receive(bb:ByteBuffer,connId:String) = {}
+    override def receive(bb: ByteBuffer, connId: String) = {}
 }
 
