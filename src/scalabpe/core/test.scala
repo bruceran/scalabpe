@@ -973,6 +973,10 @@ object TestCaseRunner extends Logging {
     var success = 0
     var failed = 0
 
+    var allfiles_total = 0
+    var allfiles_success = 0
+    var allfiles_failed = 0
+
     var lineNoCnt = 0
     var httpClient = new RunTestHttpClient()
 
@@ -1052,6 +1056,9 @@ options:
                     i += 1
                 case "--all_files" =>
                     map.put("all_files", "1")
+                    i += 1
+                case "-c" | "--cover" =>
+                    map.put("cover", "1")
                     i += 1
                 case "-d" | "--dump" =>
                     map.put("dump", "1")
@@ -1155,8 +1162,245 @@ options:
 
         httpClient.close()
 
+        println("-------------------------------------------")
+        println("all testcases, total:%d, success:%d, failed:%d".format(allfiles_total, allfiles_success, allfiles_failed))
+        println("-------------------------------------------")
+
+        if (params.ns("cover") == "1") {
+            generateCoverageReport()
+        }
+
         if (hasError) System.exit(1)
         else System.exit(0)
+    }
+
+    // clsName 非空表示这一行是cls定义, methodName 非空表示这一行是method定义
+    class FlowCallLine(val lineNumber: Int, val lineText: String, val clsName:String, val methodName:String) {
+        var called = false
+    }
+    
+    class FlowInfo(val clsName: String, val filename: String, val path: String, val lines: ArrayBuffer[FlowCallLine]) {
+        
+        def called(methodName:String,lineNumber:Int) {
+            for( l <- lines ) {
+                if( l.clsName == clsName ) l.called = true
+                if( l.lineNumber == lineNumber ) l.called = true
+                if( l.methodName == methodName ) l.called = true
+            }
+        }
+
+        def total(): Int = {
+            lines.size 
+        }
+        def tested(): Int = {
+            lines.filter(_.called == true).size 
+        }
+
+        def toCoverage(): String = {
+            val tt = total()
+            val te = tested()
+            val buff = ArrayBufferString()
+            val s = "coverage, file:%s total:%d, tested:%d%%".format(path, tt, te*100/tt)
+            buff += s
+            if( te > 0 && te != tt ) {
+                for (fi <- lines if !fi.called  ) {
+                    val s2 = "+++++++++ not tested, #%d   %s".format(fi.lineNumber,fi.lineText)
+                    buff += s2
+                }
+            }
+            return buff.mkString("\n")            
+        }
+    }
+
+    def generateCoverageReport() {
+
+        // .flow.scala后缀的流程：scalabpe.flow.Flow_service999_test222,receive,test222.flow.scala,14
+        // .flow后缀的流程  scalabpe.flow.Flow_service999_echo,receive,compose_conf_simpleflows_service999_echo.scala,5
+
+        val flows = scanFlows()
+        val scalaFlows = scanScalaFlows()
+
+        val all_flows = HashMap[String, FlowInfo]()
+
+        for (i <- flows) {
+            all_flows.put(i.clsName, i)
+        }
+        for (i <- scalaFlows) {
+            all_flows.put(i.clsName, i)
+        }
+
+        val it = Flow.callStats.values().iterator()
+        while (it.hasNext()) {
+            val v = it.next()
+            val ss = v.split(":")
+            val clsName = ss(0)
+            val methodName = ss(1)
+            val fileName = ss(2)
+            val lineNumber = ss(3).toInt
+//println(v)
+            val fi = all_flows.getOrElse(clsName, null)
+            if (fi != null) {
+                fi.called(methodName,lineNumber)
+            }
+        }
+
+        var tt = 0
+        var te = 0 
+        for (f <- flows) {
+            tt += f.total()
+            te += f.tested()
+            println(f.toCoverage())
+        }
+        for (f <- scalaFlows) {
+            tt += f.total()
+            te += f.tested()
+            println(f.toCoverage())
+        }
+        val s = "all files coverage, total:%d, tested:%d percent:%d%%".format(tt, te, te*100/tt)
+        println(s)
+        println("-------------------------------------------")
+    }
+
+    def listfiles(dir: String, suffix: String): List[String] = {
+        var dirs = ArrayBuffer[File](new File(dir))
+        var newdirs = ArrayBuffer[File]()
+        val files = ArrayBuffer[File]()
+
+        while (dirs.size > 0) {
+            for (d <- dirs) {
+                val fs = d.listFiles()
+                fs.filter(f => !f.isDirectory).foreach(files += _)
+                fs.filter(f => f.isDirectory).foreach(newdirs += _)
+            }
+            dirs = newdirs
+            newdirs = ArrayBuffer[File]()
+        }
+        val allfiles = files.map(_.getPath).filter(name => name.endsWith(suffix)).toList
+        allfiles
+    }
+
+    def scanFlows(): ArrayBuffer[FlowInfo] = {
+        val composeDir = Router.main.rootDir + File.separator + "compose_conf"
+        val allfiles = listfiles(composeDir, ".flow")
+        val list = ArrayBuffer[FlowInfo]()
+        for (f <- allfiles) {
+            val fi = parseFlowFile(f, scalaFlow = false)
+            if (fi != null)
+                list += fi
+        }
+        return list
+    }
+
+    def scanScalaFlows(): ArrayBuffer[FlowInfo] = {
+        val composeDir = Router.main.rootDir + File.separator + "compose_conf"
+        val allfiles = listfiles(composeDir, ".flow.scala")
+        val list = ArrayBuffer[FlowInfo]()
+        for (f <- allfiles) {
+            val fi = parseFlowFile(f, scalaFlow = true)
+            if (fi != null)
+                list += fi
+        }
+        return list
+    }
+
+    // 静态解析的文件内容： 类名信息，invoke行, reply行, 回调函数行(不包括receive)
+    def parseFlowFile(f: String, scalaFlow: Boolean): FlowInfo = {
+        val lines = Source.fromFile(f, "UTF-8").getLines.toBuffer
+        val clsName = parseClsName(lines, scalaFlow)
+        if (clsName == null) return null
+        val callLines = parseCallLines(lines, scalaFlow)
+        val filename = parseFileName(f)
+        val flow = new FlowInfo(clsName, filename, f, callLines)
+        flow
+    }
+
+    def parseFileName(f: String): String = {
+        val s = f.replace("\\", "/")
+        val p = s.lastIndexOf("/")
+        if (p >= 0) return s.substring(p + 1)
+        s
+    }
+
+    def parseClsName(lines: Buffer[String], scalaFlow: Boolean): String = {
+        if (scalaFlow) {
+            val t = lines.filter(_.indexOf("class Flow_") == 0)
+            if (t.size == 0) return null
+            val line = t(0)
+            val p1 = line.indexOf(" ")
+            val p2 = line.indexOf(" ", p1 + 1)
+            val name = line.substring(p1 + 1, p2)
+            return "scalabpe.flow." + name
+        } else {
+            val t = lines.filter(s => s.toLowerCase().trim().indexOf("//$") == 0)
+            if (t.size == 0) return null
+            val line = t(0).trim
+            var name = ""
+            var p = line.indexOf(".with")
+            if (p >= 0) {
+                name = line.substring(3, p)
+            } else {
+                p = line.indexOf(" ")
+                if (p >= 0) {
+                    name = line.substring(3, p)
+                } else {
+                    name = line.substring(3)
+                }
+            }
+
+            return "scalabpe.flow.Flow_" + name.replace(".", "_")
+        }
+
+    }
+    def parseCallLines(lines: Buffer[String], scalaFlow: Boolean): ArrayBuffer[FlowCallLine] = {
+        val callLines = ArrayBuffer[FlowCallLine]()
+        var i = 1
+        for (l <- lines) {
+            val fcl = parseLine(l, i)
+            if (fcl != null) callLines += fcl
+            i += 1
+        }
+        callLines
+    }
+
+    val pattern_cls1 = """^class +([a-zA-Z0-9_]+) .*$""".r
+    val pattern_cls2 = """^//$([a-zA-Z0-9_.]+).*$""".r
+    
+    val pattern_def11 = """^def +([a-zA-Z0-9_]+)\(\).*$""".r
+    val pattern_def12 = """^override +def ([a-zA-Z0-9_]+)\(\).*$""".r
+    val pattern_def2 = """^//#([a-zA-Z0-9_]+).*$""".r
+    
+    val pattern_reply = """^reply.*$""".r
+
+    val pattern_invoke = """^invoke.*$""".r
+    val pattern_invokeFuture = """^.*invokeFuture.*$""".r
+    val pattern_syncedInvoke = """^syncedInvoke.*$""".r
+
+    def parseLine(line: String, lineNumber: Int): FlowCallLine = {
+        val (ok,clsName,methodName) = line.trim match {
+            case pattern_cls1(clsName)     => 
+                (true,"scalabpe.flow."+clsName,"")
+            case pattern_cls2(clsName)     => 
+                (true,"scalabpe.flow."+clsName,"")
+            case pattern_def11(methodName)     => (true,"",methodName)
+            case pattern_def12(methodName)     => (true,"",methodName)
+            case pattern_def2(methodName)     => (true,"",methodName)
+            case pattern_reply()    => (true,"","")
+            case pattern_invokeFuture()   => 
+                if( line.indexOf("invoke2") >= 0 ||
+                    line.indexOf("invoke3") >= 0 ||
+                    line.indexOf("invoke4") >= 0 ||
+                    line.indexOf("invoke5") >= 0 ||
+                    line.indexOf("invokeMulti") >= 0  ) 
+                    (true,"","")
+                else    
+                    (false,"","")
+            case pattern_invoke()   => (true,"","")
+            case pattern_syncedInvoke()   => (true,"","")
+            case _                  => (false,"","")
+        }
+        if (ok) new FlowCallLine(lineNumber, line, clsName, methodName)
+        else null
+
     }
 
     def resetGlobal() {
@@ -1304,6 +1548,10 @@ options:
         }
 
         if (failed > 0) hasError = true
+
+        allfiles_total += total
+        allfiles_success += success
+        allfiles_failed += failed
 
         println("-------------------------------------------")
         println("testcase result, file:%s total:%d, success:%d, failed:%d".format(file, total, success, failed))
@@ -2588,5 +2836,3 @@ class RunTestHttpClient(
     class CacheData(val download_field: Tuple2[String, String], val callback: (Tuple3[Int, String, String]) => Unit)
 
 }
-
-

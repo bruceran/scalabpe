@@ -118,4 +118,13 @@
 		</responseParameter>
 	</message>
 
+	<message name="test222" id="107">
+		<requestParameter>
+			<field name="name" type="name_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="msg" type="msg_type"/>
+		</responseParameter>
+	</message>
+	
 </service>

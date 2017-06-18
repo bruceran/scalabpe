@@ -204,6 +204,9 @@ class FlowActor(val router: Router, var threadNum: Int = 0) extends Actor with L
         val clsName = "scalabpe.flow.Flow_" + serviceName + "_" + msgName
         try {
             val flow = Class.forName(clsName).newInstance.asInstanceOf[Flow]
+
+            Flow.updateClsStats(clsName)
+
             flow.req = req
             flow.owner = this
             flow
@@ -235,6 +238,8 @@ object Flow {
 
     var router: Router = _
 
+    val callStats = new ConcurrentHashMap[String, String]()
+
     val isSyncedInvoke = new ThreadLocal[Boolean]() {
         override def initialValue(): Boolean = {
             return false
@@ -259,6 +264,31 @@ object Flow {
         requestId + ":" + idx
     }
 
+    def updateClsStats(clsName: String) {
+        if (!Router.testMode) return
+
+        val key = clsName + ":0"
+        val value = clsName + ":constructor:unknown:0"
+
+        callStats.putIfAbsent(key, value)
+    }
+
+    def updateCallStats() {
+        if (!Router.testMode) return
+
+        val elements = Thread.currentThread().getStackTrace()
+        for (e <- elements) {
+            val clsName = e.getClassName()
+            val methodName = e.getMethodName()
+            val fileName = e.getFileName()
+            val lineNumber = e.getLineNumber()
+            if (clsName.indexOf("scalabpe.flow.") >= 0) {
+                val key = clsName + ":" + lineNumber
+                val value = clsName + ":" + methodName + ":" + fileName + ":" + lineNumber
+                callStats.putIfAbsent(key, value)
+            }
+        }
+    }
 }
 
 abstract class Flow extends Logging {
@@ -273,7 +303,6 @@ abstract class Flow extends Logging {
     private var flowTimer: QuickTimer = _
 
     private val callTimers = new HashMap[String, QuickTimer]()
-    // private var ctx : HashMapStringAny = null
     private var logVars: HashMapStringAny = null
     private var lastf: () => Unit = _
     private var idx = 0
@@ -350,6 +379,8 @@ abstract class Flow extends Logging {
     private def doNothingCallback(): Unit = {}
 
     protected[core] def requestReceived(): Unit = {
+
+        Flow.updateCallStats()
 
         flowTimer = Flow.router.newTimer(Flow.router.timeoutId(FlowTimoutType.TYPE_FLOW, req.serviceId, req.msgId, req.requestId), flowTimeout)
 
@@ -546,6 +577,8 @@ abstract class Flow extends Logging {
             throw new RuntimeException("only one callback function can be used")
         }
 
+        Flow.updateCallStats()
+
         lastf = f
         replyOnError = false
 
@@ -567,6 +600,8 @@ abstract class Flow extends Logging {
         if (lastf != null) {
             throw new RuntimeException("only one callback function can be used")
         }
+
+        Flow.updateCallStats()
 
         lastf = f
         replyOnError = true
@@ -616,6 +651,8 @@ abstract class Flow extends Logging {
         if (lastf != null) {
             throw new RuntimeException("only one callback function can be used")
         }
+
+        Flow.updateCallStats()
 
         lastf = f
         replyOnError = false
@@ -742,6 +779,8 @@ abstract class Flow extends Logging {
             throw new RuntimeException("flow already replied")
         }
 
+        Flow.updateCallStats()
+
         filterReply(code, params)
 
         val res = new Response(code, params, req)
@@ -865,42 +904,6 @@ abstract class Flow extends Logging {
         (lastresultarray(0), lastresultarray(1), lastresultarray(2), lastresultarray(3), lastresultarray(4))
     }
 
-    /*
-    def push(values:Tuple2[String,Any]*) : Unit = {
-        if( ctx == null ) ctx = new HashMapStringAny()
-        for((key,value) <- values ) {
-            ctx.put(key,value)
-        }
-    }
-
-    def pop[A,B](a:String,b:String) : Tuple2[A,B] = {
-        val va = ctx.getOrElse(a,null).asInstanceOf[A]
-        val vb = ctx.getOrElse(b,null).asInstanceOf[B]
-        (va,vb)
-    }
-    def pop[A,B,C](a:String,b:String,c:String) : Tuple3[A,B,C] = {
-        val va = ctx.getOrElse(a,null).asInstanceOf[A]
-        val vb = ctx.getOrElse(b,null).asInstanceOf[B]
-        val vc = ctx.getOrElse(c,null).asInstanceOf[C]
-        (va,vb,vc)
-    }
-    def pop[A,B,C,D](a:String,b:String,c:String,d:String) : Tuple4[A,B,C,D] = {
-        val va = ctx.getOrElse(a,null).asInstanceOf[A]
-        val vb = ctx.getOrElse(b,null).asInstanceOf[B]
-        val vc = ctx.getOrElse(c,null).asInstanceOf[C]
-        val vd = ctx.getOrElse(d,null).asInstanceOf[D]
-        (va,vb,vc,vd)
-    }
-    def pop[A,B,C,D,E](a:String,b:String,c:String,d:String,e:String) : Tuple5[A,B,C,D,E] = {
-        val va = ctx.getOrElse(a,null).asInstanceOf[A]
-        val vb = ctx.getOrElse(b,null).asInstanceOf[B]
-        val vc = ctx.getOrElse(c,null).asInstanceOf[C]
-        val vd = ctx.getOrElse(d,null).asInstanceOf[D]
-        val ve = ctx.getOrElse(e,null).asInstanceOf[E]
-        (va,vb,vc,vd,ve)
-    }
-     */
-
 }
 
 abstract class SyncedFlow extends Flow {
@@ -957,6 +960,8 @@ abstract class SyncedFlow extends Flow {
     }
 
     def syncedInvokeMulti(infos: ArrayBuffer[InvokeInfo]): ArrayBuffer[InvokeResult] = {
+
+        Flow.updateCallStats()
 
         Flow.isSyncedInvoke.set(true)
         val finished = send(infos)

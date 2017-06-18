@@ -170,10 +170,12 @@ options:
         }
 
         buff += ""
-        buff += "//#receive"
         if( transfer == "" ) {
+            buff += "//#receive"
             buff += ""
             buff += indent + "reply(0)"
+        } else {
+
         }
 
         //println(buff.mkString("\n"))

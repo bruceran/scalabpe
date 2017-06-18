@@ -256,8 +256,9 @@ class FlowCompiler(val rootDir: String) extends Logging {
     val syncedflow_class = "SyncedFlow"
 
     val function_template = "}; def %s() {"
-    val function2_template = "def receive() {"
+    val function_template_2 = "override def receive() {"
     val tail_template = "}}"
+    val tail_template_2 = "}"
 
     val tag_class = "//$"
     val tag_def = "//#"
@@ -272,7 +273,8 @@ class FlowCompiler(val rootDir: String) extends Logging {
         val lines = Source.fromFile(filename, "UTF-8").getLines.toList
         val writer = new PrintWriter(new File(tmpfile), "UTF-8")
         writer.print(package_template) // not println!
-
+        
+        var hasFunction = false
         for (line <- lines) {
             if (line.startsWith(tag_class)) {
                 val s = line.substring(3).replace(".", "###").toLowerCase
@@ -283,13 +285,19 @@ class FlowCompiler(val rootDir: String) extends Logging {
                 writer.println(newline)
             } else if (line.startsWith(tag_def)) {
                 val funname = line.substring(3)
-                val newline = if (funname == tag_receive) function2_template else function_template.format(funname)
+                val newline = if (funname == tag_receive) function_template_2 else function_template.format(funname)
                 writer.println(newline)
+                hasFunction = true
             } else {
                 writer.println(line)
             }
         }
-        writer.println(tail_template)
+        
+        if(hasFunction)
+            writer.println(tail_template)
+        else    
+            writer.println(tail_template_2)
+            
         writer.close()
         tmpfile
     }

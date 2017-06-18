@@ -1,6 +1,6 @@
 @echo off
 set pluginname=tools
-set pluginversion=0.1.1
+set pluginversion=0.1.2
 
 mkdir classes\scalabpe\  2>>nul 1>>nul
 call scalac -deprecation -encoding "UTF-8" -classpath "lib\*;..\..\lib\*;.\*"  -d "./classes"  ./src/*.scala
