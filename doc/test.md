@@ -55,7 +55,8 @@
         -a 忽略enabled标志，运行所有测试用例
         --all_files        对testcase下所有txt文件运行测试
         -d 参数表示输出解析后的文本到标准输出，可不传
-        testcasefile 不传则默认为 testcase/default.txt文件
+        -c --cover        生成覆盖率统计(只对函数定义，invoke调用，reply调用进行统计)
+        testcasefile 不传则默认为 testcase/default.txt文件， 支持使用*通配符表示多个文件
 
     新的集成测试工具不需要单独先启动待测试的服务，测试工具本身会启动服务，完成测试，再关闭服务
 
@@ -67,30 +68,41 @@
         * #开头的行为注释，忽略
         * 每行最后的"空格#"开始的文本忽略, 注意，如果调用参数中有"空格#", 需在行最后加一个#以免被当成注释
         * 所有空行忽略
-        * 所有非 global: testcase: define: mock: setup: teardown: assert: 开头的行自动合并到前一行, 
+        * 所有非 global: testcase: define: mock: setup: teardown: assert: setup_http: teardown_http: assert_http: 开头的行自动合并到前一行, 
           合并是在去掉尾部的"空格#"再进行的, 方便对参数加注释
 
-        * global 表示testcase的公共部分, 一个文件中只允许有一个global，global下define,mock,setup,teardown
-        * testcase 表示定义一个testcase, 一个文件中允许多个testcase, 每个testcase下有define,mock,setup,teardown,assert
+        * global 表示testcase的公共部分, 一个文件中只允许有一个global，global下define,mock,setup,teardown,setup_http,teardown_http
+        * testcase 表示定义一个testcase, 一个文件中允许多个testcase, 每个testcase下有define,mock,setup,teardown,assert,setup_http,assert_http,teardown_http
         * define表示定义常量, 格式为：define: 参数列表,  参数列表的key可以加$前缀，也可不加，引用的时候必须加$
         * mock表示mock指令，定义一个接口的mock, 格式为：mock:服务名.消息名 req: 参数列表  res: 参数列表;
         * mock指令允许对同一个服务名消息名有多个mock, 这种情况req入参用于条件匹配，先匹配的优先，若无参数则匹配所有请求，若无匹配，则返回错误码-10242404
         * assert表示断言指令, 格式为：assert:服务名.消息名  id:xxx timeout:15000 req: 参数列表  res: 参数列表, res来的参数用于结果匹配, 
           只有完全匹配才算成功
+        * assert_http表示http调用断言指令, 格式为：assert_http:url  其它同assert指令
         * setup表示定义testcase启动前要调用的接口，一般用于初始化数据, 
           格式为：setup:服务名.消息名 id:xxx timeout:15000 req: 参数列表  res: 参数列表, 要求返回码为0才能继续, setup可以类似assert一样加断言
+        * setup_http表示http setup指令, 格式为：setup_http:url  其它同setup指令
         * teardown表示定义testcase完成后要调用的接口，一般用于清理数据, 
           格式为：teardown:服务名.消息名  id:xxx timeout:15000 req: 参数列表  res: 参数列表，忽略返回码
-        * setup,assert指令里的timeout可以不写，默认为15000,表示15秒; 
-        * setup,assert指令里的id可以不写，如果调用的请求和响应要被引用，则必须定义id, id可以带$前缀，也可以不带，引用的时候必须带$前缀; 
+        * teardown_http表示http teardown指令, 格式为：teardown_http:url  其它同teardown指令
+        * setup,assert,setup_http,assert_http指令里的timeout可以不写，默认为15000,表示15秒; 
+        * setup,assert,setup_http,assert_http指令里的id可以不写，如果调用的请求和响应要被引用，则必须定义id, id可以带$前缀，也可以不带，引用的时候必须带$前缀; 
           teardown里定义id意义不大
         * 如果多个testcase有公共的指令需要每次重复执行，可以指定通过属性extends:basetestcase来指定要重复执行的公共指令，extends指令只支持一级
         * global节点可以配置remote:属性, 配置为0使用本地模式，否则使用远程模式，可配置为具体的ip:port来指定访问, 或配置为1使用本地config.xml里的配置
           远程模式的testcase文件里不允许使用mock会报错
+        * global节点里针对http调用的特殊属性：
+            http_base_url:指定http调用的base_url，实际url是此url+指令中的url
+            http_method:指定http method, 可以是get,post,put,delete, 默认为post
+            http_ok_field:响应中的哪个field被认为是错误码，默认为return_code 
+            http_ok_value:响应中的什么值被认为是成功，默认为0
+            http_rest:要调用的服务是否是rest风格的（支持get,post, put,delete,入参放在content里，json格式），默认为false
+        * setup_http,assert_http指令支持http cookie,http 302重定向
+        * setup_http,assert_http指令支持http header属性发送，文件上传和文件下载
 
         * 运行顺序：
 
-            define,mock,setup,assert,teardown的运行顺序除了teardown以外都是按定义的顺序执行, teardown指令不管定义在哪里总在最后执行； 
+            define,mock,setup,assert,teardown,setup_http,assert_http,teardown_http的运行顺序除了teardown/teardown_http以外都是按定义的顺序执行, teardown/teardown_http指令不管定义在哪里总在最后执行； 
             相同类别的指令按定义顺序执行;
 
             全局指令
@@ -99,27 +111,27 @@
             
             所有global和testcase的define都是全局有效的，id必须唯一；若相同则后定义的会覆盖前面的值
             global的mock全局有效，testcase级的mock只在本testcase有效
-            setup,assert里的id是全局有效的，若相同，则后定义的执行后会覆盖前面的值；
+            setup/assert/setup_http/assert_http里的id是全局有效的，若相同，则后定义的执行后会覆盖前面的值；
             可以跨testcase按id引用调用
             mock安装的是表达式，被调用的时候时候才会被执行，mock中的表达式在运行时执行，可以象assert指令里的表达式一样引用
             setup指令和assert指令的区别是：setup必须成功，若失败就结束测试；
 
         * 参数列表: 参数列表的格式为 left1=right1 left2=right2 以空格和等号作为分隔符, 连续的非空字符加一个等号表示一个key的开始，
           如果=要作为值而不是分隔符，则有可能需要用\=进行转义
-        * 不等判断：在assert/setup指令的响应中和mock指令的请求中，=号的作用是比较而不是赋值， 这2种特殊情况可以使用!=表示不等于
+        * 不等判断：在assert/setup/assert_http/setup_http指令的响应中和mock指令的请求中，=号的作用是比较而不是赋值， 这2种特殊情况可以使用!=表示不等于
 
         * 参数列表里的右值若为{},[]则会解析为结构体对象和数组对象再返回，若要返回原始json串，需加一个s:前缀
         * $code 是res参数列表中一个特殊key，表示返回码; 如果不定义$code则表示$code为0
 
         * 值引用：
             $xxx 来引用define定义的常量
-            $xxx.req.yyy id为xxx的assert或setup的请求里的yyy值
-            $xxx.res.zzz id为xxx的assert或setup的响应里的zzz值
-            $this.req.yyy 当前请求的assert或setup或mock的请求里的yyy值
-            $this.res.zzz 当前请求的assert或setup或mock的响应里的zzz值
-            $xxx.req.yyy[0] id为xxx的assert或setup的请求里的yyy下标为0的值
-            $xxx.res.zzz.m id为xxx的assert或setup的响应里的zzz结构体里的m的值
-            $xxx.res.yyy[1].abc id为xxx的assert或setup的响应请求里的yyy下标为1的结构体里的abc的值
+            $xxx.req.yyy id为xxx的assert/setup/assert_http/setup_http的请求里的yyy值
+            $xxx.res.zzz id为xxx的assert/setup/assert_http/setup_http的响应里的zzz值
+            $this.req.yyy 当前请求的assert/setup/assert_http/setup_http或mock的请求里的yyy值
+            $this.res.zzz 当前请求的assert/setup/assert_http/setup_http或mock的响应里的zzz值
+            $xxx.req.yyy[0] id为xxx的assert/setup/assert_http/setup_http的请求里的yyy下标为0的值
+            $xxx.res.zzz.m id为xxx的assert/setup/assert_http/setup_http的响应里的zzz结构体里的m的值
+            $xxx.res.yyy[1].abc id为xxx的assert/setup/assert_http/setup_http的响应请求里的yyy下标为1的结构体里的abc的值
 
             注意：在assert响应里引用当前响应里的值可以直接用key来引用
 
@@ -127,8 +139,8 @@
             $xxx() 来引用全局函数xxx
             $contact(abc,def) 来引用全局函数contact, 带2个参数abc, def
             $abc.length() 来引用abc对象的length函数
-            $xxx.req.yyy.matches(abc.*) id为xxx的assert或setup的请求里的yyy值是否匹配正则表达式 abc.*
-            $xxx.res.yyy[1].size() id为xxx的assert或setup的响应请求里的yyy下标为1的结构体的长度
+            $xxx.req.yyy.matches(abc.*) id为xxx的assert/setup/assert_http/setup_http的请求里的yyy值是否匹配正则表达式 abc.*
+            $xxx.res.yyy[1].size() id为xxx的assert/setup/assert_http/setup_http的响应请求里的yyy下标为1的结构体的长度
 
         * 内置函数
              内置的全局函数：$now(), $uuid()
@@ -139,8 +151,8 @@
 
         * 字符串中可以嵌入 ${...} 或 $xxx, $xxx应只用在无二义的情况下; 
         * 支持表达式的概念，实际上所有值引用，函数调用，字符串中嵌入都是表达式，可以使用表达式的地方如下：
-            所有右值可以使用表达式, 包括define,mock,setup,assert,teardown,mock
-            assert/setup响应的左值可以使用表达式; 
+            所有右值可以使用表达式, 包括define,mock,setup,assert,teardown,setup_http,assert_http,teardown_http,mock
+            assert/setup/assert_http/setup_http响应的左值可以使用表达式; 
             mock请求的左值可以使用表达式; 
 
         * 可以通过在FlowHelper类中定义函数进行功能扩展; 如果不想在FlowHelper中定义，可以在global指令中定义pluginObjectName:xxx属性来指定你自己的类名(必须带路径)
