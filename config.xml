@@ -7,6 +7,8 @@
     <CohPort>7210</CohPort>
     <DataDirRoot>/opt/data</DataDirRoot>
 
+    <Parameter name="serviceIdsAllowed">680</Parameter>>
+
     <!--<InstallMock>testcase/t4.txt</InstallMock>-->
 
     <!--<RegDisHook name="abc"/>-->
@@ -216,8 +218,14 @@
         <ServerAddr>10.246.84.91:7001</ServerAddr>
         <ServerAddr>10.246.84.91:7002</ServerAddr>
     </RedisCfgV2>
--->
 
+
+    <RedisCfgV2>
+        <ServiceId>680</ServiceId>
+        <ServerAddr>10.246.84.91:6379</ServerAddr>
+    </RedisCfgV2>
+-->
+    
 <!-- memcachev2配置 -->
 <!-- 
     <MemCacheCfgV2>

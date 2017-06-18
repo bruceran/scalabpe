@@ -25,7 +25,20 @@
     <type name="pivot_type" class="string" code="19"/>	
     <type name="source_type" class="string" code="20"/>	
     <type name="destination_type" class="string" code="21"/>	
-
+    <type name="score_type" class="string" code="22"/>	
+    <type name="member_type" class="string" code="23"/>	
+    <type name="members_type" class="array" itemType="member_type"/>
+	<type name="scoremember_type" class="struct" code="24">
+        <field name="score" type="systemstring"/>
+        <field name="member" type="systemstring"/>
+    </type>
+    <type name="scoremembers_type" class="array" itemType="scoremember_type"/>  
+    <type name="min_type" class="string" code="25"/>	
+    <type name="max_type" class="string" code="26"/>
+    <type name="rank_type" class="int" code="27"/>		
+    <type name="withscores_type" class="int" code="28"/>		
+    <type name="offset_type" class="int" code="29"/>		
+			    
     <message name="ping" id="1">
 		<requestParameter>
 		</requestParameter>
@@ -537,5 +550,194 @@
 		</responseParameter>
 	</message>
 
+	<message name="zadd" id="500">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="score" type="score_type"/>
+			<field name="member" type="member_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="count" type="count_type"/>
+		</responseParameter>
+	</message>
+	<message name="zaddmulti" id="501">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="scoremembers" type="scoremembers_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="count" type="count_type"/>
+		</responseParameter>
+	</message>
+	<message name="zincrby" id="502">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="score" type="score_type"/>
+			<field name="member" type="member_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="score" type="score_type"/>
+		</responseParameter>
+	</message>
+	<message name="zrem" id="503">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="member" type="member_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="count" type="count_type"/>
+		</responseParameter>
+	</message>
+	<message name="zremmulti" id="504">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="members" type="members_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="count" type="count_type"/>
+		</responseParameter>
+	</message>
+	<message name="zremrangebyrank" id="505">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="start" type="start_type"/>
+			<field name="stop" type="stop_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="count" type="count_type"/>
+		</responseParameter>
+	</message>
+	<message name="zremrangebyscore" id="506">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="min" type="min_type"/>
+			<field name="max" type="max_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="count" type="count_type"/>
+		</responseParameter>
+	</message>
+		
+	<message name="zcard" id="520">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="count" type="count_type"/>
+		</responseParameter>
+	</message>
+	<message name="zcount" id="521">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="min" type="min_type"/>
+			<field name="max" type="max_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="count" type="count_type"/>
+		</responseParameter>
+	</message>
+	<message name="zscore" id="522">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="member" type="member_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="score" type="score_type"/>
+		</responseParameter>
+	</message>
+	<message name="zrank" id="523">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="member" type="member_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="rank" type="rank_type"/>
+		</responseParameter>
+	</message>
+	<message name="zrevrank" id="524">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="member" type="member_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="rank" type="rank_type"/>
+		</responseParameter>
+	</message>
+	<message name="zlexcount" id="525">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="min" type="min_type"/>
+			<field name="max" type="max_type"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="count" type="count_type"/>
+		</responseParameter>
+	</message>
+			
+	<message name="zrange" id="530">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="start" type="start_type"/>
+			<field name="stop" type="stop_type"/>
+			<field name="withscores" type="withscores_type" default="0"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="members" type="members_type"/>
+			<field name="scoremembers" type="scoremembers_type"/>
+		</responseParameter>
+	</message>
+	<message name="zrangebyscore" id="531">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="min" type="min_type"/>
+			<field name="max" type="max_type"/>
+			<field name="withscores" type="withscores_type" default="0"/>
+			<field name="offset" type="offset_type" default="-1"/>
+			<field name="count" type="count_type" default="50"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="members" type="members_type"/>
+			<field name="scoremembers" type="scoremembers_type"/>
+		</responseParameter>
+	</message>
+	<message name="zrevrange" id="532">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="start" type="start_type"/>
+			<field name="stop" type="stop_type"/>
+			<field name="withscores" type="withscores_type" default="0"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="members" type="members_type"/>
+			<field name="scoremembers" type="scoremembers_type"/>
+		</responseParameter>
+	</message>
+	<message name="zrevrangebyscore" id="533">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="min" type="min_type"/>
+			<field name="max" type="max_type"/>
+			<field name="withscores" type="withscores_type" default="0"/>
+			<field name="offset" type="offset_type" default="-1"/>
+			<field name="count" type="count_type" default="50"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="members" type="members_type"/>
+			<field name="scoremembers" type="scoremembers_type"/>
+		</responseParameter>
+	</message>
+	<message name="zrangebylex" id="534">
+		<requestParameter>
+			<field name="key" type="key_type"/>
+			<field name="min" type="min_type"/>
+			<field name="max" type="max_type"/>
+			<field name="offset" type="offset_type" default="-1"/>
+			<field name="count" type="count_type" default="50"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="members" type="members_type"/>
+		</responseParameter>
+	</message>	
+		
 </service>
 

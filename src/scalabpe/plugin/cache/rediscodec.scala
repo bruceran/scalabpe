@@ -104,6 +104,32 @@ object RedisCodec {
     val MSGID_LLEN = 421
     val MSGID_LINDEX = 422
 
+    val MSGID_ZADD = 500
+    val MSGID_ZADDMULTI = 501
+    val MSGID_ZINCRBY = 502
+    val MSGID_ZREM = 503
+    val MSGID_ZREMMULTI = 504
+    val MSGID_ZREMRANGEBYRANK = 505
+    val MSGID_ZREMRANGEBYSCORE = 506
+    //ZUNIONSTORE
+    //ZINTERSTORE
+    //ZREMRANGEBYLEX
+
+    val MSGID_ZCARD = 520
+    val MSGID_ZCOUNT = 521
+    val MSGID_ZSCORE = 522    
+    val MSGID_ZRANK = 523
+    val MSGID_ZREVRANK = 524
+    val MSGID_ZLEXCOUNT = 525
+    
+    val MSGID_ZRANGE = 530
+    val MSGID_ZRANGEBYSCORE = 531
+    val MSGID_ZREVRANGE = 532
+    val MSGID_ZREVRANGEBYSCORE = 533
+    val MSGID_ZRANGEBYLEX = 534
+
+    //val MSGID_ZSCAN = 531
+    
     val CRNL = "\r\n"
     val CRNL_BS = CRNL.getBytes()
 
@@ -167,23 +193,43 @@ object RedisCodec {
         MSGID_BRPOPLPUSH -> "brpoplpush",
         MSGID_LRANGE -> "lrange",
         MSGID_LLEN -> "llen",
-        MSGID_LINDEX -> "lindex")
+        MSGID_LINDEX -> "lindex",
+     
+        MSGID_ZADD -> "zadd",
+        MSGID_ZADDMULTI -> "zadd",
+        MSGID_ZINCRBY -> "zincrby",
+        MSGID_ZREM -> "zrem",
+        MSGID_ZREMMULTI -> "zrem",
+        MSGID_ZREMRANGEBYRANK -> "zremrangebyrank",
+        MSGID_ZREMRANGEBYSCORE -> "zremrangebyscore",
+        MSGID_ZCARD -> "zcard",
+        MSGID_ZCOUNT -> "zcount",
+        MSGID_ZRANK -> "zrank",
+        MSGID_ZREVRANK -> "zrevrank",
+        MSGID_ZSCORE -> "zscore",
+        MSGID_ZLEXCOUNT -> "zlexcount",
+        MSGID_ZRANGE -> "zrange",
+        MSGID_ZRANGEBYSCORE -> "zrangebyscore",
+        MSGID_ZREVRANGE -> "zrevrange",
+        MSGID_ZREVRANGEBYSCORE -> "zrevrangebyscore",
+        MSGID_ZRANGEBYLEX -> "zrangebylex"
+    )
 
     def isSetOp(msgId: Int): Boolean = {
         msgId == MSGID_SET
     }
     def isMultiKeyOp(msgId: Int): Boolean = {
         msgId == MSGID_MGET ||
-            msgId == MSGID_SDIFF ||
-            msgId == MSGID_SINTER ||
-            msgId == MSGID_SUNION ||
-            msgId == MSGID_SDIFFSTORE ||
-            msgId == MSGID_SINTERSTORE ||
-            msgId == MSGID_SUNIONSTORE ||
-            msgId == MSGID_RPOPLPUSH ||
-            msgId == MSGID_BLPOP ||
-            msgId == MSGID_BRPOP ||
-            msgId == MSGID_BRPOPLPUSH
+        msgId == MSGID_SDIFF ||
+        msgId == MSGID_SINTER ||
+        msgId == MSGID_SUNION ||
+        msgId == MSGID_SDIFFSTORE ||
+        msgId == MSGID_SINTERSTORE ||
+        msgId == MSGID_SUNIONSTORE ||
+        msgId == MSGID_RPOPLPUSH ||
+        msgId == MSGID_BLPOP ||
+        msgId == MSGID_BRPOP ||
+        msgId == MSGID_BRPOPLPUSH
     }
 
     def isWriteOp(msgId: Int): Boolean = {
@@ -265,7 +311,9 @@ object RedisCodec {
                 MSGID_HGETALL |
                 MSGID_LPOP |
                 MSGID_RPOP |
-                MSGID_LLEN =>
+                MSGID_LLEN | 
+                MSGID_ZCARD 
+                =>
                 b = buildCmd(cmd, key)
             case MSGID_EXPIRE =>
                 val expire = map.i("expire")
@@ -419,6 +467,92 @@ object RedisCodec {
             case MSGID_LINDEX =>
                 val index = map.i("index")
                 b = buildCmd(cmd, key, index.toString)
+            case MSGID_ZADD | MSGID_ZINCRBY =>
+                val score = map.ns("score")
+                val member = map.ns("member")
+                if (score != "" && member != "")
+                    b = buildCmd(cmd, key, score, member)
+            case MSGID_ZADDMULTI =>
+                val scoremembers = map.nlm("scoremembers")
+                if ( scoremembers.size > 0) {
+                    val arr = ArrayBufferString(cmd, key)
+                    for (m <- scoremembers) {
+                        arr += m.ns("score")
+                        arr += m.ns("member")
+                    }
+                    b = buildCmd(arr)
+                }
+            case MSGID_ZREMRANGEBYRANK=>
+                val start = map.ns("start")
+                val stop = map.ns("stop")
+                if (start != "" && stop != "")
+                    b = buildCmd(cmd, key,start, stop)
+            case MSGID_ZCOUNT | MSGID_ZLEXCOUNT | MSGID_ZREMRANGEBYSCORE=>
+                val min = map.ns("min")
+                val max = map.ns("max")
+                if (min != "" && max != "")
+                    b = buildCmd(cmd, key, min, max)
+            case MSGID_ZSCORE | MSGID_ZRANK | MSGID_ZREVRANK | MSGID_ZREM =>
+                val member = map.ns("member")
+                if ( member != "")
+                    b = buildCmd(cmd, key, member)
+            case MSGID_ZREMMULTI =>
+                val members = map.nls("members")
+                if ( members.size > 0 )
+                    b = buildCmd(cmd, key, members)
+            case MSGID_ZRANGE | MSGID_ZREVRANGE =>
+                val start = map.ns("start")
+                val stop = map.ns("stop")
+                val withscores = map.ns("withscores")
+                if (start != "" && stop != "") {
+                    val arr = ArrayBufferString(cmd, key)
+                    arr += start
+                    arr += stop
+                    if( withscores == "1" )
+                        arr += "WITHSCORES"
+                    b = buildCmd(arr)
+                }
+            case MSGID_ZRANGEBYSCORE | MSGID_ZREVRANGEBYSCORE =>
+                val min = map.ns("min")
+                val max = map.ns("max")
+                val withscores = map.ns("withscores")
+                val offset = map.ns("offset")
+                val count = map.ns("count")
+                if (min != "" && max != "") {
+                    val arr = ArrayBufferString(cmd, key)
+                    if( msgId == MSGID_ZRANGEBYSCORE ) {
+                        arr += min
+                        arr += max
+                    } else {
+                        arr += max
+                        arr += min
+                    }
+                    if( withscores == "1" )
+                        arr += "WITHSCORES"
+                    if( offset != "-1" ) {
+                        arr += "LIMIT"
+                        arr += offset
+                        arr += count
+                    }
+                    b = buildCmd(arr)
+                }
+            case MSGID_ZRANGEBYLEX =>
+                val min = map.ns("min")
+                val max = map.ns("max")
+                val offset = map.ns("offset")
+                val count = map.ns("count")
+                if (min != "" && max != "") {
+                    val arr = ArrayBufferString(cmd, key)
+                    arr += min
+                    arr += max
+                    
+                    if( offset != "-1" ) {
+                        arr += "LIMIT"
+                        arr += offset
+                        arr += count
+                    }
+                    b = buildCmd(arr)
+                }
             case _ =>
         }
 
@@ -480,7 +614,17 @@ object RedisCodec {
                 MSGID_RPUSH |
                 MSGID_RPUSHM |
                 MSGID_RPUSHX |
-                MSGID_LLEN =>
+                MSGID_LLEN |
+                MSGID_ZADD |
+                MSGID_ZADDMULTI |
+                MSGID_ZCARD |
+                MSGID_ZCOUNT |
+                MSGID_ZLEXCOUNT |
+                MSGID_ZREM |
+                MSGID_ZREMMULTI |
+                MSGID_ZREMRANGEBYRANK |
+                MSGID_ZREMRANGEBYSCORE 
+                =>
                 if (res.ok) {
                     try {
                         map.put("count", res.value.toInt)
@@ -500,12 +644,24 @@ object RedisCodec {
                     map.put("value", res.value)
                 else if (res.ok && res.value == null)
                     code = ResultCodes.CACHE_NOT_FOUND
+            case MSGID_ZINCRBY | MSGID_ZSCORE  =>
+                if (res.ok && res.value != null)
+                    map.put("score", res.value)
+                else if (res.ok && res.value == null)
+                    code = ResultCodes.CACHE_NOT_FOUND
             case MSGID_INCRBY |
                 MSGID_DECRBY |
                 MSGID_HINCRBY =>
                 if (res.ok) {
                     try {
                         map.put("value", res.value.toInt)
+                    } catch { case e: Throwable => }
+                }
+            case MSGID_ZRANK |
+                MSGID_ZREVRANK  =>
+                if (res.ok) {
+                    try {
+                        map.put("rank", res.value.toInt)
                     } catch { case e: Throwable => }
                 }
             case MSGID_MGET |
@@ -589,6 +745,35 @@ object RedisCodec {
                         map.put("slots", 0)
                     }
                 }
+            case MSGID_ZRANGE | 
+                MSGID_ZREVRANGE | 
+                MSGID_ZRANGEBYSCORE | 
+                MSGID_ZREVRANGEBYSCORE | 
+                MSGID_ZRANGEBYLEX =>
+                if (res.ok) {
+                    val arr = res.arr
+                    if (arr != null && arr.size > 0) {
+                        val withscores = req.ns("withscores")
+                        if( withscores == "1") {
+                            var i = 0
+                            val buf = ArrayBufferMap()
+                            while (i < arr.size) {
+                                buf += HashMapStringAny("member" -> arr(i).value, "score" -> arr(i + 1).value)
+                                i += 2
+                            }
+                            map.put("scoremembers", buf)
+                        } else {
+                            var i = 0
+                            val buf = ArrayBufferString()
+                            while (i < arr.size) {
+                                buf += arr(i).value
+                                i += 1
+                            }
+                            map.put("members", buf)
+                        }
+                    }
+                }
+                
             case _ =>
                 code = ResultCodes.TLV_DECODE_ERROR
         }
