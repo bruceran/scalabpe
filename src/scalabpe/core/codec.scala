@@ -6,70 +6,43 @@ class CodecException(val msg: String) extends RuntimeException(msg)
 
 object AvenueCodec {
 
-    val STANDARD_HEADLEN = 44
+    val STANDARD_HEADLEN_V1 = 44
+    val STANDARD_HEADLEN_V2 = 28
 
     val TYPE_REQUEST = 0xA1
     val TYPE_RESPONSE = 0xA2
 
-    val ROUTE_FLAG = 0x0F
-
-    val VERSION_1 = 1
-
     val FORMAT_TLV = 0
-    val FORMAT_JSON = 1
 
     val ENCODING_GBK = 0
     val ENCODING_UTF8 = 1
 
-    val ENCODING_STRINGS = Array("GB18030", "UTF-8")
-
     val MUSTREACH_NO = 0
     val MUSTREACH_YES = 1
 
-    val ACK_CODE = 100
-
+    val ZERO = 0.toByte
+    val ROUTE_FLAG = 0x0F.toByte
     val MASK = 0xff
     val EMPTY_SIGNATURE = new Array[Byte](16)
 
-    val KEY_GS_INFO_FIRST = "gsInfoFirst"
-    val KEY_GS_INFO_LAST = "gsInfoLast"
-
-    val KEY_SOC_ID = "socId"
-    val KEY_GS_INFOS = "gsInfos"
-    val KEY_APP_ID = "appId"
-    val KEY_AREA_ID = "areaId"
-    val KEY_GROUP_ID = "groupId"
-    val KEY_HOST_ID = "hostId"
-    val KEY_SP_ID = "spId"
-    val KEY_ENDPOINT_ID = "endpointId" // c++ endpointType
-    val KEY_UNIQUE_ID = "uniqueId" // c++ guid
-    val KEY_SPS_ID = "spsId"
-    val KEY_HTTP_TYPE = "httpType"
-    val KEY_LOG_ID = "logId"
-
-    val CODE_SOC_ID = 1
-    val CODE_GS_INFO = 2
-    val CODE_APP_ID = 3
-    val CODE_AREA_ID = 4
-    val CODE_GROUP_ID = 5
-    val CODE_HOST_ID = 6
-    val CODE_SP_ID = 7
-    val CODE_ENDPOINT_ID = 8
-    val CODE_UNIQUE_ID = 9
-    val CODE_SPS_ID = 11
-    val CODE_HTTP_TYPE = 12
-    val CODE_LOG_ID = 13
+    val ACK_CODE = 100
 
     var encrypt_f: (ByteBuffer, String) => ByteBuffer = null
     var decrypt_f: (ByteBuffer, String) => ByteBuffer = null
 
     def parseEncoding(s: String): Int = {
-
         s.toLowerCase match {
             case "utf8" | "utf-8" => ENCODING_UTF8
             case _                => ENCODING_GBK
         }
     }
+    def toEncoding(enc: Int): String = {
+        enc match {
+            case 0 => "GB18030";
+            case _ => "UTF-8"
+        }
+    }
+
 }
 
 class AvenueCodec {
@@ -82,26 +55,27 @@ class AvenueCodec {
 
         val length = req.remaining()
 
-        if (length < STANDARD_HEADLEN) {
-            throw new CodecException("package_size_error")
-        }
-
         val flag = req.get() & MASK
+        var headLen = req.get() & MASK
+        val version = req.get() & MASK
+        req.get() // ignore the field
+
         if (flag != TYPE_REQUEST && flag != TYPE_RESPONSE) {
             throw new CodecException("package_type_error")
         }
-
-        val headLen = req.get() & MASK
-        if (headLen < STANDARD_HEADLEN || headLen > length) {
-            throw new CodecException("package_headlen_error, headLen=" + headLen + ",length=" + length)
-        }
-
-        val version = req.get() & MASK
-        if (version != VERSION_1) {
+        if (version != 1 && version != 2) {
             throw new CodecException("package_version_error")
         }
 
-        req.get()
+        val standardLen = if (version == 1) STANDARD_HEADLEN_V1 else STANDARD_HEADLEN_V2
+        if (version == 2) headLen *= 4
+
+        if (length < standardLen) {
+            throw new CodecException("package_size_error")
+        }
+        if (headLen < standardLen || headLen > length) {
+            throw new CodecException("package_headlen_error, headLen=" + headLen + ",length=" + length)
+        }
 
         val packLen = req.getInt()
         if (packLen != length) {
@@ -114,16 +88,25 @@ class AvenueCodec {
         }
 
         val msgId = req.getInt()
-        if (msgId != 0) {
-            if (serviceId == 0) {
-                throw new CodecException("package_msgid_error")
+        if (msgId < 0) {
+            throw new CodecException("package_msgid_error")
+        }
+        if (msgId == 0 && serviceId != 0) {
+            throw new CodecException("package_msgid_error")
+        }
+        if (msgId != 0 && serviceId == 0) {
+            throw new CodecException("package_msgid_error")
+        }
+
+        if (serviceId == 0 && msgId == 0) {
+            if (length != standardLen) {
+                throw new CodecException("package_ping_size_error")
             }
         }
 
         val sequence = req.getInt()
 
-        req.get()
-
+        req.get() // ignore the field
         val mustReach = req.get()
         val format = req.get()
         val encoding = req.get()
@@ -132,7 +115,7 @@ class AvenueCodec {
             throw new CodecException("package_mustreach_error")
         }
 
-        if (format != FORMAT_TLV && format != FORMAT_JSON) {
+        if (format != FORMAT_TLV) {
             throw new CodecException("package_format_error")
         }
 
@@ -142,15 +125,11 @@ class AvenueCodec {
 
         val code = req.getInt()
 
-        req.position(req.position() + 16)
-
-        if (serviceId == 0 && msgId == 0) {
-            if (length != STANDARD_HEADLEN) {
-                throw new CodecException("package_ping_size_error")
-            }
+        if (version == 1) {
+            req.position(req.position() + 16)
         }
 
-        val xhead = ByteBuffer.allocate(headLen - STANDARD_HEADLEN)
+        val xhead = ByteBuffer.allocate(headLen - standardLen)
         req.get(xhead.array())
         xhead.position(0)
 
@@ -163,16 +142,13 @@ class AvenueCodec {
         }
 
         val r = new AvenueData(
-            flag, serviceId, msgId, sequence,
+            flag, version, serviceId, msgId, sequence,
             mustReach, encoding,
             if (flag == TYPE_REQUEST) 0 else code,
             xhead, body)
 
         r
     }
-
-    val ONE = 1.toByte
-    val ZERO = 0.toByte
 
     def encode(res: AvenueData, key: String = ""): ByteBuffer = {
 
@@ -183,15 +159,24 @@ class AvenueCodec {
 
         res.xhead.position(0)
         body.position(0)
-        val headLen = STANDARD_HEADLEN + res.xhead.remaining()
-        val packLen = headLen + body.remaining()
+
+        val standardLen = if (res.version == 1) STANDARD_HEADLEN_V1 else STANDARD_HEADLEN_V2
+
+        var headLen = standardLen + res.xhead.remaining()
+        if (res.version == 2) {
+            if ((headLen % 4) != 0) {
+                throw new CodecException("package_xhead_padding_error")
+            }
+            headLen /= 4
+        }
+        val packLen = standardLen + res.xhead.remaining() + body.remaining()
 
         val b = ByteBuffer.allocate(packLen)
 
         b.put(res.flag.toByte) // type
         b.put(headLen.toByte) // headLen
-        b.put(ONE) // version
-        b.put(ROUTE_FLAG.toByte) // route
+        b.put(res.version.toByte) // version
+        b.put(ROUTE_FLAG) // route
         b.putInt(packLen) // packLen
         b.putInt(res.serviceId) // serviceId
         b.putInt(res.msgId) // msgId
@@ -202,7 +187,9 @@ class AvenueCodec {
         b.put(res.encoding.toByte) // encoding
 
         b.putInt(if (res.flag == TYPE_REQUEST) 0 else res.code) // code
-        b.put(EMPTY_SIGNATURE) // signature
+
+        if (res.version == 1)
+            b.put(EMPTY_SIGNATURE) // signature
 
         b.put(res.xhead)
         b.put(body)

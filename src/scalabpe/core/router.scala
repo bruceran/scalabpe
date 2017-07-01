@@ -686,6 +686,7 @@ class Router(val rootDir: String, val startSos: Boolean = true, var mockMode: Bo
                 rawReq.sender)
 
             req.receivedTime = rawReq.receivedTime
+            req.version = rawReq.data.version
 
             if (rawReq.persistId == 0)
                 persist(rawReq)
@@ -816,8 +817,13 @@ class Router(val rootDir: String, val startSos: Boolean = true, var mockMode: Bo
                 info.res.code = ec
             }
 
+            var version = info.req.version
+            if( version == 0 ) version = codecs.version(res.serviceId)
             val data = new AvenueData(
-                AvenueCodec.TYPE_RESPONSE, res.serviceId, res.msgId, res.sequence,
+                AvenueCodec.TYPE_RESPONSE, 
+                version,
+                res.serviceId, res.msgId, 
+                res.sequence,
                 0, res.encoding,
                 errorCode,
                 EMPTY_BUFFER,
@@ -973,7 +979,10 @@ class Router(val rootDir: String, val startSos: Boolean = true, var mockMode: Bo
 
     def genRawReqResInfo(req: RawRequest, code: Int): RawRequestResponseInfo = {
         val data = new AvenueData(
-            AvenueCodec.TYPE_RESPONSE, req.data.serviceId, req.data.msgId, req.data.sequence,
+            AvenueCodec.TYPE_RESPONSE, 
+            req.data.version,
+            req.data.serviceId, req.data.msgId, 
+			req.data.sequence,
             0, req.data.encoding,
             code,
             EMPTY_BUFFER,

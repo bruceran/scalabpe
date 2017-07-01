@@ -1057,7 +1057,7 @@ class HttpClientImpl(
 
             if (!contentStr.startsWith("{")) {
                 log.error("not a valid json,json=" + contentStr)
-                code = ResultCodes.HTTP_RESPONSE_FORMAT_ERROR
+                code = ResultCodes.SERVICE_INTERNALERROR
                 return code
             }
 
@@ -1073,7 +1073,7 @@ class HttpClientImpl(
             if (msg.resultCodeField != "") {
                 val s = body.s(msg.resultCodeField, "")
                 if (s == "")
-                    code = ResultCodes.HTTP_RESULTCODE_NOT_FOUND
+                    code = ResultCodes.SERVICE_INTERNALERROR
                 else
                     code = s.toInt
             }
@@ -1081,7 +1081,7 @@ class HttpClientImpl(
         } catch {
             case e: Exception =>
                 log.error("cannot parse content, content={}", contentStr, e)
-                code = ResultCodes.HTTP_RESPONSE_FORMAT_ERROR
+                code = ResultCodes.SERVICE_INTERNALERROR
         }
 
         code
@@ -1192,7 +1192,7 @@ class HttpClientImpl(
         if (msg.resultCodeField != "") {
             val s = body.s(msg.resultCodeField, "")
             if (s == "")
-                code = ResultCodes.HTTP_RESULTCODE_NOT_FOUND
+                code = ResultCodes.SERVICE_INTERNALERROR
             else
                 code = s.toInt
         }
@@ -1225,14 +1225,14 @@ class HttpClientImpl(
             if (msg.resultCodeField != "") {
                 val s = body.s(msg.resultCodeField, "")
                 if (s == "")
-                    code = ResultCodes.HTTP_RESULTCODE_NOT_FOUND
+                    code = ResultCodes.SERVICE_INTERNALERROR
                 else
                     code = s.toInt
             }
 
         } catch {
             case e: Exception =>
-                code = ResultCodes.HTTP_RESPONSE_FORMAT_ERROR
+                code = ResultCodes.SERVICE_INTERNALERROR
                 log.error("cannot parse content, content={}", contentStr)
         }
 

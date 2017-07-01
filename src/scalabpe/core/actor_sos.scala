@@ -301,6 +301,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
         val notifyInfo = spsDisconnectNotifyTo.split(":")
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
+            router.codecs.version(notifyInfo(0).toInt),
             notifyInfo(0).toInt,
             notifyInfo(1).toInt,
             sequence,
@@ -310,7 +311,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
             EMPTY_BUFFER, EMPTY_BUFFER)
 
         try {
-            data.xhead = TlvCodec4Xhead.appendGsInfo(data.xhead, parseRemoteAddr(connId), isSps)
+            data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps)
         } catch {
             case e: Throwable =>
         }
@@ -509,7 +510,6 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
                                 var errorCode = data.code
                                 if (errorCode == 0 && ec != 0) {
                                     errorCode = ec
-
                                     log.error("decode response error, serviceId=" + req.serviceId + ", msgId=" + req.msgId)
                                 }
 
@@ -519,6 +519,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
                             }
                         case req: RawRequest =>
                             val newdata = new AvenueData(AvenueCodec.TYPE_RESPONSE,
+                                    req.data.version,
                                 req.data.serviceId,
                                 req.data.msgId,
                                 req.data.sequence,
@@ -549,6 +550,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
     def createErrorResponse(code: Int, req: RawRequest): RawResponse = {
         val data = new AvenueData(AvenueCodec.TYPE_RESPONSE,
+                req.data.version,
             req.data.serviceId,
             req.data.msgId,
             req.data.sequence,
@@ -588,6 +590,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
+            router.codecs.version(req.serviceId),
             req.serviceId,
             req.msgId,
             sequence,
@@ -596,7 +599,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
             0,
             xhead, body)
 
-        val connId = selectConnId(req.toAddr, req.xhead.s(AvenueCodec.KEY_SOC_ID))
+        val connId = selectConnId(req.toAddr, req.xhead.s(Xhead.KEY_SOC_ID))
         if (connId == null || connId == "") {
             val res = createErrorResponse(ResultCodes.SOC_NOCONNECTION, req)
             router.reply(new RequestResponseInfo(req, res))
@@ -625,7 +628,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         val xhead = TlvCodec4Xhead.decode(req.data.serviceId, req.data.xhead)
 
-        val connId = selectConnId(null, xhead.s(AvenueCodec.KEY_SOC_ID))
+        val connId = selectConnId(null, xhead.s(Xhead.KEY_SOC_ID))
         if (connId == null || connId == "") {
             val res = createErrorResponse(ResultCodes.SOC_NOCONNECTION, req)
             router.reply(new RawRequestResponseInfo(req, res))
@@ -634,6 +637,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
+            router.codecs.version(req.data.serviceId), // req.data.version,
             req.data.serviceId,
             req.data.msgId,
             sequence,
@@ -680,7 +684,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
                 // append remote addr to xhead, the last addr is always remote addr
                 try {
-                    data.xhead = TlvCodec4Xhead.appendGsInfo(data.xhead, parseRemoteAddr(connId), isSps)
+                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps)
                 } catch {
                     case e: Throwable =>
                 }
@@ -704,7 +708,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
                 // append remote addr to xhead, the last addr is always remote addr
                 try {
-                    data.xhead = TlvCodec4Xhead.appendGsInfo(data.xhead, parseRemoteAddr(connId))
+                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId))
                 } catch {
                     case e: Throwable =>
                 }
@@ -738,6 +742,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         val res = new AvenueData(
             AvenueCodec.TYPE_RESPONSE,
+            req.version,
             req.serviceId,
             req.msgId,
             req.sequence,
@@ -757,6 +762,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         val res = new AvenueData(
             AvenueCodec.TYPE_RESPONSE,
+            req.version,
             req.serviceId,
             req.msgId,
             req.sequence,
@@ -776,6 +782,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         val res = new AvenueData(
             AvenueCodec.TYPE_RESPONSE,
+            data.version,
             0,
             0,
             data.sequence,

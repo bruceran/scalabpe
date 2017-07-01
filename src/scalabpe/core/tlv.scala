@@ -799,7 +799,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         }
 
                         case TlvCodec.CLS_STRING => {
-                            val value = new String(buff.array(), buff.position, len - tlvheadlen, AvenueCodec.ENCODING_STRINGS(encoding))
+                            val value = new String(buff.array(), buff.position, len - tlvheadlen, AvenueCodec.toEncoding(encoding))
 
                             map.put(key, value)
 
@@ -842,7 +842,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         }
 
                         case TlvCodec.CLS_STRINGARRAY => {
-                            val value = new String(buff.array(), buff.position, len - tlvheadlen, AvenueCodec.ENCODING_STRINGS(encoding))
+                            val value = new String(buff.array(), buff.position, len - tlvheadlen, AvenueCodec.toEncoding(encoding))
 
                             var a = map.getOrElse(key, null)
                             if (a == null) {
@@ -916,7 +916,7 @@ class TlvCodec(val configFile: String) extends Logging {
                 }
 
                 case TlvCodec.CLS_STRING => {
-                    val value = new String(buff.array(), buff.position, len, AvenueCodec.ENCODING_STRINGS(encoding)).trim()
+                    val value = new String(buff.array(), buff.position, len, AvenueCodec.toEncoding(encoding)).trim()
                     map.put(key, value)
 
                     var newposition = buff.position + aligned(len)
@@ -931,7 +931,7 @@ class TlvCodec(val configFile: String) extends Logging {
                     if (totalLen > maxLen) {
                         throw new CodecException("struct_data_not_valid")
                     }
-                    val value = new String(buff.array(), buff.position, len, AvenueCodec.ENCODING_STRINGS(encoding)).trim()
+                    val value = new String(buff.array(), buff.position, len, AvenueCodec.toEncoding(encoding)).trim()
                     map.put(key, value)
 
                     var newposition = buff.position + aligned(len)
@@ -1051,7 +1051,7 @@ class TlvCodec(val configFile: String) extends Logging {
     def encodeString(buffs: ArrayBuffer[ByteBuffer], code: Int, v: Any, encoding: Int): Unit = {
         val value = anyToString(v)
         if (value == null) return
-        val bytes = value.getBytes(AvenueCodec.ENCODING_STRINGS(encoding))
+        val bytes = value.getBytes(AvenueCodec.toEncoding(encoding))
         var tlvheadlen = 4
         var alignedLen = aligned(bytes.length + tlvheadlen)
         if (alignedLen > 65535 && enableExtendTlv) {
@@ -1130,7 +1130,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         case TlvCodec.CLS_STRING => {
 
                             if (v == null) v = ""
-                            val s = anyToString(v).getBytes(AvenueCodec.ENCODING_STRINGS(encoding))
+                            val s = anyToString(v).getBytes(AvenueCodec.toEncoding(encoding))
 
                             var actuallen = s.length
                             if (len == -1 || s.length == len) {
@@ -1152,7 +1152,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         case TlvCodec.CLS_SYSTEMSTRING => {
 
                             if (v == null) v = ""
-                            val s = anyToString(v).getBytes(AvenueCodec.ENCODING_STRINGS(encoding))
+                            val s = anyToString(v).getBytes(AvenueCodec.toEncoding(encoding))
 
                             var alignedLen = aligned(s.length)
                             totalLen += 4
@@ -1548,6 +1548,7 @@ class TlvCodecs(val dir: String) extends Logging {
 
     val codecs_id = new HashMap[Int, TlvCodec]()
     val codecs_names = new HashMap[String, TlvCodec]()
+    val version_map = new HashMap[Int, Int]()
 
     init;
 
@@ -1573,15 +1574,11 @@ class TlvCodecs(val dir: String) extends Logging {
 
         for (f <- allxmls) {
 
-            //val in = new InputStreamReader(new FileInputStream(f),"UTF-8")
-            //val cfgXml = XML.load(in)
-            //in.close()
-
             try {
                 val cfgXml = XML.load(f)
 
-                val name = (cfgXml \ "@name").toString.toLowerCase
                 val id = (cfgXml \ "@id").toString.toInt
+                val name = (cfgXml \ "@name").toString.toLowerCase
 
                 val codec = new TlvCodec(f)
 
@@ -1594,6 +1591,8 @@ class TlvCodecs(val dir: String) extends Logging {
 
                 codecs_id.put(id, codec)
                 codecs_names.put(name, codec)
+                
+                parseVersion(id,cfgXml)
             } catch {
                 case e: Throwable =>
                     log.error("load xml failed, f=" + f)
@@ -1647,298 +1646,17 @@ class TlvCodecs(val dir: String) extends Logging {
     def allServiceIds(): List[Int] = {
         codecs_id.keys.toList
     }
-}
-
-object TlvCodec4Xhead extends Logging {
-
-    val SPS_ID_0 = "00000000000000000000000000000000"
-
-    def decode(serviceId: Int, buff: ByteBuffer): HashMapStringAny = {
-        try {
-            val m = decodeInternal(serviceId, buff)
-            m
-        } catch {
-            case e: Exception =>
-                log.error("xhead decode exception, e={}", e.getMessage)
-                new HashMapStringAny()
-        }
-    }
-
-    def decodeInternal(serviceId: Int, buff: ByteBuffer): HashMapStringAny = {
-
-        buff.position(0)
-
-        val limit = buff.remaining
-
-        val map = new HashMapStringAny()
-
-        val isServiceId3 = (serviceId == 3)
-
-        if (isServiceId3) {
-            // only a "socId" field
-            var len = 32
-            if (limit < len) len = limit
-            val value = new String(buff.array(), 0, len).trim()
-            map.put(AvenueCodec.KEY_SOC_ID, value)
-            return map
-        }
-
-        var break = false
-
-        while (buff.position + 4 <= limit && !break) {
-
-            val code = buff.getShort.toInt;
-            val len: Int = buff.getShort & 0xffff;
-
-            if (len < 4) {
-                if (log.isDebugEnabled) {
-                    log.debug("xhead_length_error,code=" + code + ",len=" + len + ",map=" + map + ",limit=" + limit);
-                    log.debug("xhead bytes=" + TlvCodec.toHexString(buff))
-                }
-                break = true
-            }
-            if (buff.position + len - 4 > limit) {
-                if (log.isDebugEnabled) {
-                    log.debug("xhead_length_error,code=" + code + ",len=" + len + ",map=" + map + ",limit=" + limit);
-                    log.debug("xhead bytes=" + TlvCodec.toHexString(buff))
-                }
-                break = true
-            }
-
-            if (!break) {
-                code match {
-
-                    case AvenueCodec.CODE_GS_INFO =>
-                        decodeGsInfo(buff, len, AvenueCodec.KEY_GS_INFOS, map)
-                    case AvenueCodec.CODE_SOC_ID =>
-                        decodeString(buff, len, AvenueCodec.KEY_SOC_ID, map)
-                    case AvenueCodec.CODE_ENDPOINT_ID =>
-                        decodeString(buff, len, AvenueCodec.KEY_ENDPOINT_ID, map)
-                    case AvenueCodec.CODE_UNIQUE_ID =>
-                        decodeString(buff, len, AvenueCodec.KEY_UNIQUE_ID, map)
-                    case AvenueCodec.CODE_APP_ID =>
-                        decodeInt(buff, len, AvenueCodec.KEY_APP_ID, map)
-                    case AvenueCodec.CODE_AREA_ID =>
-                        decodeInt(buff, len, AvenueCodec.KEY_AREA_ID, map)
-                    case AvenueCodec.CODE_GROUP_ID =>
-                        decodeInt(buff, len, AvenueCodec.KEY_GROUP_ID, map)
-                    case AvenueCodec.CODE_HOST_ID =>
-                        decodeInt(buff, len, AvenueCodec.KEY_HOST_ID, map)
-                    case AvenueCodec.CODE_SP_ID =>
-                        decodeInt(buff, len, AvenueCodec.KEY_SP_ID, map)
-                    case AvenueCodec.CODE_SPS_ID =>
-                        decodeString(buff, len, AvenueCodec.KEY_SPS_ID, map)
-                    case AvenueCodec.CODE_HTTP_TYPE =>
-                        decodeInt(buff, len, AvenueCodec.KEY_HTTP_TYPE, map)
-                    case AvenueCodec.CODE_LOG_ID =>
-                        decodeString(buff, len, AvenueCodec.KEY_LOG_ID, map)
-                    case _ =>
-                        var newposition = buff.position + aligned(len) - 4
-                        if (newposition > buff.limit) newposition = buff.limit
-                        buff.position(newposition)
-                }
-            }
-        }
-
-        var a = map.getOrElse(AvenueCodec.KEY_GS_INFOS, null)
-        if (a != null) {
-            val aa = a.asInstanceOf[ArrayBufferString]
-            val firstValue = aa(0)
-            map.put(AvenueCodec.KEY_GS_INFO_FIRST, firstValue)
-            val lastValue = aa(aa.length - 1)
-            map.put(AvenueCodec.KEY_GS_INFO_LAST, lastValue)
-        }
-        map
-    }
-
-    def decodeInt(buff: ByteBuffer, len: Int, key: String, map: HashMapStringAny): Unit = {
-        if (len != 8) return
-        val value = buff.getInt
-        if (!map.contains(key))
-            map.put(key, value)
-    }
-    def decodeString(buff: ByteBuffer, len: Int, key: String, map: HashMapStringAny): Unit = {
-        val value = new String(buff.array(), buff.position, len - 4)
-        if (!map.contains(key))
-            map.put(key, value)
-        var newposition = buff.position + aligned(len) - 4
-        if (newposition > buff.limit) newposition = buff.limit
-        buff.position(newposition)
-    }
-    def decodeGsInfo(buff: ByteBuffer, len: Int, key: String, map: HashMapStringAny): Unit = {
-        if (len != 12) return
-        val ips = new Array[Byte](4)
-        buff.get(ips)
-        val port = buff.getInt
-
-        val ipstr = InetAddress.getByAddress(ips).getHostAddress()
-        val value = ipstr + ":" + port
-
-        var a = map.getOrElse(key, null)
-        if (a == null) {
-            val aa = new ArrayBufferString()
-            aa += value
-            map.put(key, aa)
-        } else {
-            val aa = a.asInstanceOf[ArrayBufferString]
-            aa += value
-        }
-    }
-
-    def encode(serviceId: Int, map: HashMapStringAny): ByteBuffer = {
-        try {
-            val buff = encodeInternal(serviceId, map)
-            buff
-        } catch {
-            case e: Exception =>
-                log.error("xhead encode exception, e={}", e.getMessage)
-                // throw new RuntimeException(e.getMessage)
-                val buff = ByteBuffer.allocate(0)
-                return buff
-        }
-    }
-
-    def encodeInternal(serviceId: Int, map: HashMapStringAny): ByteBuffer = {
-
-        val socId = map.getOrElse(AvenueCodec.KEY_SOC_ID, null)
-        val gsInfos = map.getOrElse(AvenueCodec.KEY_GS_INFOS, null)
-        val appId = map.getOrElse(AvenueCodec.KEY_APP_ID, null)
-        val areaId = map.getOrElse(AvenueCodec.KEY_AREA_ID, null)
-        val groupId = map.getOrElse(AvenueCodec.KEY_GROUP_ID, null)
-        val hostId = map.getOrElse(AvenueCodec.KEY_HOST_ID, null)
-        val spId = map.getOrElse(AvenueCodec.KEY_SP_ID, null)
-        val uniqueId = map.getOrElse(AvenueCodec.KEY_UNIQUE_ID, null)
-        val endpointId = map.getOrElse(AvenueCodec.KEY_ENDPOINT_ID, null)
-        val spsId = map.getOrElse(AvenueCodec.KEY_SPS_ID, null)
-        val httpType = map.getOrElse(AvenueCodec.KEY_HTTP_TYPE, null)
-        val logId = map.getOrElse(AvenueCodec.KEY_LOG_ID, null)
-        val isServiceId3 = (serviceId == 3)
-
-        if (isServiceId3) {
-            if (socId != null) {
-                val buff = ByteBuffer.allocate(32)
-                val bs = TypeSafe.anyToString(socId).getBytes()
-                val len = if (bs.length > 32) 32 else bs.length;
-
-                buff.put(bs, 0, len)
-                for (i <- 0 until 32 - len) {
-                    buff.put(0.toByte)
-                }
-                buff.flip()
-                return buff
-            } else {
-                val buff = ByteBuffer.allocate(0)
-                return buff
-            }
-        }
-
-        val buff = ByteBuffer.allocate(240)
-
-        if (gsInfos != null) {
-            gsInfos match {
-                case infos: ArrayBufferString =>
-                    for (info <- infos) {
-                        encodeAddr(buff, AvenueCodec.CODE_GS_INFO, info)
-                    }
-                case _ =>
-                    throw new CodecException("unknown gsinfos")
-            }
-        }
-        if (socId != null)
-            encodeString(buff, AvenueCodec.CODE_SOC_ID, socId)
-        if (endpointId != null)
-            encodeString(buff, AvenueCodec.CODE_ENDPOINT_ID, endpointId)
-        if (uniqueId != null)
-            encodeString(buff, AvenueCodec.CODE_UNIQUE_ID, uniqueId)
-        if (appId != null)
-            encodeInt(buff, AvenueCodec.CODE_APP_ID, appId)
-        if (areaId != null)
-            encodeInt(buff, AvenueCodec.CODE_AREA_ID, areaId)
-        if (groupId != null)
-            encodeInt(buff, AvenueCodec.CODE_GROUP_ID, groupId)
-        if (hostId != null)
-            encodeInt(buff, AvenueCodec.CODE_HOST_ID, hostId)
-        if (spId != null)
-            encodeInt(buff, AvenueCodec.CODE_SP_ID, spId)
-        if (spsId != null)
-            encodeString(buff, AvenueCodec.CODE_SPS_ID, spsId)
-        if (httpType != null)
-            encodeInt(buff, AvenueCodec.CODE_HTTP_TYPE, httpType)
-        if (logId != null)
-            encodeString(buff, AvenueCodec.CODE_LOG_ID, logId)
-
-        buff.flip()
-        buff
-    }
-
-    def appendGsInfo(buff: ByteBuffer, gsInfo: String, insertSpsId: Boolean = false): ByteBuffer = {
-
-        var newlen = aligned(buff.limit) + 12
-
-        if (insertSpsId)
-            newlen += (aligned(gsInfo.length) + 4 + aligned(SPS_ID_0.length) + 4)
-
-        val newbuff = ByteBuffer.allocate(newlen)
-        if (insertSpsId) {
-            newbuff.position(aligned(newbuff.position))
-            encodeString(newbuff, AvenueCodec.CODE_SPS_ID, SPS_ID_0)
-            newbuff.position(aligned(newbuff.position))
-            encodeString(newbuff, AvenueCodec.CODE_SOC_ID, gsInfo)
-        }
-
-        newbuff.position(aligned(newbuff.position))
-        newbuff.put(buff)
-        newbuff.position(aligned(newbuff.position))
-        encodeAddr(newbuff, AvenueCodec.CODE_GS_INFO, gsInfo)
-
-        newbuff.flip
-        newbuff
-    }
-
-    def encodeAddr(buff: ByteBuffer, code: Int, s: String): Unit = {
-
-        if (buff.remaining < 12)
-            throw new CodecException("xhead is too long")
-
-        val ss = s.split(":")
-        val ipBytes = InetAddress.getByName(ss(0)).getAddress()
-
-        buff.putShort(code.toShort)
-        buff.putShort(12.toShort)
-        buff.put(ipBytes)
-        buff.putInt(ss(1).toInt)
-    }
-
-    def encodeInt(buff: ByteBuffer, code: Int, v: Any): Unit = {
-        if (buff.remaining < 8)
-            throw new CodecException("xhead is too long")
-        val value = TypeSafe.anyToInt(v)
-        buff.putShort(code.toShort)
-        buff.putShort(8.toShort)
-        buff.putInt(value)
-    }
-
-    def encodeString(buff: ByteBuffer, code: Int, v: Any): Unit = {
-        val value = TypeSafe.anyToString(v)
-        if (value == null) return
-        val bytes = value.getBytes() // don't support chinese
-        val alignedLen = aligned(bytes.length + 4)
-        if (buff.remaining < alignedLen)
-            throw new CodecException("xhead is too long")
-        buff.putShort(code.toShort)
-        buff.putShort((bytes.length + 4).toShort)
-        buff.put(bytes)
-        buff.position(buff.position + alignedLen - bytes.length - 4)
-    }
-
-    def aligned(len: Int): Int = {
-
-        //len
-
-        if ((len & 0x03) != 0)
-            ((len >> 2) + 1) << 2
+    
+    def parseVersion(serviceId:Int,cfgXml:Node) {
+        val version = (cfgXml \ "@version").text
+        if( version != "" ) 
+            version_map.put(serviceId,version.toInt)
         else
-            len
+            version_map.put(serviceId,1)
+    }
+    
+    def version(serviceId:Int) = {
+        version_map.getOrElse(serviceId,1)
     }
 }
 

@@ -639,21 +639,21 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
             ""
     }
 
-    def parseFirstGsInfo(xhead: HashMapStringAny) = {
-        var s = xhead.s("gsInfoFirst", "")
+    def parseFirstAddr(xhead: HashMapStringAny) = {
+        var s = xhead.s(Xhead.KEY_FIRST_ADDR, "")
         if (s == "") s = "0:0"
-        val gsInfo = s.split(":")
-        gsInfo
+        val addr = s.split(":")
+        addr
     }
-    def parseLastGsInfo(xhead: HashMapStringAny) = {
-        var s = xhead.s("gsInfoLast", "")
+    def parseLastAddr(xhead: HashMapStringAny) = {
+        var s = xhead.s(Xhead.KEY_LAST_ADDR, "")
         if (s == "") s = "0:0"
-        val gsInfo = s.split(":")
-        gsInfo
+        val addr = s.split(":")
+        addr
     }
 
     def getXheadRequestId(req: Request): String = {
-        val s = req.xs("uniqueId", "1")
+        val s = req.xs(Xhead.KEY_UNIQUE_ID, "1")
         s
     }
 
@@ -721,9 +721,9 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
                     if (!log.isInfoEnabled) return
 
                     val buff = new StringBuilder
-                    val clientInfo = parseFirstGsInfo(info.req.xhead)
-                    val gsInfo = parseLastGsInfo(info.req.xhead)
-                    buff.append(gsInfo(0)).append(splitter).append(gsInfo(1)).append(splitter)
+                    val clientInfo = parseFirstAddr(info.req.xhead)
+                    val addr = parseLastAddr(info.req.xhead)
+                    buff.append(addr(0)).append(splitter).append(addr(1)).append(splitter)
                     buff.append(clientInfo(0)).append(splitter).append(clientInfo(1)).append(splitter)
                     val xappid = info.req.xhead.getOrElse("appId", "0")
                     val xareaid = info.req.xhead.getOrElse("areaId", "0")
@@ -792,9 +792,9 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
                 val res = toRes(req, rawInfo.rawRes)
 
                 val buff = new StringBuilder
-                val clientInfo = parseFirstGsInfo(req.xhead)
-                val gsInfo = parseLastGsInfo(req.xhead)
-                buff.append(gsInfo(0)).append(splitter).append(gsInfo(1)).append(splitter)
+                val clientInfo = parseFirstAddr(req.xhead)
+                val addr = parseLastAddr(req.xhead)
+                buff.append(addr(0)).append(splitter).append(addr(1)).append(splitter)
                 buff.append(clientInfo(0)).append(splitter).append(clientInfo(1)).append(splitter)
                 val xappid = req.xhead.getOrElse("appId", "0")
                 val xareaid = req.xhead.getOrElse("areaId", "0")

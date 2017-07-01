@@ -148,14 +148,14 @@ class LocalQueueActor(override val router: Router, override val cfgNode: Node)
         val queueNameKey = queueNameMap.getOrElse(req.serviceId + ":" + req.msgId, null)
         if (queueNameKey == null) {
             log.error("queueName not found serviceId=%d,msgId=%d".format(req.serviceId, req.msgId))
-            replyError(ResultCodes.QUEUENAME_NOT_FOUND, req)
+            replyError(ResultCodes.SERVICE_INTERNALERROR, req)
             return
         }
 
         val queueName = req.s(queueNameKey)
         if (queueName == null) {
             log.error("queueName not found serviceId=%d,msgId=%d".format(req.serviceId, req.msgId))
-            replyError(ResultCodes.QUEUENAME_NOT_FOUND, req)
+            replyError(ResultCodes.SERVICE_INTERNALERROR, req)
             return
         }
 
@@ -165,7 +165,7 @@ class LocalQueueActor(override val router: Router, override val cfgNode: Node)
         if (ok)
             replyOk(req)
         else
-            replyError(ResultCodes.MQ_IO_ERROR, req)
+            replyError(ResultCodes.SERVICE_INTERNALERROR, req)
     }
 
 }

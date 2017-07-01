@@ -57,7 +57,7 @@ import scalabpe.core.ArrayBufferAny
 import scalabpe.core.ArrayBufferInt
 import scalabpe.core.ArrayBufferMap
 import scalabpe.core.ArrayBufferString
-import scalabpe.core.AvenueCodec
+import scalabpe.core.Xhead
 import scalabpe.core.BeforeClose
 import scalabpe.core.Closable
 import scalabpe.core.CryptHelper
@@ -1148,7 +1148,7 @@ application/x-gzip gz
         }
 
         val pluginObj = msgPlugins.getOrElse(serviceId + "-" + msgId, null)
-        val clientIpPort = xhead.getOrElse(AvenueCodec.KEY_GS_INFO_FIRST, "").toString
+        val clientIpPort = xhead.ns(Xhead.KEY_FIRST_ADDR)
         val clientIp = clientIpPort.substring(0, clientIpPort.indexOf(":"))
         val remoteIpPort = parseRemoteIp(connId)
         val serverIpPort = localIp + ":" + port
@@ -2097,7 +2097,7 @@ application/x-gzip gz
             return false
         }
 
-        val clientIpPort = xhead.getOrElse(AvenueCodec.KEY_GS_INFO_FIRST, "").toString
+        val clientIpPort = xhead.ns(Xhead.KEY_FIRST_ADDR)
         val clientIp = clientIpPort.substring(0, clientIpPort.indexOf(":"))
 
         if (!cfg.ipSet.contains(clientIp)) {
@@ -2110,9 +2110,9 @@ application/x-gzip gz
             return false
         }
 
-        xhead.put(AvenueCodec.KEY_SOC_ID, cfg.merchantName)
-        xhead.put(AvenueCodec.KEY_APP_ID, cfg.appId)
-        xhead.put(AvenueCodec.KEY_AREA_ID, cfg.areaId)
+        xhead.put(Xhead.KEY_SOC_ID, cfg.merchantName)
+        //xhead.put(Xhead.KEY_APP_ID, cfg.appId) // TODO
+        //xhead.put(Xhead.KEY_AREA_ID, cfg.areaId) // TODO
 
         true
     }
@@ -2335,14 +2335,12 @@ application/x-gzip gz
     def parseXhead(httpReq: HttpRequest, connId: String, requestId: String): HashMapStringAny = {
         var clientIp = parseClientIp(httpReq, connId)
         val map = HashMapStringAny()
-        map.put(AvenueCodec.KEY_GS_INFOS, ArrayBufferString(clientIp))
-        map.put(AvenueCodec.KEY_GS_INFO_FIRST, clientIp)
-        map.put(AvenueCodec.KEY_GS_INFO_LAST, clientIp)
-        map.put(AvenueCodec.KEY_UNIQUE_ID, requestId)
+        map.put(Xhead.KEY_ADDRS, ArrayBufferString(clientIp))
+        map.put(Xhead.KEY_UNIQUE_ID, requestId)
 
         val httpType = parseHttpType(httpReq)
         if (httpType != null) {
-            map.put(AvenueCodec.KEY_HTTP_TYPE, httpType)
+            map.put(Xhead.KEY_HTTP_TYPE, httpType)
         }
 
         map

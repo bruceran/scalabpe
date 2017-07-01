@@ -486,6 +486,7 @@ class MustReachActor(val router: Router, val cfgNode: Node) extends Actor with L
 
                 val newdata = new AvenueData(
                     AvenueCodec.TYPE_REQUEST,
+                    router.codecs.version(data.serviceId),
                     data.serviceId,
                     data.msgId,
                     nextSeq,

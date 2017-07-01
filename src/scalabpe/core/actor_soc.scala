@@ -100,6 +100,10 @@ class SocActor(val router: Router, val cfgNode: Node) extends Actor with RawRequ
         s = (cfgNode \ "@shakeHandsPubKey").text
         if (s != "") shakeHandsPubKey = s
 
+        var pingVersion = 1
+        s = (cfgNode \ "@pingVersion").text
+        if (s != "") pingVersion = s.toInt
+        
         val firstServiceId = serviceIds.split(",")(0)
         threadFactory = new NamedThreadFactory("soc" + firstServiceId)
         pool = new ThreadPoolExecutor(maxThreadNum, maxThreadNum, 0, TimeUnit.SECONDS, new ArrayBlockingQueue[Runnable](queueSize), threadFactory)
@@ -117,6 +121,7 @@ class SocActor(val router: Router, val cfgNode: Node) extends Actor with RawRequ
             needShakeHands = needShakeHands,
             shakeHandsTo = shakeHandsTo,
             shakeHandsPubKey = shakeHandsPubKey,
+            pingVersion = pingVersion,
             actor = this)
 
         log.info("SocActor started {}", serviceIds)
@@ -195,10 +200,6 @@ class SocActor(val router: Router, val cfgNode: Node) extends Actor with RawRequ
                     router.reply(reqResInfo)
                 }
 
-            //case t: RawRequestErrorResponse =>
-
-            //socWrapper.sendErrorCode(t.rawReq,t.code)
-
             case reqAckInfo: RawRequestAckInfo =>
 
                 if (reqAckInfo.rawReq.sender eq this)
@@ -257,6 +258,7 @@ class SocImpl(
         val connectOneByOne: Boolean = false,
         val reuseAddress: Boolean = false,
         val startPort: Int = -1,
+        val pingVersion: Int = 1,
         val actor: Actor = null) extends Soc with Soc4Netty with Logging with Dumpable {
 
     val EMPTY_BUFFER = ByteBuffer.allocate(0)
@@ -435,6 +437,7 @@ class SocImpl(
     def sendAck(rawReq: RawRequest): Int = {
         val data = new AvenueData(
             AvenueCodec.TYPE_RESPONSE,
+            rawReq.data.version,
             rawReq.data.serviceId,
             rawReq.data.msgId,
             rawReq.data.sequence,
@@ -450,6 +453,7 @@ class SocImpl(
     def sendErrorCode(rawReq: RawRequest, code: Int): Int = {
         val data = new AvenueData(
             AvenueCodec.TYPE_RESPONSE,
+            rawReq.data.version,
             rawReq.data.serviceId,
             rawReq.data.msgId,
             rawReq.data.sequence,
@@ -569,7 +573,7 @@ class SocImpl(
 
                 // append remote addr to xhead, the last addr is always remote addr
                 try {
-                    data.xhead = TlvCodec4Xhead.appendGsInfo(data.xhead, parseRemoteAddr(connId))
+                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId))
                 } catch {
                     case e: Throwable =>
                 }
@@ -648,6 +652,7 @@ class SocImpl(
 
         val res = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
+            pingVersion,
             0,
             0,
             seq,
@@ -667,11 +672,12 @@ class SocImpl(
 
         val seq = generateSequence()
 
-        val xhead = HashMapStringAny(AvenueCodec.KEY_SPS_ID -> TlvCodec4Xhead.SPS_ID_0)
+        val xhead = HashMapStringAny(Xhead.KEY_SPS_ID -> TlvCodec4Xhead.SPS_ID_0)
         val reportSpsInfo = reportSpsTo.split(":")
         val xheadbuff = TlvCodec4Xhead.encode(reportSpsInfo(0).toInt, xhead)
         val res = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
+            Router.main.codecs.version(reportSpsInfo(0).toInt),
             reportSpsInfo(0).toInt,
             reportSpsInfo(1).toInt,
             seq,
@@ -703,6 +709,7 @@ class SocImpl(
         val sequence = generateSequence()
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
+            Router.main.codecs.version(req.serviceId),
             req.serviceId,
             req.msgId,
             sequence,
@@ -743,6 +750,7 @@ class SocImpl(
 
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
+            Router.main.codecs.version(req.serviceId),
             req.serviceId,
             req.msgId,
             sequence,
@@ -789,6 +797,7 @@ class SocImpl(
 
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
+            Router.main.codecs.version(req.serviceId),
             req.serviceId,
             req.msgId,
             sequence,
@@ -827,6 +836,7 @@ class SocImpl(
         val data = rawReq.data
         val res = new AvenueData(
             AvenueCodec.TYPE_RESPONSE,
+            data.version,
             data.serviceId,
             data.msgId,
             data.sequence,
@@ -862,6 +872,7 @@ class SocImpl(
 
                             val res = new AvenueData(
                                 AvenueCodec.TYPE_RESPONSE,
+                                rawReq.data.version,
                                 rawReq.data.serviceId,
                                 rawReq.data.msgId,
                                 rawReq.data.sequence,
@@ -1018,16 +1029,7 @@ class SocImpl(
                         val (body, ec) = tlvCodec.decodeRequest(data.msgId, data.body, data.encoding)
                         if (ec != 0) {
                             log.error("decode request error, serviceId=" + data.serviceId + ", msgId=" + data.msgId)
-                            val res = new Response(requestId,
-                                connId,
-                                data.sequence,
-                                data.encoding,
-                                data.serviceId,
-                                data.msgId,
-                                ec,
-                                HashMapStringAny(),
-                                null)
-                            send(res)
+                            send(data,ec,connId)
                             return
                         }
 
@@ -1055,33 +1057,21 @@ class SocImpl(
         }
     }
 
-    def send(res: Response): Unit = {
-
-        val tlvCodec = codecs.findTlvCodec(res.serviceId)
-        if (tlvCodec == null) {
-            log.error("response serviceId not found")
-            return
-        }
-
-        val (body, ec) = tlvCodec.encodeResponse(res.msgId, res.body, res.encoding)
-        var errorCode = res.code
-        if (errorCode == 0 && ec != 0) {
-            log.error("encode response error, serviceId=" + res.serviceId + ", msgId=" + res.msgId)
-            errorCode = ec
-        }
+    def send(req: AvenueData, errorCode:Int, connId: String): Unit = {
 
         val data = new AvenueData(
             AvenueCodec.TYPE_RESPONSE,
-            res.serviceId,
-            res.msgId,
-            res.sequence,
+            req.version,
+            req.serviceId,
+            req.msgId,
+            req.sequence,
             0,
-            res.encoding,
+            req.encoding,
             errorCode,
             EMPTY_BUFFER,
-            body)
+            EMPTY_BUFFER)
 
-        val ret = sendResponse(data, res.connId)
+        val ret = sendResponse(data, connId)
         if (ret != 0) {
             log.error("send response error")
         }
