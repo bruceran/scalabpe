@@ -98,6 +98,10 @@ object ValueParser {
                 JsonCodec.mkString(a)
             case a: ArrayBufferInt =>
                 JsonCodec.mkString(a)
+            case a: ArrayBufferLong =>
+                JsonCodec.mkString(a)
+            case a: ArrayBufferDouble =>
+                JsonCodec.mkString(a)
             case a: ArrayBufferMap =>
                 JsonCodec.mkString(a)
             case _ =>
@@ -226,6 +230,12 @@ object ValueParser {
                 if (idx < 0 || idx >= a.size) return null
                 return a(idx)
             case a: ArrayBufferInt =>
+                if (idx < 0 || idx >= a.size) return null
+                return a(idx)
+            case a: ArrayBufferLong =>
+                if (idx < 0 || idx >= a.size) return null
+                return a(idx)
+            case a: ArrayBufferDouble =>
                 if (idx < 0 || idx >= a.size) return null
                 return a(idx)
             case a: ArrayBufferMap =>
@@ -469,6 +479,14 @@ object ValueParser {
                 a.foreach(aa += _)
                 callArrayFunction(aa, fun, params)
             case a: ArrayBufferInt =>
+                val aa = ArrayBufferAny()
+                a.foreach(aa += _.toString)
+                callArrayFunction(aa, fun, params)
+            case a: ArrayBufferLong =>
+                val aa = ArrayBufferAny()
+                a.foreach(aa += _.toString)
+                callArrayFunction(aa, fun, params)
+            case a: ArrayBufferDouble =>
                 val aa = ArrayBufferAny()
                 a.foreach(aa += _.toString)
                 callArrayFunction(aa, fun, params)

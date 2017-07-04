@@ -93,6 +93,12 @@ class RequireValidator(val cls: String, val param: String, val returnCode: Int) 
             case li: ArrayBufferInt =>
                 if (li.size == 0)
                     return returnCode
+            case ll: ArrayBufferLong =>
+                if (ll.size == 0)
+                    return returnCode
+            case ld: ArrayBufferDouble =>
+                if (ld.size == 0)
+                    return returnCode
             case lm: ArrayBufferMap =>
                 if (lm.size == 0)
                     return returnCode
@@ -130,6 +136,12 @@ class NumberRangeValidator(val cls: String, val param: String, val returnCode: I
         a match {
             case i: Int =>
                 if (i < min || i > max)
+                    return returnCode
+            case l: Long =>
+                if (l < min || l > max)
+                    return returnCode
+            case d: Double =>
+                if (d < min || d > max)
                     return returnCode
             case s: String =>
                 if (s == null || s == "")
@@ -175,8 +187,8 @@ class LengthRangeValidator(val cls: String, val param: String, val returnCode: I
 
     def validate(a: Any): Int = {
         a match {
-            case i: Int =>
-                val len = i.toString.length
+            case Int | Long | Double =>
+                val len = a.toString.length
                 if (len < min || len > max)
                     return returnCode
             case s: String =>
@@ -249,8 +261,8 @@ class ValueSetValidator(val cls: String, val param: String, val returnCode: Int)
                     return returnCode
                 if (!set.contains(s))
                     return returnCode
-            case i: Int =>
-                if (!set.contains(i.toString))
+            case Int | Long | Double =>
+                if (!set.contains(a.toString))
                     return returnCode
             case _ =>
                 return returnCode
@@ -279,8 +291,8 @@ class RegexValidator(val cls: String, val param: String, val returnCode: Int) ex
                 if (!p.matcher(s).matches()) {
                     return returnCode
                 }
-            case i: Int =>
-                if (!p.matcher(i.toString).matches()) {
+            case Int | Long | Double =>
+                if (!p.matcher(a.toString).matches()) {
                     return returnCode
                 }
             case _ =>
@@ -408,10 +420,21 @@ class NormalEncoder(val cls: String, val param: String) extends Encoder with Log
         }
     }
 
+    def encodeLong(l: Long): Long = {
+        try {
+            encodeString(l.toString).toLong
+        } catch {
+            case e: Throwable =>
+                log.error("encoder int error, l=" + l + ",cls=" + cls + ",param=" + param)
+                l
+        }
+    }
+
     def encode(a: Any): Any = {
         a match {
             case s: String => encodeString(s)
             case i: Int    => encodeInt(i)
+            case l: Long   => encodeLong(l)
             case _         => a
         }
     }
@@ -497,6 +520,8 @@ class MaskEncoder(override val cls: String, override val param: String) extends 
         a match {
             case s: String => encodeString(s)
             case i: Int    => i
+            case l: Long   => l
+            case d: Double => d
             case _         => a
         }
     }
@@ -547,34 +572,3 @@ class MaskEncoder(override val cls: String, override val param: String) extends 
         return s.substring(0, start) + "****" + s.substring(s.length - end)
     }
 }
-
-class TlvFieldInfo(val defaultValue: String,
-                   val validatorCls: String, val validatorParam: String, val validatorReturnCode: String,
-                   val encoderCls: String, val encoderParam: String) {
-    val validator = Validator.getValidator(validatorCls, validatorParam, validatorReturnCode)
-    val encoder = Encoder.getEncoder(encoderCls, encoderParam)
-    override def toString(): String = {
-        "defaultValue=%s,validatorCls=%s,encoderCls=%s".format(defaultValue, validatorCls, encoderCls)
-    }
-}
-
-object TlvFieldInfo extends Logging {
-
-    val cache = new HashMap[String, TlvFieldInfo]()
-
-    def getTlvFieldInfo(defaultValue: String,
-                        validatorCls: String, validatorParam: String, validatorReturnCode: String,
-                        encoderCls: String, encoderParam: String): TlvFieldInfo = {
-
-        if (defaultValue == null && validatorCls == null && encoderCls == null) return null
-
-        val key = "defaultValue=" + defaultValue + ",validatorCls=" + validatorCls + ",validatorParam=" + validatorParam + ",validatorReturnCode=" + validatorReturnCode + ",encoderCls=" + encoderCls + ",encoderParam=" + encoderParam
-        var v = cache.getOrElse(key, null)
-        if (v != null) return v
-
-        v = new TlvFieldInfo(defaultValue, validatorCls, validatorParam, validatorReturnCode, encoderCls, encoderParam)
-        cache.put(key, v)
-        return v
-    }
-}
-

@@ -58,10 +58,6 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
     init
 
-    def isTrue(s: String): Boolean = {
-        s == "1" || s == "t" || s == "T" || s == "true" || s == "TRUE" || s == "y" || s == "Y" || s == "yes" || s == "YES"
-    }
-
     def init() {
 
         codecs = router.codecs
@@ -91,7 +87,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
             if (s != "") idleTimeoutMillis = s.toInt
 
             s = (cfgNode \ "@isEncrypted").text
-            if (s != "") isEncrypted = isTrue(s)
+            if (s != "") isEncrypted = TypeSafe.isTrue(s)
 
             s = (cfgNode \ "@shakeHandsServiceIdMsgId").text
             if (s != "") shakeHandsServiceIdMsgId = s
@@ -114,17 +110,17 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
             }
 
             s = (cfgNode \ "@pushToIpPort").text
-            if (s != "") pushToIpPort = isTrue(s)
+            if (s != "") pushToIpPort = TypeSafe.isTrue(s)
 
             s = (cfgNode \ "@pushToIp").text
-            if (s != "") pushToIp = isTrue(s)
+            if (s != "") pushToIp = TypeSafe.isTrue(s)
 
             s = (cfgNode \ "@pushToAny").text
-            if (s != "") pushToAny = isTrue(s)
+            if (s != "") pushToAny = TypeSafe.isTrue(s)
 
             s = (cfgNode \ "@isSps").text
             if (s != "") {
-                isSps = isTrue(s)
+                isSps = TypeSafe.isTrue(s)
                 router.parameters.put("isSps", if (isSps) "1" else "0")
             }
 

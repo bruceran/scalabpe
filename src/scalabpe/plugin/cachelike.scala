@@ -5,6 +5,8 @@ import scala.collection.mutable.HashMap
 
 import scalabpe.core.ArrayBufferAny
 import scalabpe.core.ArrayBufferInt
+import scalabpe.core.ArrayBufferLong
+import scalabpe.core.ArrayBufferDouble
 import scalabpe.core.ArrayBufferMap
 import scalabpe.core.ArrayBufferString
 import scalabpe.core.HashMapStringAny
@@ -153,9 +155,9 @@ trait CacheLike {
                     val v = valueArray(i)
                     var nv: Any = v
                     tp match {
-                        case TlvCodec.CLS_STRUCT =>
+                        case TlvType.CLS_STRUCT =>
                             nv = JsonCodec.parseObject(v)
-                        case TlvCodec.CLS_STRINGARRAY | TlvCodec.CLS_INTARRAY | TlvCodec.CLS_STRUCTARRAY =>
+                        case TlvType.CLS_STRINGARRAY | TlvType.CLS_INTARRAY | TlvType.CLS_LONGARRAY | TlvType.CLS_DOUBLEARRAY| TlvType.CLS_STRUCTARRAY =>
                             nv = JsonCodec.parseArray(v)
                         case _ =>
                     }
@@ -186,6 +188,8 @@ trait CacheLike {
                 case v: HashMapStringAny  => value = JsonCodec.mkString(v)
                 case v: ArrayBufferString => value = JsonCodec.mkString(v)
                 case v: ArrayBufferInt    => value = JsonCodec.mkString(v)
+                case v: ArrayBufferLong    => value = JsonCodec.mkString(v)
+                case v: ArrayBufferDouble    => value = JsonCodec.mkString(v)
                 case v: ArrayBufferMap    => value = JsonCodec.mkString(v)
                 case _                    =>
             }
@@ -296,14 +300,14 @@ trait CacheLike {
 
                 val tlvTypes = codec.allTlvTypes()
 
-                val keyCodes = tlvTypes.filter(a => a.code < 10000 && !TlvCodec.isArray(a.cls)).map(_.code).sorted
-                val valueCodes = tlvTypes.filter(a => a.code > 10000 && a.code < 20000 && !TlvCodec.isArray(a.cls)).map(_.code).sorted // >20000 for parameters by name
+                val keyCodes = tlvTypes.filter(a => a.code < 10000 && !TlvType.isArray(a.cls)).map(_.code).sorted
+                val valueCodes = tlvTypes.filter(a => a.code > 10000 && a.code < 20000 && !TlvType.isArray(a.cls)).map(_.code).sorted // >20000 for parameters by name
 
                 val keyNamesBuff = new ArrayBuffer[String]()
                 val keyArrayNamesBuff = new ArrayBuffer[String]()
                 for (code <- keyCodes) {
                     val t = codec.typeCodeToNameMap.getOrElse(code, TlvType.UNKNOWN)
-                    if (TlvCodec.isArray(t.cls)) {
+                    if (TlvType.isArray(t.cls)) {
                         keyNamesBuff += t.itemType.name
                         keyNamesBuff += t.name
                         keyArrayNamesBuff += t.name
@@ -320,7 +324,7 @@ trait CacheLike {
                 val valueArrayNamesBuff = new ArrayBuffer[String]()
                 for (code <- valueCodes) {
                     val t = codec.typeCodeToNameMap.getOrElse(code, TlvType.UNKNOWN)
-                    if (TlvCodec.isArray(t.cls)) {
+                    if (TlvType.isArray(t.cls)) {
                         valueNamesBuff += t.itemType.name
                         valueNamesBuff += t.name
                         valueArrayNamesBuff += t.name

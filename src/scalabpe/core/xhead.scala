@@ -35,7 +35,7 @@ object Xhead {
     init()
 
     def init() {
-        add(0, "signature", "string") // 签名，目前并没有使用到
+        add(0, "signature", "bytes") // 签名，目前并没有使用到
         add(CODE_SOC_ID, KEY_SOC_ID, "string") // 客户端连接标识，serviceId=3时需特殊处理
         add(CODE_ADDRS, KEY_ADDRS, "addr") // 每个节点的IP和端口，格式特殊
         add(3, "appId", "int")

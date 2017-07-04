@@ -1106,14 +1106,15 @@ class HttpClientImpl(
 
         if (next == null) return null
 
-        if (tlvType.cls == TlvCodec.CLS_STRING || tlvType.cls == TlvCodec.CLS_INT)
+        if (TlvType.isSimple(tlvType.cls))
             return parseJsonNodeToString(next)
 
-        if (tlvType.cls == TlvCodec.CLS_STRUCT) {
+        if (tlvType.cls == TlvType.CLS_STRUCT) {
             if (!next.isInstanceOf[ObjectNode]) return null
             val objNode = next.asInstanceOf[ObjectNode]
             val map = new HashMapStringAny()
-            for (key <- tlvType.structNames) {
+            for (f <- tlvType.structDef.fields) {
+                val key = f.name
                 val node = objNode.get(key)
                 if (node == null) {
                     map.put(key, null)
@@ -1125,7 +1126,7 @@ class HttpClientImpl(
             return map
         }
 
-        if (tlvType.cls == TlvCodec.CLS_STRINGARRAY || tlvType.cls == TlvCodec.CLS_INTARRAY) {
+        if (tlvType.cls == TlvType.CLS_STRINGARRAY || tlvType.cls == TlvType.CLS_INTARRAY || tlvType.cls == TlvType.CLS_LONGARRAY || tlvType.cls == TlvType.CLS_DOUBLEARRAY) {
             if (!next.isInstanceOf[ArrayNode]) return null
             val arrayNode = next.asInstanceOf[ArrayNode]
             val buff = new ArrayBufferString()
@@ -1137,7 +1138,7 @@ class HttpClientImpl(
             return buff
         }
 
-        if (tlvType.cls == TlvCodec.CLS_STRUCTARRAY) {
+        if (tlvType.cls == TlvType.CLS_STRUCTARRAY) {
             if (!next.isInstanceOf[ArrayNode]) return null
             val arrayNode = next.asInstanceOf[ArrayNode]
             val buff = new ArrayBufferMap()
@@ -1148,7 +1149,8 @@ class HttpClientImpl(
                 if (!tt.isInstanceOf[ObjectNode]) return null
                 val objNode = tt.asInstanceOf[ObjectNode]
                 val map = new HashMapStringAny()
-                for (key <- tlvType.structNames) {
+                for (f <- tlvType.structDef.fields) {
+                    val key = f.name
                     val node = objNode.get(key)
                     if (node == null) {
                         map.put(key, null)

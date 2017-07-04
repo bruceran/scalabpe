@@ -834,7 +834,7 @@ class Router(val rootDir: String, val startSos: Boolean = true, var mockMode: Bo
 
         if (res.sender != null && !res.sender.isInstanceOf[RawRequestActor]) { // from flow,localqueue,...
 
-            val (newbody, ec) = tlvCodec.encodeResponseInJvm(res.msgId, res.body)
+            val (newbody, ec) = tlvCodec.filterResponseInJvm(res.msgId, res.body)
             var errorCode = res.code
             if (errorCode == 0 && ec != 0) {
                 log.error("encode responseinjvm error, serviceId=" + res.serviceId + ", msgId=" + res.msgId)
@@ -879,7 +879,7 @@ class Router(val rootDir: String, val startSos: Boolean = true, var mockMode: Bo
             // 对RawRequestActor数据将通过网络发出，不需要编码；对其它类型的actor, 数据编码后在进程内直接使用，没有解码过程，所以需要直接进行编码
             val a = actorMap.getOrElse(serviceId.toString, null)
             val needEncode = if (a != null && a.isInstanceOf[RawRequestActor]) false else true
-            val tp = tlvCodec.encodeRequestInJvm(msgId, body, needEncode)
+            val tp = tlvCodec.filterRequestInJvm(msgId, body, needEncode)
             if (tp._2 != 0) {
                 log.error("encode request in jvm error, serviceId=" + serviceId + ", msgId=" + msgId)
             }
@@ -894,7 +894,7 @@ class Router(val rootDir: String, val startSos: Boolean = true, var mockMode: Bo
         val tlvCodec = findTlvCodec(serviceId)
 
         if (tlvCodec != null) {
-            val tp = tlvCodec.encodeResponseInJvm(msgId, body)
+            val tp = tlvCodec.filterResponseInJvm(msgId, body)
             if (tp._2 != 0) {
                 log.error("encode response in jvm error, serviceId=" + serviceId + ", msgId=" + msgId)
             }

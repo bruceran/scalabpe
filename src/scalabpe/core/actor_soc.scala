@@ -45,10 +45,6 @@ class SocActor(val router: Router, val cfgNode: Node) extends Actor with RawRequ
         socWrapper.dump
     }
 
-    def isTrue(s: String): Boolean = {
-        s == "1" || s == "t" || s == "T" || s == "true" || s == "TRUE" || s == "y" || s == "Y" || s == "yes" || s == "YES"
-    }
-
     def init() {
 
         serviceIds = (cfgNode \ "ServiceId").text
@@ -90,7 +86,7 @@ class SocActor(val router: Router, val cfgNode: Node) extends Actor with RawRequ
 
         var needShakeHands = false
         s = (cfgNode \ "@needShakeHands").text
-        if (s != "") needShakeHands = isTrue(s)
+        if (s != "") needShakeHands = TypeSafe.isTrue(s)
 
         var shakeHandsTo = ""
         s = (cfgNode \ "@shakeHandsTo").text

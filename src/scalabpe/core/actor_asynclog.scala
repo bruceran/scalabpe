@@ -1097,6 +1097,12 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
             case ai: ArrayBufferInt =>
                 if (ai.size == 0) null
                 else ai(0).toString
+            case al: ArrayBufferLong =>
+                if (al.size == 0) null
+                else al(0).toString
+            case ad: ArrayBufferDouble =>
+                if (ad.size == 0) null
+                else ad(0).toString
             case as: ArrayBufferString =>
                 if (as.size == 0) null
                 else as(0)
@@ -1133,6 +1139,8 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
                         case s: String             => buff.append(removeCrNl(s))
                         case m: HashMapStringAny   => buff.append(removeCrNl(m.toString))
                         case ai: ArrayBufferInt    => buff.append(trimArrayBufferInt(ai).toString)
+                        case al: ArrayBufferLong    => buff.append(trimArrayBufferLong(al).toString)
+                        case ad: ArrayBufferDouble    => buff.append(trimArrayBufferDouble(ad).toString)
                         case as: ArrayBufferString => buff.append(removeCrNl(trimArrayBufferString(as).toString))
                         case am: ArrayBufferMap    => buff.append(removeCrNl(trimArrayBufferMap(am).toString))
                         case aa: ArrayBufferAny    => buff.append(removeCrNl(trimArrayBufferAny(aa).toString))
@@ -1177,6 +1185,8 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
                         case s: String             => buff.append(removeCrNl(s))
                         case m: HashMapStringAny   => buff.append(removeCrNl(m.toString))
                         case ai: ArrayBufferInt    => buff.append(trimArrayBufferInt(ai).toString)
+                        case al: ArrayBufferLong    => buff.append(trimArrayBufferLong(al).toString)
+                        case ad: ArrayBufferDouble    => buff.append(trimArrayBufferDouble(ad).toString)
                         case as: ArrayBufferString => buff.append(removeCrNl(trimArrayBufferString(as).toString))
                         case am: ArrayBufferMap    => buff.append(removeCrNl(trimArrayBufferMap(am).toString))
                         case aa: ArrayBufferAny    => buff.append(removeCrNl(trimArrayBufferAny(aa).toString))
@@ -1205,6 +1215,8 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
                             case s: String             => buff.append(removeCrNl(s))
                             case m: HashMapStringAny   => buff.append(removeCrNl(m.toString))
                             case ai: ArrayBufferInt    => buff.append(trimArrayBufferInt(ai).toString)
+                            case al: ArrayBufferLong    => buff.append(trimArrayBufferLong(al).toString)
+                            case ad: ArrayBufferDouble    => buff.append(trimArrayBufferDouble(ad).toString)
                             case as: ArrayBufferString => buff.append(removeCrNl(trimArrayBufferString(as).toString))
                             case am: ArrayBufferMap    => buff.append(removeCrNl(trimArrayBufferMap(am).toString))
                             case aa: ArrayBufferAny    => buff.append(removeCrNl(trimArrayBufferAny(aa).toString))
@@ -1232,16 +1244,37 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
         s.replaceAll(",  ", "")
     }
 
-    def trimArrayBufferInt(ai: ArrayBufferInt): ArrayBufferInt = {
-        if (ai.size <= 1) return ai
+    def trimArrayBufferInt(a: ArrayBufferInt): ArrayBufferInt = {
+        if (a.size <= 1) return a
         val buff = new ArrayBufferInt()
         var i = 0
-        while (i < asyncLogArray && i < ai.size) {
-            buff += ai(i)
+        while (i < asyncLogArray && i < a.size) {
+            buff += a(i)
             i += 1
         }
         buff
     }
+    def trimArrayBufferLong(a: ArrayBufferLong): ArrayBufferLong = {
+        if (a.size <= 1) return a
+        val buff = new ArrayBufferLong()
+        var i = 0
+        while (i < asyncLogArray && i < a.size) {
+            buff += a(i)
+            i += 1
+        }
+        buff
+    }
+    def trimArrayBufferDouble(a: ArrayBufferDouble): ArrayBufferDouble = {
+        if (a.size <= 1) return a
+        val buff = new ArrayBufferDouble()
+        var i = 0
+        while (i < asyncLogArray && i < a.size) {
+            buff += a(i)
+            i += 1
+        }
+        buff
+    }
+    
     def trimArrayBufferAny(ai: ArrayBufferAny): ArrayBufferAny = {
         if (ai.size <= 1) return ai
         val buff = new ArrayBufferAny()

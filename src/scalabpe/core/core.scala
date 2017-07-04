@@ -513,6 +513,14 @@ object TypeSafe {
         return true
     }
 
+    def isTrue(s: String): Boolean = {
+        s.toLowerCase match {
+            case "1" | "y" | "t" => true
+            case "yes" | "true"  => true
+            case _               => false
+        }
+    }
+        
     def s(name: String, body: HashMapStringAny): String = {
         val value = body.getOrElse(name, null)
         anyToString(value)

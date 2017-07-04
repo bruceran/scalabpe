@@ -112,7 +112,7 @@ object JsonCodec {
         if (a == null) return null
         val ai = new ArrayBufferInt()
         for (i <- a) {
-            ai += i.asInstanceOf[Int]
+            ai += TypeSafe.anyToInt(i)
         }
         ai
     }
@@ -121,7 +121,35 @@ object JsonCodec {
         if (l == null) return ArrayBufferInt()
         l
     }
-
+    def parseArrayLong(s: String): ArrayBufferLong = {
+        val a = parseArray(s)
+        if (a == null) return null
+        val ai = new ArrayBufferLong()
+        for (i <- a) {
+            ai += TypeSafe.anyToLong(i)
+        }
+        ai
+    }
+    def parseArrayLongNotNull(s: String): ArrayBufferLong = {
+        val l = parseArrayLong(s)
+        if (l == null) return ArrayBufferLong()
+        l
+    }
+    def parseArrayDouble(s: String): ArrayBufferDouble = {
+        val a = parseArray(s)
+        if (a == null) return null
+        val ai = new ArrayBufferDouble()
+        for (i <- a) {
+            ai += TypeSafe.anyToDouble(i)
+        }
+        ai
+    }
+    def parseArrayDoubleNotNull(s: String): ArrayBufferDouble = {
+        val l = parseArrayDouble(s)
+        if (l == null) return ArrayBufferDouble()
+        l
+    }    
+    
     def parseObject(node: JsonNode): HashMapStringAny = {
         val names = node.fieldNames
         val body = new HashMapStringAny()
@@ -223,6 +251,14 @@ object JsonCodec {
                         jsonGenerator.writeFieldName(key)
                         val s = mkString(buff)
                         jsonGenerator.writeRawValue(s)
+                    case buff: ArrayBufferLong =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff: ArrayBufferDouble =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
                     case buff: ArrayBufferMap =>
                         jsonGenerator.writeFieldName(key)
                         val s = mkString(buff)
@@ -287,6 +323,14 @@ object JsonCodec {
                         jsonGenerator.writeFieldName(key)
                         val s = mkString(buff)
                         jsonGenerator.writeRawValue(s)
+                    case buff: ArrayBufferLong =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff: ArrayBufferDouble =>
+                        jsonGenerator.writeFieldName(key)
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
                     case buff: ArrayBufferMap =>
                         jsonGenerator.writeFieldName(key)
                         val s = mkString(buff)
@@ -343,6 +387,12 @@ object JsonCodec {
                         val s = mkString(buff)
                         jsonGenerator.writeRawValue(s)
                     case buff: ArrayBufferInt =>
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff: ArrayBufferLong =>
+                        val s = mkString(buff)
+                        jsonGenerator.writeRawValue(s)
+                    case buff: ArrayBufferDouble =>
                         val s = mkString(buff)
                         jsonGenerator.writeRawValue(s)
                     case buff: ArrayBufferMap =>
@@ -406,6 +456,40 @@ object JsonCodec {
         writer.toString()
     }
 
+    def mkString(a: ArrayBufferLong): String = {
+
+        if (a == null) return null
+        val writer = new StringWriter()
+        val jsonGenerator = jsonFactory.createGenerator(writer)
+        jsonGenerator.writeStartArray()
+
+        for (value <- a) {
+            jsonGenerator.writeNumber(value)
+        }
+
+        jsonGenerator.writeEndArray()
+        jsonGenerator.close()
+
+        writer.toString()
+    }
+
+    def mkString(a: ArrayBufferDouble): String = {
+
+        if (a == null) return null
+        val writer = new StringWriter()
+        val jsonGenerator = jsonFactory.createGenerator(writer)
+        jsonGenerator.writeStartArray()
+
+        for (value <- a) {
+            jsonGenerator.writeNumber(value)
+        }
+
+        jsonGenerator.writeEndArray()
+        jsonGenerator.close()
+
+        writer.toString()
+    }
+    
     def mkString(a: ArrayBufferString): String = {
 
         if (a == null) return null

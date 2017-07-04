@@ -55,6 +55,8 @@ import scalabpe.core.Actor
 import scalabpe.core.AfterInit
 import scalabpe.core.ArrayBufferAny
 import scalabpe.core.ArrayBufferInt
+import scalabpe.core.ArrayBufferLong
+import scalabpe.core.ArrayBufferDouble
 import scalabpe.core.ArrayBufferMap
 import scalabpe.core.ArrayBufferString
 import scalabpe.core.Xhead
@@ -79,8 +81,10 @@ import scalabpe.core.Refreshable
 import scalabpe.core.Request
 import scalabpe.core.ResultCodes
 import scalabpe.core.Router
+import scalabpe.core.TlvType
 import scalabpe.core.TlvCodec
 import scalabpe.core.TlvCodecs
+import scalabpe.core.TypeSafe
 
 object HttpTimeHelper {
 
@@ -168,6 +172,8 @@ class HttpServerActor(val router: Router, val cfgNode: Node) extends Actor
     val MIMETYPE_DEFAULT = "application/octet-stream"
     val MIMETYPE_MULTIPART = "multipart/form-data"
 
+    val EMPTY_STRINGMAP = new HashMapStringString()
+    
     val errorFormat = """{"return_code":%d,"return_message":"%s","data":{}}"""
     val errorFormatCodeMessageNoData = """{"code":%d,"message":"%s"}"""
     val rpcFormat = """{"jsonrpc":"2.0","id":"%s","result":%s}"""
@@ -314,7 +320,7 @@ application/x-gzip gz
         if (s != "") defaultVerify = s
 
         s = (cfgNode \ "@osapDb").text
-        if (s != "") osapDb = isTrue(s)
+        if (s != "") osapDb = TypeSafe.isTrue(s)
 
         s = (cfgNode \ "@osapDbServiceId").text
         if (s != "") osapDbServiceId = s.toInt
@@ -328,7 +334,7 @@ application/x-gzip gz
 
         s = (cfgNode \ "@removeReturnMessageInBody").text
         if (s != "") {
-            removeReturnMessageInBody = isTrue(s)
+            removeReturnMessageInBody = TypeSafe.isTrue(s)
         }
         s = (cfgNode \ "@jsonStyle").text
         if (s != "") jsonStyle = s
@@ -343,10 +349,10 @@ application/x-gzip gz
         if (s != "") sessionMode = s.toInt
 
         s = (cfgNode \ "@sessionIpBind").text
-        if (s != "") sessionIpBind = isTrue(s)
+        if (s != "") sessionIpBind = TypeSafe.isTrue(s)
 
         s = (cfgNode \ "@sessionHttpOnly").text
-        if (s != "") sessionHttpOnly = isTrue(s)
+        if (s != "") sessionHttpOnly = TypeSafe.isTrue(s)
 
         s = (cfgNode \ "@sessionPath").text
         if (s != "") sessionPath = s
@@ -387,7 +393,7 @@ application/x-gzip gz
         log.debug("http mimetypes:\n" + mimeTypeMap.mkString("\n"))
 
         s = (cfgNode \ "@cacheEnabled").text
-        if (s != "") cacheEnabled = isTrue(s)
+        if (s != "") cacheEnabled = TypeSafe.isTrue(s)
 
         s = (cfgNode \ "@cacheFileSize").text
         if (s != "") cacheFileSize = s.toInt
@@ -412,13 +418,13 @@ application/x-gzip gz
         if (s != "") urlArgs = s
 
         s = (cfgNode \ "@skipMinFile").text
-        if (s != "") skipMinFile = isTrue(s)
+        if (s != "") skipMinFile = TypeSafe.isTrue(s)
 
         s = (cfgNode \ "@devMode").text
-        if (s != "") devMode = isTrue(s)
+        if (s != "") devMode = TypeSafe.isTrue(s)
 
         s = (cfgNode \ "@logUserAgent").text
-        if (s != "") logUserAgent = isTrue(s)
+        if (s != "") logUserAgent = TypeSafe.isTrue(s)
 
         s = (cfgNode \ "@accessControlAllowOrigin").text
         if (s != "") accessControlAllowOriginGlobal = s
@@ -556,20 +562,22 @@ application/x-gzip gz
             val tlvCodec = router.findTlvCodec(serviceId)
             if (tlvCodec != null) {
                 val map = HashMap[String, String]()
-                val keyMap = tlvCodec.msgKeyToTypeMapForRes.getOrElse(msgId, TlvCodec.EMPTY_STRINGMAP)
+                val keyMap = tlvCodec.msgKeyToTypeMapForRes.getOrElse(msgId, EMPTY_STRINGMAP)
 
                 for ((key, typeName) <- keyMap) {
                     val classex = tlvCodec.codecAttributes.getOrElse("classex-" + typeName, null)
                     if (classex != null) map.put(key, classex)
                     val tlvType = tlvCodec.typeNameToCodeMap.getOrElse(typeName, null)
-                    if (tlvType.cls == TlvCodec.CLS_STRUCT) {
-                        for (n <- tlvType.structNames) {
+                    if (tlvType.cls == TlvType.CLS_STRUCT) {
+                        for (f <- tlvType.structDef.fields) {
+                            val n = f.name
                             val classex2 = tlvCodec.codecAttributes.getOrElse("classex-" + tlvType.name + "-" + n, null)
                             if (classex2 != null) map.put(key + "-" + n, classex2)
                         }
                     }
-                    if (tlvType.cls == TlvCodec.CLS_STRUCTARRAY) {
-                        for (n <- tlvType.structNames) {
+                    if (tlvType.cls == TlvType.CLS_STRUCTARRAY) {
+                        for (f <- tlvType.structDef.fields) {
+                            val n = f.name
                             val classex2 = tlvCodec.codecAttributes.getOrElse("classex-" + tlvType.itemType.name + "-" + n, null)
                             if (classex2 != null) map.put(key + "-" + n, classex2)
                         }
@@ -580,11 +588,11 @@ application/x-gzip gz
 
             if (tlvCodec != null) {
 
-                val keyMap1 = tlvCodec.msgKeyToTypeMapForReq.getOrElse(msgId, TlvCodec.EMPTY_STRINGMAP)
+                val keyMap1 = tlvCodec.msgKeyToTypeMapForReq.getOrElse(msgId, EMPTY_STRINGMAP)
                 if (keyMap1.contains(sessionFieldName))
                     msgAttrs.put(serviceId + "-" + msgId + "-sessionId-req", "1")
 
-                val keyMap2 = tlvCodec.msgKeyToTypeMapForRes.getOrElse(msgId, TlvCodec.EMPTY_STRINGMAP)
+                val keyMap2 = tlvCodec.msgKeyToTypeMapForRes.getOrElse(msgId, EMPTY_STRINGMAP)
                 if (keyMap2.contains(sessionFieldName))
                     msgAttrs.put(serviceId + "-" + msgId + "-sessionId-res", "1")
 
@@ -1179,7 +1187,7 @@ application/x-gzip gz
             }
         }
 
-        val verify = isTrue(msgAttrs.getOrElse(serviceId + "-" + msgId + "-verify", defaultVerify))
+        val verify = TypeSafe.isTrue(msgAttrs.getOrElse(serviceId + "-" + msgId + "-verify", defaultVerify))
         if (verify) {
 
             if (pluginObj != null && pluginObj.isInstanceOf[HttpServerVerifyPlugin]) {
@@ -1218,10 +1226,10 @@ application/x-gzip gz
         if (pluginObj != null && pluginObj.isInstanceOf[HttpServerRequestPostParsePlugin])
             pluginObj.asInstanceOf[HttpServerRequestPostParsePlugin].afterParse(serviceId, msgId, xhead, body)
 
-        val caseInsensitive = isTrue(msgAttrs.getOrElse(serviceId + "-" + msgId + "-caseInsensitive", "0"))
+        val caseInsensitive = TypeSafe.isTrue(msgAttrs.getOrElse(serviceId + "-" + msgId + "-caseInsensitive", "0"))
         val bodyIncase = if (caseInsensitive) convertBodyCaseInsensitive(serviceId, msgId, body) else body
 
-        val encodeRequestFlag = isTrue(msgAttrs.getOrElse(serviceId + "-" + msgId + "-encodeRequest", "1"))
+        val encodeRequestFlag = TypeSafe.isTrue(msgAttrs.getOrElse(serviceId + "-" + msgId + "-encodeRequest", "1"))
         //println("bodyIncase="+bodyIncase.mkString(","))
         val (bodyReal, ec) = if (encodeRequestFlag) router.encodeRequest(serviceId, msgId, bodyIncase) else (bodyIncase, 0)
         //println("bodyReal="+bodyReal.mkString(","))
@@ -1512,7 +1520,7 @@ application/x-gzip gz
 
         } else {
 
-            if (isTrue(bodyOnly)) {
+            if (TypeSafe.isTrue(bodyOnly)) {
 
                 content = JsonCodec.mkString(jsonTypeProcess(req.serviceId, req.msgId, body))
 
@@ -2355,9 +2363,9 @@ application/x-gzip gz
                 case "MaxAge"   => c.setMaxAge(ss2(1).toInt)
                 case "Domain"   => c.setDomain(ss2(1))
                 case "Ports"    => c.setPorts(ss2(1).toInt) // support only one port
-                case "HttpOnly" => c.setHttpOnly(isTrue(ss2(1)))
-                case "Discard"  => c.setDiscard(isTrue(ss2(1)))
-                case "Secure"   => c.setSecure(isTrue(ss2(1)))
+                case "HttpOnly" => c.setHttpOnly(TypeSafe.isTrue(ss2(1)))
+                case "Discard"  => c.setDiscard(TypeSafe.isTrue(ss2(1)))
+                case "Secure"   => c.setSecure(TypeSafe.isTrue(ss2(1)))
                 case "Version"  => c.setVersion(ss2(1).toInt)
                 case _          =>
             }
@@ -2374,7 +2382,7 @@ application/x-gzip gz
         }
 
         val map = new HashMapStringAny()
-        val keyMap = tlvCodec.msgKeyToTypeMapForReq.getOrElse(msgId, TlvCodec.EMPTY_STRINGMAP)
+        val keyMap = tlvCodec.msgKeyToTypeMapForReq.getOrElse(msgId, EMPTY_STRINGMAP)
         for ((key, value) <- keyMap) {
             val v = newbody.s(key.toLowerCase, null)
             if (v != null)
@@ -2470,6 +2478,14 @@ application/x-gzip gz
                         val v = convertValue(value, key, fields)
                         newBody.put(key, v)
 
+                    case l: Long =>
+                        val v = convertValue(value, key, fields)
+                        newBody.put(key, v)
+
+                    case d: Double =>
+                        val v = convertValue(value, key, fields)
+                        newBody.put(key, v)
+                        
                     case m: HashMapStringAny =>
 
                         val newMap = convertMap(m, key, fields)
@@ -2485,6 +2501,22 @@ application/x-gzip gz
                         newBody.put(key, buff)
 
                     case li: ArrayBufferInt =>
+                        val buff = ArrayBufferAny()
+                        for (value2 <- li) {
+                            val v = convertValue(value2, key, fields)
+                            buff += v
+                        }
+                        newBody.put(key, buff)
+
+                    case li: ArrayBufferLong =>
+                        val buff = ArrayBufferAny()
+                        for (value2 <- li) {
+                            val v = convertValue(value2, key, fields)
+                            buff += v
+                        }
+                        newBody.put(key, buff)
+
+                    case li: ArrayBufferDouble =>
                         val buff = ArrayBufferAny()
                         for (value2 <- li) {
                             val v = convertValue(value2, key, fields)
@@ -2583,10 +2615,6 @@ application/x-gzip gz
             buff.append(entry.getKey).append("=").append(entry.getValue)
         }
         buff.toString
-    }
-
-    def isTrue(s: String): Boolean = {
-        s == "1" || s == "t" || s == "T" || s == "true" || s == "TRUE" || s == "y" || s == "Y" || s == "yes" || s == "YES"
     }
 
     def parseFileUploadContent(charset: String, in: InputStream, map: HashMapStringAny) {

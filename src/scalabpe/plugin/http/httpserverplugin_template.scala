@@ -11,6 +11,8 @@ import org.apache.velocity.VelocityContext
 import org.apache.velocity.app.VelocityEngine
 
 import scalabpe.core.ArrayBufferInt
+import scalabpe.core.ArrayBufferLong
+import scalabpe.core.ArrayBufferDouble
 import scalabpe.core.ArrayBufferMap
 import scalabpe.core.ArrayBufferString
 import scalabpe.core.Flow
@@ -228,6 +230,18 @@ object VelocityTemplate extends Logging {
                     case li: ArrayBufferInt =>
                         val l = new java.util.ArrayList[String]
                         for (i <- li) {
+                            l.add(i.toString)
+                        }
+                        context.put(k, l)
+                    case ll: ArrayBufferLong =>
+                        val l = new java.util.ArrayList[String]
+                        for (i <- ll) {
+                            l.add(i.toString)
+                        }
+                        context.put(k, l)
+                    case ld: ArrayBufferDouble =>
+                        val l = new java.util.ArrayList[String]
+                        for (i <- ld) {
                             l.add(i.toString)
                         }
                         context.put(k, l)

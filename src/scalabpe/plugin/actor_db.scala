@@ -14,6 +14,8 @@ import scala.xml.Node
 import javax.sql.DataSource
 import scalabpe.core.Actor
 import scalabpe.core.ArrayBufferInt
+import scalabpe.core.ArrayBufferLong
+import scalabpe.core.ArrayBufferDouble
 import scalabpe.core.ArrayBufferMap
 import scalabpe.core.ArrayBufferString
 import scalabpe.core.Closable
@@ -32,6 +34,8 @@ import scalabpe.core.SelfCheckResult
 import scalabpe.core.SyncedActor
 import scalabpe.core.TlvCodec
 import scalabpe.core.TlvType
+import scalabpe.core.TypeSafe
+import scalabpe.core.StructField
 
 object MsgDefine {
 
@@ -630,10 +634,6 @@ class DbClient(
         }
     }
 
-    def isTrue(s: String): Boolean = {
-        s == "1" || s == "t" || s == "T" || s == "true" || s == "TRUE" || s == "y" || s == "Y" || s == "yes" || s == "YES"
-    }
-
     def init() {
 
         if (masterDbConfig == null) throw new RuntimeException("masterDbConfig not defined")
@@ -705,7 +705,7 @@ class DbClient(
                     if (useSlaveAttr == "") {
                         useSlaveAttr = "0"
                     }
-                    var useSlave = isTrue(useSlaveAttr)
+                    var useSlave = TypeSafe.isTrue(useSlaveAttr)
                     //if( useSlave ) println("use slave, msgId="+msgId)
 
                     var splitTableTypeStr = map.getOrElse("splitTableType", "nodefine")
@@ -746,24 +746,30 @@ class DbClient(
                         if (tlvType == null) {
                             throw new RuntimeException("key not found error for serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
                         }
-                        if (tlvType.cls != TlvCodec.CLS_STRING &&
-                            tlvType.cls != TlvCodec.CLS_STRINGARRAY &&
-                            tlvType.cls != TlvCodec.CLS_INT &&
-                            tlvType.cls != TlvCodec.CLS_INTARRAY &&
-                            tlvType.cls != TlvCodec.CLS_STRUCTARRAY)
+                        if (tlvType.cls != TlvType.CLS_STRING &&
+                            tlvType.cls != TlvType.CLS_STRINGARRAY &&
+                            tlvType.cls != TlvType.CLS_INT &&
+                            tlvType.cls != TlvType.CLS_INTARRAY &&
+                            tlvType.cls != TlvType.CLS_LONG &&
+                            tlvType.cls != TlvType.CLS_LONGARRAY &&
+                            tlvType.cls != TlvType.CLS_DOUBLE &&
+                            tlvType.cls != TlvType.CLS_DOUBLEARRAY &&
+                            tlvType.cls != TlvType.CLS_STRUCTARRAY)
                             throw new RuntimeException("type not supported in request parameter, serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
 
-                        if (tlvType.cls == TlvCodec.CLS_STRINGARRAY ||
-                            tlvType.cls == TlvCodec.CLS_INTARRAY ||
-                            tlvType.cls == TlvCodec.CLS_STRUCTARRAY)
+                        if (tlvType.cls == TlvType.CLS_STRINGARRAY ||
+                            tlvType.cls == TlvType.CLS_INTARRAY ||
+                            tlvType.cls == TlvType.CLS_LONGARRAY ||
+                            tlvType.cls == TlvType.CLS_DOUBLEARRAY ||
+                            tlvType.cls == TlvType.CLS_STRUCTARRAY)
                             hasArrayReqFields = true
 
-                        if (tlvType.cls == TlvCodec.CLS_STRUCTARRAY) {
+                        if (tlvType.cls == TlvType.CLS_STRUCTARRAY) {
                             if (hasArrayReqFieldsByCol || hasArrayReqFieldsByRow) {
                                 throw new RuntimeException("msg define error in request parameter, serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
                             }
                             hasArrayReqFieldsByRow = true
-                        } else if (tlvType.cls == TlvCodec.CLS_STRINGARRAY || tlvType.cls == TlvCodec.CLS_INTARRAY) {
+                        } else if (tlvType.cls == TlvType.CLS_STRINGARRAY || tlvType.cls == TlvType.CLS_INTARRAY) {
                             if (hasArrayReqFieldsByRow) {
                                 throw new RuntimeException("msg define error in request parameter, serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
                             }
@@ -800,7 +806,7 @@ class DbClient(
                             }
                         } else {
                             val reqdef = new RequestDefineOriginal(f, f, defaultValue, columnType)
-                            if (tlvType.cls == TlvCodec.CLS_STRUCTARRAY) {
+                            if (tlvType.cls == TlvType.CLS_STRUCTARRAY) {
                                 reqdef.structTlvType = tlvType
                             }
                             reqMapOrigBuff += reqdef
@@ -855,7 +861,7 @@ class DbClient(
 
                                     tlvType.cls match {
 
-                                        case TlvCodec.CLS_STRING =>
+                                        case TlvType.CLS_STRING | TlvType.CLS_INT | TlvType.CLS_LONG | TlvType.CLS_DOUBLE=>
 
                                             val col = findIndexInSelect(sqls(0), sqlType, f)
                                             if (col == -1)
@@ -863,19 +869,11 @@ class DbClient(
 
                                             fromValue = "$result[0][%d]".format(col)
 
-                                        case TlvCodec.CLS_INT =>
-
-                                            val col = findIndexInSelect(sqls(0), sqlType, f)
-                                            if (col == -1)
-                                                throw new RuntimeException("from not defined for serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
-
-                                            fromValue = "$result[0][%d]".format(col)
-
-                                        case TlvCodec.CLS_STRUCT =>
+                                        case TlvType.CLS_STRUCT =>
 
                                             fromValue = "$result[0]"
 
-                                        case TlvCodec.CLS_STRINGARRAY =>
+                                        case TlvType.CLS_STRINGARRAY | TlvType.CLS_INTARRAY  | TlvType.CLS_LONGARRAY  | TlvType.CLS_DOUBLEARRAY  =>
 
                                             val col = findIndexInSelectForList(sqls(0), sqlType, f)
                                             if (col == -1)
@@ -883,15 +881,7 @@ class DbClient(
 
                                             fromValue = "$result[*][%d]".format(col)
 
-                                        case TlvCodec.CLS_INTARRAY =>
-
-                                            val col = findIndexInSelectForList(sqls(0), sqlType, f)
-                                            if (col == -1)
-                                                throw new RuntimeException("from not defined for serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
-
-                                            fromValue = "$result[*][%d]".format(col)
-
-                                        case TlvCodec.CLS_STRUCTARRAY =>
+                                        case TlvType.CLS_STRUCTARRAY =>
                                             fromValue = "$result"
                                     }
 
@@ -930,10 +920,10 @@ class DbClient(
                                     if (tlvType == null) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
                                     }
-                                    if (tlvType.cls != TlvCodec.CLS_STRUCT) {
+                                    if (tlvType.cls != TlvType.CLS_STRUCT) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s, the tlv type must struct".format(serviceId, msgId, f))
                                     }
-                                    val names = parseStructNames(tlvType.structNames, sqls(0))
+                                    val names = parseStructNames(tlvType.structDef.fields, sqls(0))
                                     val resdef = new ResultDefine(f, MsgDefine.RESULTTYPE_ROW, row.toInt, 0, names)
                                     resdefs += resdef
                                 case reg4() =>
@@ -945,10 +935,10 @@ class DbClient(
                                     if (tlvType == null) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
                                     }
-                                    if (tlvType.cls != TlvCodec.CLS_STRUCTARRAY) {
+                                    if (tlvType.cls != TlvType.CLS_STRUCTARRAY) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s, the tlv type must struct".format(serviceId, msgId, f))
                                     }
-                                    val names = parseStructNames(tlvType.structNames, sqls(0))
+                                    val names = parseStructNames(tlvType.structDef.fields, sqls(0))
                                     val resdef = new ResultDefine(f, MsgDefine.RESULTTYPE_ALL, 0, 0, names)
                                     resdefs += resdef
                                 case _ =>
@@ -1005,16 +995,17 @@ class DbClient(
         }
     }
 
-    def parseStructNames(keyNames: scala.Array[String], sql: String): List[String] = {
+    def parseStructNames(structFields: ArrayBuffer[StructField], sql: String): List[String] = {
         var fields = sqlSelectFieldsMap.getOrElse(sql, null)
         if (fields == null) {
             parseSelectFields(sql)
             fields = sqlSelectFieldsMap.getOrElse(sql, null)
         }
-        if (fields == null || fields.size == 0 || fields.size < keyNames.size) {
+        if (fields == null || fields.size == 0 || fields.size < structFields.size) {
             throw new RuntimeException("struct name mapping not valid, sql=" + sql)
         }
-        for (key <- keyNames) {
+        for (f <- structFields) {
+            val key = f.name
             val idx = findIndexInSelect(sql, MsgDefine.SQLTYPE_SELECT, key)
             if (idx == -1) {
                 throw new RuntimeException("struct name [" + key + "] mapping not valid, sql=" + sql)
@@ -1025,8 +1016,8 @@ class DbClient(
         for (s <- fields) {
             var i = 0
             var found = false
-            while (i < keyNames.size && !found) {
-                if (s == keyNames(i).toLowerCase) { names += keyNames(i); found = true; }
+            while (i < structFields.size && !found) {
+                if (s == structFields(i).name.toLowerCase) { names += structFields(i).name; found = true; }
                 i += 1
             }
             if (!found) {
@@ -1288,11 +1279,11 @@ class DbClient(
                             if (ss.size != 1)
                                 throw new RuntimeException("msg define error, sql=" + sql + ",tag=" + tag)
                             val tlvType = ss(0).structTlvType
-                            for (kk <- 0 until tlvType.structNames.length) {
-                                if (tlvType.structNames(kk).toLowerCase == loweredIdx) {
-                                    keyInMap = tlvType.structNames(kk)
+                            for (kk <- 0 until tlvType.structDef.fields.length) {
+                                if (tlvType.structDef.fields(kk).name.toLowerCase == loweredIdx) {
+                                    keyInMap = tlvType.structDef.fields(kk).name
                                     columnTypeInMap = codec.codecAttributes.getOrElse("type-" + tlvType.itemType.name + "-" + keyInMap + "-columnType", "")
-                                    val tlvinfo = tlvType.structFieldInfos(kk)
+                                    val tlvinfo = tlvType.structDef.fields(kk).fieldInfo
                                     if (tlvinfo != null && tlvinfo.defaultValue != null) defaultValueInMap = tlvinfo.defaultValue
                                 }
                             }
@@ -1500,8 +1491,12 @@ class DbClient(
                 value match {
                     case s: String            => buff_size += 1
                     case i: Int               => buff_size += 1
+                    case i: Long               => buff_size += 1
+                    case i: Double               => buff_size += 1
                     case a: ArrayBufferString => buff_size += a.size
                     case a: ArrayBufferInt    => buff_size += a.size
+                    case a: ArrayBufferLong    => buff_size += a.size
+                    case a: ArrayBufferDouble    => buff_size += a.size
                     case _ =>
                         throw new RuntimeException("not supported type in request parameter")
                 }
@@ -1538,8 +1533,12 @@ class DbClient(
                     v match {
                         case s: String            => values += s
                         case i: Int               => values += i.toString
+                        case l: Long               => values += l.toString
+                        case d: Double               => values += d.toString
                         case a: ArrayBufferString => values += a(kk)
                         case a: ArrayBufferInt    => values += a(kk).toString
+                        case a: ArrayBufferLong    => values += a(kk).toString
+                        case a: ArrayBufferDouble    => values += a(kk).toString
                     }
 
                 }
@@ -1660,7 +1659,7 @@ class DbClient(
                 val (sql, params) = replaceSql(msgDefine.sqls(0), req, splitTableType)
                 val keyTypes = msgDefine.sqls(0).keyTypes
                 var useSlave = msgDefine.useSlave
-                if (req.s("useSlave", "") != "") { useSlave = isTrue(req.s("useSlave")) }
+                if (req.s("useSlave", "") != "") { useSlave = TypeSafe.isTrue(req.s("useSlave")) }
                 val saveToFile = req.ns("saveToFile")
                 val saveToFileSplitter = req.ns("saveToFileSplitter", ",")
                 if (saveToFile == "")

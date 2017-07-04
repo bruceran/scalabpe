@@ -308,6 +308,14 @@ object LocalStorage {
         save(key, JsonCodec.mkString(a))
     }
 
+    def save(key: String, a: ArrayBufferLong) {
+        save(key, JsonCodec.mkString(a))
+    }
+
+    def save(key: String, a: ArrayBufferDouble) {
+        save(key, JsonCodec.mkString(a))
+    }
+
     def save(key: String, a: ArrayBufferMap) {
         save(key, JsonCodec.mkString(a))
     }
@@ -331,7 +339,7 @@ object LocalStorage {
         val tt = JsonCodec.parseArray(s)
         if (tt == null) return null
         val a = new ArrayBufferString()
-        for (t <- tt) a += t.asInstanceOf[String]
+        for (t <- tt) a += TypeSafe.anyToString(t)
         a
     }
 
@@ -340,10 +348,28 @@ object LocalStorage {
         val tt = JsonCodec.parseArray(s)
         if (tt == null) return null
         val a = new ArrayBufferInt()
-        for (t <- tt) a += t.asInstanceOf[Int]
+        for (t <- tt) a += TypeSafe.anyToInt(t)
         a
     }
 
+    def loadLongArray(key: String): ArrayBufferLong = {
+        val s = loadString(key)
+        val tt = JsonCodec.parseArray(s)
+        if (tt == null) return null
+        val a = new ArrayBufferLong()
+        for (t <- tt) a += TypeSafe.anyToLong(t)
+        a
+    }
+    
+    def loadDoubleArray(key: String): ArrayBufferDouble = {
+        val s = loadString(key)
+        val tt = JsonCodec.parseArray(s)
+        if (tt == null) return null
+        val a = new ArrayBufferDouble()
+        for (t <- tt) a += TypeSafe.anyToDouble(t)
+        a
+    }
+    
     def loadMapArray(key: String): ArrayBufferMap = {
         val s = loadString(key)
         val tt = JsonCodec.parseArray(s)
