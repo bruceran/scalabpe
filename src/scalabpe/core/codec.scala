@@ -1,6 +1,7 @@
 package scalabpe.core
 
-import java.nio.ByteBuffer
+import org.jboss.netty.buffer.ChannelBuffer
+import org.jboss.netty.buffer.ChannelBuffers
 
 class CodecException(val msg: String) extends RuntimeException(msg)
 
@@ -27,8 +28,8 @@ object AvenueCodec {
 
     val ACK_CODE = 100
 
-    var encrypt_f: (ByteBuffer, String) => ByteBuffer = null
-    var decrypt_f: (ByteBuffer, String) => ByteBuffer = null
+    var encrypt_f: (ChannelBuffer, String) => ChannelBuffer = null
+    var decrypt_f: (ChannelBuffer, String) => ChannelBuffer = null
 
     def parseEncoding(s: String): Int = {
         s.toLowerCase match {
@@ -38,8 +39,8 @@ object AvenueCodec {
     }
     def toEncoding(enc: Int): String = {
         enc match {
-            case 0 => "GB18030";
-            case _ => "UTF-8"
+            case 0 => "gb18030";
+            case _ => "utf-8"
         }
     }
 
@@ -49,16 +50,14 @@ class AvenueCodec {
 
     import AvenueCodec._
 
-    def decode(req: ByteBuffer, key: String = ""): AvenueData = {
+    def decode(req: ChannelBuffer, key: String = ""): AvenueData = {
 
-        req.position(0)
+        val length = req.writerIndex
 
-        val length = req.remaining()
-
-        val flag = req.get() & MASK
-        var headLen = req.get() & MASK
-        val version = req.get() & MASK
-        req.get() // ignore the field
+        val flag = req.readByte() & MASK
+        var headLen = req.readByte() & MASK
+        val version = req.readByte() & MASK
+        req.readByte() // ignore the field
 
         if (flag != TYPE_REQUEST && flag != TYPE_RESPONSE) {
             throw new CodecException("package_type_error")
@@ -77,17 +76,17 @@ class AvenueCodec {
             throw new CodecException("package_headlen_error, headLen=" + headLen + ",length=" + length)
         }
 
-        val packLen = req.getInt()
+        val packLen = req.readInt()
         if (packLen != length) {
             throw new CodecException("package_packlen_error")
         }
 
-        val serviceId = req.getInt()
+        val serviceId = req.readInt()
         if (serviceId < 0) {
             throw new CodecException("package_serviceid_error")
         }
 
-        val msgId = req.getInt()
+        val msgId = req.readInt()
         if (msgId < 0) {
             throw new CodecException("package_msgid_error")
         }
@@ -104,12 +103,12 @@ class AvenueCodec {
             }
         }
 
-        val sequence = req.getInt()
+        val sequence = req.readInt()
 
-        req.get() // ignore the field
-        val mustReach = req.get()
-        val format = req.get()
-        val encoding = req.get()
+        req.readByte() // ignore the field
+        val mustReach = req.readByte()
+        val format = req.readByte()
+        val encoding = req.readByte()
 
         if (mustReach != MUSTREACH_NO && mustReach != MUSTREACH_YES) {
             throw new CodecException("package_mustreach_error")
@@ -123,21 +122,16 @@ class AvenueCodec {
             throw new CodecException("package_encoding_error")
         }
 
-        val code = req.getInt()
+        val code = req.readInt()
 
         if (version == 1) {
-            req.position(req.position() + 16)
+            req.readerIndex(req.readerIndex + 16)
         }
 
-        val xhead = ByteBuffer.allocate(headLen - standardLen)
-        req.get(xhead.array())
-        xhead.position(0)
+        val xhead = req.readSlice(headLen - standardLen)
+        var body = req.readSlice(packLen - headLen)
 
-        var body = ByteBuffer.allocate(packLen - headLen)
-        req.get(body.array())
-        body.position(0)
-
-        if (key != null && key != "" && AvenueCodec.decrypt_f != null && body != null && body.limit() > 0) {
+        if (key != null && key != "" && AvenueCodec.decrypt_f != null && body != null && body.writerIndex > 0) {
             body = AvenueCodec.decrypt_f(body, key)
         }
 
@@ -150,50 +144,46 @@ class AvenueCodec {
         r
     }
 
-    def encode(res: AvenueData, key: String = ""): ByteBuffer = {
+    def encode(res: AvenueData, key: String = ""): ChannelBuffer = {
 
         var body = res.body
-        if (key != null && key != "" && AvenueCodec.encrypt_f != null && body != null && body.limit() > 0) {
+        if (key != null && key != "" && AvenueCodec.encrypt_f != null && body != null && body.writerIndex > 0) {
             body = AvenueCodec.encrypt_f(body, key)
         }
 
-        res.xhead.position(0)
-        body.position(0)
-
         val standardLen = if (res.version == 1) STANDARD_HEADLEN_V1 else STANDARD_HEADLEN_V2
 
-        var headLen = standardLen + res.xhead.remaining()
+        var headLen = standardLen + res.xhead.writerIndex
         if (res.version == 2) {
             if ((headLen % 4) != 0) {
                 throw new CodecException("package_xhead_padding_error")
             }
             headLen /= 4
         }
-        val packLen = standardLen + res.xhead.remaining() + body.remaining()
+        val packLen = standardLen + res.xhead.writerIndex + body.writerIndex
 
-        val b = ByteBuffer.allocate(packLen)
+        val b = ChannelBuffers.buffer(packLen)
 
-        b.put(res.flag.toByte) // type
-        b.put(headLen.toByte) // headLen
-        b.put(res.version.toByte) // version
-        b.put(ROUTE_FLAG) // route
-        b.putInt(packLen) // packLen
-        b.putInt(res.serviceId) // serviceId
-        b.putInt(res.msgId) // msgId
-        b.putInt(res.sequence) // sequence
-        b.put(ZERO) // context
-        b.put(res.mustReach.toByte) // mustReach
-        b.put(ZERO) // format
-        b.put(res.encoding.toByte) // encoding
+        b.writeByte(res.flag.toByte) // type
+        b.writeByte(headLen.toByte) // headLen
+        b.writeByte(res.version.toByte) // version
+        b.writeByte(ROUTE_FLAG) // route
+        b.writeInt(packLen) // packLen
+        b.writeInt(res.serviceId) // serviceId
+        b.writeInt(res.msgId) // msgId
+        b.writeInt(res.sequence) // sequence
+        b.writeByte(ZERO) // context
+        b.writeByte(res.mustReach.toByte) // mustReach
+        b.writeByte(ZERO) // format
+        b.writeByte(res.encoding.toByte) // encoding
 
-        b.putInt(if (res.flag == TYPE_REQUEST) 0 else res.code) // code
+        b.writeInt(if (res.flag == TYPE_REQUEST) 0 else res.code) // code
 
         if (res.version == 1)
-            b.put(EMPTY_SIGNATURE) // signature
+            b.writeBytes(EMPTY_SIGNATURE) // signature
 
-        b.put(res.xhead)
-        b.put(body)
-        b.flip()
+        b.writeBytes(res.xhead)
+        b.writeBytes(body)
 
         b
     }

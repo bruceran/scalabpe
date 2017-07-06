@@ -1,6 +1,5 @@
 package scalabpe.core
 
-import java.nio.ByteBuffer
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.RejectedExecutionException
@@ -12,10 +11,11 @@ import java.util.concurrent.locks.ReentrantLock
 
 import scala.collection.mutable.HashMap
 import scala.collection.mutable.HashSet
-
+import org.jboss.netty.buffer.ChannelBuffer
+import org.jboss.netty.buffer.ChannelBuffers
 class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor with Sos4Netty with Logging with Dumpable {
 
-    val EMPTY_BUFFER = ByteBuffer.allocate(0)
+    val EMPTY_BUFFER = ChannelBuffers.buffer(0)
     var nettyServer: NettyServer = _
 
     val converter = new AvenueCodec
@@ -295,9 +295,10 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
         if (spsDisconnectNotifyTo == "0:0") return
         val sequence = generateSequence()
         val notifyInfo = spsDisconnectNotifyTo.split(":")
+        val version = router.codecs.version(notifyInfo(0).toInt)
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
-            router.codecs.version(notifyInfo(0).toInt),
+            version,
             notifyInfo(0).toInt,
             notifyInfo(1).toInt,
             sequence,
@@ -307,7 +308,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
             EMPTY_BUFFER, EMPTY_BUFFER)
 
         try {
-            data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps)
+            data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps, version)
         } catch {
             case e: Throwable =>
         }
@@ -574,7 +575,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         val sequence = generateSequence()
 
-        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead)
+        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead, router.codecs.version(req.serviceId))
         val (body, ec) = tlvCodec.encodeRequest(req.msgId, req.body, req.encoding)
         if (ec != 0) {
             log.error("encode request error, serviceId=" + req.serviceId + ", msgId=" + req.msgId)
@@ -663,7 +664,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
         receive(SosSendTimeout(sequence))
     }
 
-    def receive(bb: ByteBuffer, connId: String) {
+    def receive(bb: ChannelBuffer, connId: String) {
 
         val data = decode(bb, connId)
 
@@ -680,7 +681,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
                 // append remote addr to xhead, the last addr is always remote addr
                 try {
-                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps)
+                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps, data.version)
                 } catch {
                     case e: Throwable =>
                 }
@@ -704,7 +705,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
                 // append remote addr to xhead, the last addr is always remote addr
                 try {
-                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId))
+                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId),false,data.version)
                 } catch {
                     case e: Throwable =>
                 }
@@ -819,7 +820,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
         (t + ss + t).indexOf(t + s + t) >= 0
     }
 
-    def decode(bb: ByteBuffer, connId: String): AvenueData = {
+    def decode(bb: ChannelBuffer, connId: String): AvenueData = {
         var data: AvenueData = null
         if (isEncrypted) {
             val key = aesKeyMap.get(connId)
@@ -842,8 +843,8 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
         data
     }
 
-    def encode(data: AvenueData, connId: String): ByteBuffer = {
-        var bb: ByteBuffer = null
+    def encode(data: AvenueData, connId: String): ChannelBuffer = {
+        var bb: ChannelBuffer = null
         if (isEncrypted) {
             var key = aesKeyMap.get(connId)
             val serviceIdMsgId = data.serviceId + ":" + data.msgId
@@ -888,6 +889,6 @@ class DummySos() extends Sos(null, 0) {
 
     override def dump() = {}
 
-    override def receive(bb: ByteBuffer, connId: String) = {}
+    override def receive(bb: ChannelBuffer, connId: String) = {}
 }
 

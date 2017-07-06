@@ -2780,7 +2780,7 @@ class RunTestHttpClient(
             buffer.writeBytes(body.getBytes("UTF-8"))
             httpReq.setContent(buffer);
             httpReq.setHeader("Content-Type", contentType)
-            httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
+            httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex)
         }
         if (bodyData != null) {
             if (log.isDebugEnabled()) {
@@ -2789,7 +2789,7 @@ class RunTestHttpClient(
 
             httpReq.setContent(bodyData);
             httpReq.setHeader("Content-Type", contentType)
-            httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
+            httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex)
         }
 
         httpReq

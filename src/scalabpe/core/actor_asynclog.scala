@@ -3,7 +3,6 @@ package scalabpe.core
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStreamReader
-import java.nio.ByteBuffer
 import java.nio.charset.Charset
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -33,6 +32,8 @@ import org.jboss.netty.handler.codec.http.HttpResponse
 import org.jboss.netty.handler.codec.http.HttpVersion
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory;
+
+import org.jboss.netty.buffer.ChannelBuffer
 
 class AsyncLogActor(val router: Router) extends Actor with Logging with Closable with Dumpable {
 
@@ -1306,7 +1307,8 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
         buff
     }
 
-    def makeCopy(buff: ByteBuffer): ByteBuffer = {
+	// TODO test
+    def makeCopy(buff: ChannelBuffer): ChannelBuffer = {
         buff.duplicate()
     }
 
@@ -1509,7 +1511,7 @@ class MonitorHttpClient(
         httpReq.setContent(buffer);
         httpReq.setHeader("Host", host) // the host include port already
         httpReq.setHeader("Content-Type", "application/x-www-form-urlencoded")
-        httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
+        httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex)
         httpReq.setHeader("User-Agent", "scalabpe monitor client")
         httpReq.setHeader("Connection", "close")
 

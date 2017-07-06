@@ -1,0 +1,99 @@
+//$tlvtest.test_xhead.with(AssertFlow)
+
+import FlowHelper._
+import org.jboss.netty.buffer._
+
+//#receive
+
+    var m:HashMapStringAny = null
+    var nm:HashMapStringAny = null
+    var buff:ChannelBuffer = null
+
+    m = HashMapStringAny( "xxx"->"123" )
+    buff = TlvCodec4Xhead.encode(10,m,1)
+    assertEquals(0,buff.writerIndex)
+    buff.readerIndex(0)
+    nm = TlvCodec4Xhead.decode(10,buff)
+    assertEquals(0,nm.size)
+
+    m = HashMapStringAny( "socId"->"1" )
+    buff = TlvCodec4Xhead.encode(10,m,1)
+    assertEquals(8,buff.writerIndex)
+    assertEquals(1,buff.readShort())
+    assertEquals(5,buff.readShort())
+    assertEquals("1",TlvCodec.getString(buff,1,"utf-8"))
+    buff.readerIndex(0)
+    nm = TlvCodec4Xhead.decode(10,buff)
+    assertEquals("1",nm.v("socId"))
+
+    m = HashMapStringAny( "appId"->"1" )
+    buff = TlvCodec4Xhead.encode(10,m,1)
+    assertEquals(8,buff.writerIndex)
+    assertEquals(3,buff.readShort())
+    assertEquals(8,buff.readShort())
+    assertEquals(1,buff.readInt)
+    buff.readerIndex(0)
+    nm = TlvCodec4Xhead.decode(10,buff)
+    assertEquals(1,nm.v("appId"))
+
+    m = HashMapStringAny( "uniqueId"->"1234567890" )
+    buff = TlvCodec4Xhead.encode(10,m,1)
+    assertEquals(16,buff.writerIndex)
+    assertEquals(9,buff.readShort())
+    assertEquals(14,buff.readShort())
+    assertEquals(m.ns("uniqueId"),TlvCodec.getString(buff,10,"utf-8"))
+    buff.readerIndex(0)
+    nm = TlvCodec4Xhead.decode(10,buff)
+    assertEquals("1234567890",nm.v("uniqueId"))
+
+    val addrs = ArrayBufferString("1.1.1.1:1","2.2.2.2:2")
+    m = HashMapStringAny( "addrs"-> addrs )
+    buff = TlvCodec4Xhead.encode(10,m,1)
+    assertEquals(24,buff.writerIndex)
+    buff.readerIndex(0)
+    nm = TlvCodec4Xhead.decode(10,buff)
+    assertEquals(addrs(0),nm.nls("addrs")(0))
+    assertEquals(addrs(1),nm.nls("addrs")(1))
+    assertEquals(nm.ns("firstAddr"),nm.nls("addrs")(0))
+    assertEquals(nm.ns("lastAddr"),nm.nls("addrs")(1))
+
+    addrs.remove(1)
+
+    m = HashMapStringAny( "addrs"-> addrs )
+    buff = TlvCodec4Xhead.encode(10,m,1)
+    assertEquals(12,buff.writerIndex)
+    var buff2 = TlvCodec4Xhead.appendAddr(buff,"2.2.2.2:2",false,1)
+    assertEquals(12,buff.writerIndex)
+    assertEquals(24,buff2.writerIndex)
+    buff2.readerIndex(0)
+    nm = TlvCodec4Xhead.decode(10,buff2)
+    assertEquals("1.1.1.1:1",nm.nls("addrs")(0))
+    assertEquals("2.2.2.2:2",nm.nls("addrs")(1))
+    assertEquals(nm.ns("firstAddr"),nm.nls("addrs")(0))
+    assertEquals(nm.ns("lastAddr"),nm.nls("addrs")(1))
+
+    m = HashMapStringAny( "addrs"-> addrs )
+    buff = TlvCodec4Xhead.encode(10,m,1)
+    assertEquals(12,buff.writerIndex)
+    buff2 = TlvCodec4Xhead.appendAddr(buff,"2.2.2.2:2",true,1)
+    assertEquals(12,buff.writerIndex)
+    assertEquals(24+32+4+4+12,buff2.writerIndex)
+    buff2.readerIndex(0)
+    nm = TlvCodec4Xhead.decode(10,buff2)
+    assertEquals("1.1.1.1:1",nm.nls("addrs")(0))
+    assertEquals("2.2.2.2:2",nm.nls("addrs")(1))
+    assertEquals(nm.ns("firstAddr"),nm.nls("addrs")(0))
+    assertEquals(nm.ns("lastAddr"),nm.nls("addrs")(1))
+    assertEquals("2.2.2.2:2",nm.ns("socId"))
+    assertEquals(TlvCodec4Xhead.SPS_ID_0,nm.ns("spsId"))
+    assertEquals(11,buff2.getShort(0))  // code for spsId
+    assertEquals(1,buff2.getShort(36)) // code for socId
+
+    m = HashMapStringAny( "socId"-> "1.1.1.1:1" )
+    buff = TlvCodec4Xhead.encode(3,m,1)
+    assertEquals(32,buff.writerIndex)
+    nm = TlvCodec4Xhead.decode(3,buff)
+    assertEquals("1.1.1.1:1",nm.ns("socId"))
+
+    reply(assert_result_code)
+

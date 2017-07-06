@@ -1,7 +1,6 @@
 package scalabpe.core
 
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadPoolExecutor
@@ -35,7 +34,7 @@ import org.jboss.netty.util.Timer;
 
 // used by netty
 trait Sos4Netty {
-    def receive(bb: ByteBuffer, connId: String): Unit;
+    def receive(bb: ChannelBuffer, connId: String): Unit;
     def connected(connId: String): Unit;
     def disconnected(connId: String): Unit;
 }
@@ -57,7 +56,7 @@ class NettyServerHandler(val nettyServer: NettyServer, val sos: Sos4Netty)
         Array(a, b, conns.size)
     }
 
-    def write(connId: String, response: ByteBuffer): Boolean = {
+    def write(connId: String, response: ChannelBuffer): Boolean = {
 
         if (response == null) return false
 
@@ -68,8 +67,7 @@ class NettyServerHandler(val nettyServer: NettyServer, val sos: Sos4Netty)
         }
 
         if (ch.isOpen) {
-            val resBuf = ChannelBuffers.wrappedBuffer(response);
-            ch.write(resBuf);
+            ch.write(response);
             return true
         }
 
@@ -87,10 +85,8 @@ class NettyServerHandler(val nettyServer: NettyServer, val sos: Sos4Netty)
         val buf = e.getMessage().asInstanceOf[ChannelBuffer];
         val connId = ctx.getAttachment().asInstanceOf[String];
 
-        val bb = buf.toByteBuffer();
-
         try {
-            sos.receive(bb, connId);
+            sos.receive(buf, connId);
         } catch {
             case e: Exception =>
                 log.error("sos decode error, connId=" + connId, e);
@@ -228,7 +224,7 @@ class NettyServer(val sos: Sos4Netty,
         log.info(s)
     }
 
-    def write(connId: String, response: ByteBuffer): Boolean = {
+    def write(connId: String, response: ChannelBuffer): Boolean = {
         nettyServerHandler.write(connId, response)
     }
 

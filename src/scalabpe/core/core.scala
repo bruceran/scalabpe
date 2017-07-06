@@ -1,6 +1,5 @@
 package scalabpe.core
 
-import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 
 import scala.collection.mutable.ArrayBuffer
@@ -8,12 +7,14 @@ import scala.collection.mutable.HashMap
 import scala.collection.mutable.LinkedHashMap
 import scala.math.BigDecimal
 
+import org.jboss.netty.buffer.ChannelBuffer
 import org.slf4j.LoggerFactory;
 
 class HashMapStringString extends HashMap[String, String]
 
 class HashMapStringAny extends HashMap[String, Any] {
 
+    def v(name: String): Any = getOrElse(name, null)
     def s(name: String): String = TypeSafe.s(name, this)
     def s(name: String, defaultValue: String): String = TypeSafe.s(name, this, defaultValue)
     def ns(name: String): String = TypeSafe.ns(name, this)
@@ -43,7 +44,19 @@ class ArrayBufferString extends ArrayBuffer[String]
 class ArrayBufferInt extends ArrayBuffer[Int]
 class ArrayBufferLong extends ArrayBuffer[Long]
 class ArrayBufferDouble extends ArrayBuffer[Double]
-class ArrayBufferMap extends ArrayBuffer[HashMapStringAny]
+class ArrayBufferMap extends ArrayBuffer[HashMapStringAny] {
+    override def filter(f: (HashMapStringAny) => Boolean): ArrayBufferMap = {
+        ArrayBufferMap(super.filter(f))
+    }
+    override def filterNot(f: (HashMapStringAny) => Boolean): ArrayBufferMap = {
+        ArrayBufferMap(super.filterNot(f))
+    }
+
+    override def sortWith(f: (HashMapStringAny, HashMapStringAny) => Boolean): ArrayBufferMap = {
+        ArrayBufferMap(super.sortWith(f))
+    }
+}
+
 class ArrayBufferAny extends ArrayBuffer[Any]
 
 class LinkedHashMapStringAny extends LinkedHashMap[String, Any] {
@@ -97,11 +110,21 @@ object ArrayBufferString {
         for (t <- elems) buff += t
         buff
     }
+    def apply(l: ArrayBuffer[String]): ArrayBufferString = {
+        val buff = new ArrayBufferString()
+        buff ++= l
+        buff
+    }
 }
 object ArrayBufferInt {
     def apply(elems: Int*): ArrayBufferInt = {
         val buff = new ArrayBufferInt()
         for (t <- elems) buff += t
+        buff
+    }
+    def apply(l: ArrayBuffer[Int]): ArrayBufferInt = {
+        val buff = new ArrayBufferInt()
+        buff ++= l
         buff
     }
 }
@@ -112,12 +135,22 @@ object ArrayBufferLong {
         for (t <- elems) buff += t
         buff
     }
+    def apply(l: ArrayBuffer[Long]): ArrayBufferLong = {
+        val buff = new ArrayBufferLong()
+        buff ++= l
+        buff
+    }
 }
 
 object ArrayBufferDouble {
     def apply(elems: Double*): ArrayBufferDouble = {
         val buff = new ArrayBufferDouble()
         for (t <- elems) buff += t
+        buff
+    }
+    def apply(l: ArrayBuffer[Double]): ArrayBufferDouble = {
+        val buff = new ArrayBufferDouble()
+        buff ++= l
         buff
     }
 }
@@ -127,11 +160,21 @@ object ArrayBufferMap {
         for (t <- elems) buff += t
         buff
     }
+    def apply(l: ArrayBuffer[HashMapStringAny]): ArrayBufferMap = {
+        val buff = new ArrayBufferMap()
+        buff ++= l
+        buff
+    }
 }
 object ArrayBufferAny {
     def apply(elems: Any*): ArrayBufferAny = {
         val buff = new ArrayBufferAny()
         for (t <- elems) buff += t
+        buff
+    }
+    def apply(l: ArrayBuffer[Any]): ArrayBufferAny = {
+        val buff = new ArrayBufferAny()
+        buff ++= l
         buff
     }
 }
@@ -235,10 +278,10 @@ class AvenueData(
         val mustReach: Int,
         val encoding: Int,
         val code: Int,
-        var xhead: ByteBuffer, // may be changed by sos TODO
-        val body: ByteBuffer) {
+        var xhead: ChannelBuffer,
+        val body: ChannelBuffer) {
     override def toString() = "sequence=%d,serviceId=%d,msgId=%d,code=%d,xhead.length=%d,body.length=%d".format(
-        sequence, serviceId, msgId, code, xhead.limit, body.limit)
+        sequence, serviceId, msgId, code, xhead.writerIndex, body.writerIndex)
 
 }
 
@@ -286,6 +329,7 @@ class Request(
     var toAddr: String = null // used to select a special soc connection
     var version = 0 // not specified
 
+    def v(name: String): Any = body.getOrElse(name, null)
     def s(name: String): String = body.s(name)
     def s(name: String, defaultValue: String): String = body.s(name, defaultValue)
     def ns(name: String): String = body.ns(name)
@@ -384,6 +428,7 @@ object InvokeResult {
 
 class InvokeResult(val requestId: String, val code: Int, val res: HashMapStringAny) {
 
+    def v(name: String): Any = res.getOrElse(name, null)
     def s(name: String): String = res.s(name)
     def s(name: String, defaultValue: String): String = res.s(name, defaultValue)
     def ns(name: String): String = res.ns(name)
@@ -520,7 +565,7 @@ object TypeSafe {
             case _               => false
         }
     }
-        
+
     def s(name: String, body: HashMapStringAny): String = {
         val value = body.getOrElse(name, null)
         anyToString(value)

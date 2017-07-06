@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="tlvv2" version="2" id="222" IsTreeStruct ="false">
+	
+    <type name="s_type" class="string" code="111"/> 
+    <type name="s2_type" class="string" code="112" array="s2_array_type"/> 
+    <type name="i_type" class="int" code="113"/> 
+    <type name="i2_type" class="int" code="114" array="i2_array_type"/> 
+
+    <type name="l_type" class="long" code="3" array="l_array_type"/>
+    <type name="d_type" class="double" code="4" array="d_array_type"/>
+    <type name="bs1_type" class="string" isbytes="1" code="5"/> 
+    <type name="bs2_type" class="bytes" code="6"/> 
+
+    <type name="stuc1_type" class="struct" code="7" array="stuc1_array_type"> 
+			<field name="f1"/>
+			<field name="f2" type="string" len="3"/>
+			<field name="f3" type="int"/>
+			<field name="f4" type="string"/>
+    </type>
+    <type name="stuc2_type" class="struct" code="8"> 
+			<field name="f11"/>
+			<field name="f12" type="string"/>
+			<field name="f2" type="int"/>
+			<field name="f3" type="long"/>
+			<field name="f4" type="double"/>
+    </type>
+    <type name="stuc2_array_type" class="array" itemType="stuc2_type"/> 
+
+    <type name="obj1_type" class="object" code="9"> 
+			<field name="s"/>
+			<field name="i"/>
+			<field name="l"/>
+			<field name="d"/>
+			<field name="bs1"/>
+			<field name="bs2" type="bs2_type"/>
+			<field name="stuc1"/>
+    </type>
+
+    <type name="obj2_type" class="object" code="10"> 
+			<field name="s"/>
+			<field name="obj1"/>
+    </type>
+
+	<message name="msg1" id="1">
+		<requestParameter>
+			<field name="s"/>
+			<field name="i"/>
+			<field name="l"/>
+			<field name="d"/>
+			<field name="bs1"/>
+			<field name="stuc1"/>
+			<field name="obj1"/>
+			<field name="obj2"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="s"/>
+			<field name="i"/>
+			<field name="l"/>
+			<field name="d"/>
+			<field name="bs1"/>
+			<field name="stuc1"/>
+			<field name="obj1"/>
+			<field name="obj2"/>
+		</responseParameter>
+	</message>
+
+</service>

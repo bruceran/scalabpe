@@ -1,7 +1,6 @@
 package scalabpe.core
 
 import java.io.File
-import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.TimeUnit
@@ -15,6 +14,9 @@ import scala.xml.Node
 
 import com.sdo.billing.queue.PersistQueue
 import com.sdo.billing.queue.impl.PersistQueueManagerImpl
+
+import org.jboss.netty.buffer.ChannelBuffer
+import org.jboss.netty.buffer.ChannelBuffers
 
 case class MustReachReqCommitInfo(req: Request, code: Int)
 case class MustReachRawReqCommitInfo(rawReq: RawRequest, code: Int)
@@ -30,8 +32,8 @@ class PersistData(
     val msgId: Int,
     val encoding: Int,
     val createTime: Long,
-    var xhead: ByteBuffer,
-    val body: ByteBuffer) {}
+    var xhead: ChannelBuffer,
+    val body: ChannelBuffer) {}
 
 class MustReachSendingData(
         val queueName: String,
@@ -643,7 +645,9 @@ class MustReachActor(val router: Router, val cfgNode: Node) extends Actor with L
             return null
         }
 
-        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead)
+        val version = router.codecs.version(req.serviceId)
+
+        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead, version)
 
         val (body, ec) = tlvCodec.encodeRequest(req.msgId, req.body, req.encoding)
         if (ec != 0) return null
@@ -662,48 +666,43 @@ class MustReachActor(val router: Router, val cfgNode: Node) extends Actor with L
     def persistDataToBytes(pd: PersistData): Array[Byte] = {
 
         val xheadcopy = pd.xhead.duplicate()
-        xheadcopy.position(0)
         val bodycopy = pd.body.duplicate()
-        bodycopy.position(0)
 
-        val len = 18 + 4 + xheadcopy.limit + 4 + bodycopy.limit
-        val buff = ByteBuffer.allocate(len)
+        val len = 18 + 4 + xheadcopy.writerIndex + 4 + bodycopy.writerIndex
+        val buff = ChannelBuffers.buffer(len)
 
-        buff.put(pd.source.toByte)
-        buff.putInt(pd.serviceId)
-        buff.putInt(pd.msgId)
-        buff.put(pd.encoding.toByte)
-        buff.putLong(pd.createTime)
+        buff.writeByte(pd.source.toByte)
+        buff.writeInt(pd.serviceId)
+        buff.writeInt(pd.msgId)
+        buff.writeByte(pd.encoding.toByte)
+        buff.writeLong(pd.createTime)
 
-        buff.putInt(xheadcopy.limit)
-        buff.put(xheadcopy)
-        buff.putInt(bodycopy.limit)
-        buff.put(bodycopy)
-        buff.flip()
+        buff.writeInt(xheadcopy.writerIndex)
+        buff.writeBytes(xheadcopy)
+        buff.writeInt(bodycopy.writerIndex)
+        buff.writeBytes(bodycopy)
 
-        buff.array()
+        val a = new Array[Byte](buff.writerIndex)
+        buff.readBytes(a)
+        a
     }
 
     def bytesToPersistData(bs: Array[Byte]): PersistData = {
 
         try {
-            val buff = ByteBuffer.wrap(bs)
+            val buff = ChannelBuffers.wrappedBuffer(bs)
 
-            val source = buff.get()
-            val serviceId = buff.getInt()
-            val msgId = buff.getInt()
-            val encoding = buff.get()
-            val createTime = buff.getLong()
+            val source = buff.readByte()
+            val serviceId = buff.readInt()
+            val msgId = buff.readInt()
+            val encoding = buff.readByte()
+            val createTime = buff.readLong()
 
-            val xheadlen = buff.getInt()
-            val xhead = ByteBuffer.allocate(xheadlen)
-            buff.get(xhead.array())
-            xhead.position(0)
-
-            val bodylen = buff.getInt()
-            val body = ByteBuffer.allocate(bodylen)
-            buff.get(body.array())
-            body.position(0)
+            val xheadlen = buff.readInt()
+            val xhead = buff.readBytes(xheadlen)
+            
+            val bodylen = buff.readInt()
+            val body = buff.readBytes(bodylen)
 
             val pd = new PersistData(source,
                 serviceId,

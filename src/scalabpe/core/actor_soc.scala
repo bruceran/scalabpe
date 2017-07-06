@@ -1,6 +1,5 @@
 package scalabpe.core
 
-import java.nio.ByteBuffer
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.RejectedExecutionException
@@ -15,7 +14,8 @@ import scala.collection.mutable.HashMap
 import scala.xml.Node
 
 import org.jboss.netty.util.HashedWheelTimer
-
+import org.jboss.netty.buffer.ChannelBuffer
+import org.jboss.netty.buffer.ChannelBuffers
 class SocActor(val router: Router, val cfgNode: Node) extends Actor with RawRequestActor with Logging with Closable with SelfCheckLike with Dumpable {
 
     var timeout = 30000
@@ -257,7 +257,7 @@ class SocImpl(
         val pingVersion: Int = 1,
         val actor: Actor = null) extends Soc with Soc4Netty with Logging with Dumpable {
 
-    val EMPTY_BUFFER = ByteBuffer.allocate(0)
+    val EMPTY_BUFFER = ChannelBuffers.buffer(0)
     var nettyClient: NettyClient = _
     val generator = new AtomicInteger(1)
     val converter = new AvenueCodec
@@ -546,7 +546,7 @@ class SocImpl(
         }
     }
 
-    def receive(res: ByteBuffer, connId: String): Tuple2[Boolean, Int] = {
+    def receive(res: ChannelBuffer, connId: String): Tuple2[Boolean, Int] = {
 
         var data: AvenueData = null
 
@@ -569,7 +569,7 @@ class SocImpl(
 
                 // append remote addr to xhead, the last addr is always remote addr
                 try {
-                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId))
+                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), false, data.version)
                 } catch {
                     case e: Throwable =>
                 }
@@ -642,7 +642,7 @@ class SocImpl(
 
     }
 
-    def generatePing(): ByteBuffer = {
+    def generatePing(): ChannelBuffer = {
 
         val seq = generateSequence()
 
@@ -662,7 +662,7 @@ class SocImpl(
         bb
     }
 
-    def generateReportSpsId(): ByteBuffer = {
+    def generateReportSpsId(): ChannelBuffer = {
 
         if (reportSpsTo == "0:0") return null
 
@@ -670,10 +670,11 @@ class SocImpl(
 
         val xhead = HashMapStringAny(Xhead.KEY_SPS_ID -> TlvCodec4Xhead.SPS_ID_0)
         val reportSpsInfo = reportSpsTo.split(":")
-        val xheadbuff = TlvCodec4Xhead.encode(reportSpsInfo(0).toInt, xhead)
+        val version = Router.main.codecs.version(reportSpsInfo(0).toInt)
+        val xheadbuff = TlvCodec4Xhead.encode(reportSpsInfo(0).toInt, xhead,version)
         val res = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
-            Router.main.codecs.version(reportSpsInfo(0).toInt),
+            version,
             reportSpsInfo(0).toInt,
             reportSpsInfo(1).toInt,
             seq,
@@ -734,7 +735,8 @@ class SocImpl(
         }
 
         val sequence = generateSequence()
-        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead)
+        val version = Router.main.codecs.version(req.serviceId)
+        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead, version)
         val (body, ec) = tlvCodec.encodeRequest(req.msgId, req.body, req.encoding)
         if (ec != 0) {
             log.error("encode request error, serviceId=" + req.serviceId + ", msgId=" + req.msgId)
@@ -746,7 +748,7 @@ class SocImpl(
 
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
-            Router.main.codecs.version(req.serviceId),
+            version,
             req.serviceId,
             req.msgId,
             sequence,
@@ -781,7 +783,8 @@ class SocImpl(
 
         val sequence = generateSequence()
 
-        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead)
+        val version = Router.main.codecs.version(req.serviceId)
+        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead,version)
 
         val (body, ec) = tlvCodec.encodeRequest(req.msgId, req.body, req.encoding)
         if (ec != 0) {
@@ -793,7 +796,7 @@ class SocImpl(
 
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
-            Router.main.codecs.version(req.serviceId),
+            version,
             req.serviceId,
             req.msgId,
             sequence,

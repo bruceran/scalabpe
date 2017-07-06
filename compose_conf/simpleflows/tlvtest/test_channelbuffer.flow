@@ -1,0 +1,70 @@
+//$tlvtest.test_channelbuffer.with(AssertFlow)
+
+import FlowHelper._
+import org.jboss.netty.buffer._
+
+//#receive
+
+    val empty_buff = ChannelBuffers.buffer(0)
+    assertEquals(0,empty_buff.readerIndex)
+    assertEquals(0,empty_buff.writerIndex)
+
+    var buff = ChannelBuffers.buffer(10)
+
+    buff.writeByte(1)
+    assertEquals(1,buff.writerIndex)
+    assertEquals(0,buff.readerIndex)
+    buff.writeBytes("12345".getBytes())
+    assertEquals(6,buff.writerIndex)
+    assertEquals(0,buff.readerIndex)
+    var b = buff.readByte()
+    assertEquals(1,buff.readerIndex)
+    var b1 = buff.readSlice(2)
+    var b2 = buff.readSlice(3)
+    assertEquals(6,buff.readerIndex)
+    assertEquals(0,b1.readerIndex)
+    assertEquals(2,b1.writerIndex)
+    assertEquals(0,b2.readerIndex)
+    assertEquals(3,b2.writerIndex)
+    assertEquals(10,buff.capacity)
+    assertEquals(2,b1.capacity)
+    assertEquals(3,b2.capacity)
+
+    buff = ChannelBuffers.dynamicBuffer(10)
+
+    buff.writeByte(1)
+    assertEquals(1,buff.writerIndex)
+    assertEquals(0,buff.readerIndex)
+    buff.writeBytes("12345".getBytes())
+    assertEquals(6,buff.writerIndex)
+    assertEquals(0,buff.readerIndex)
+    b = buff.readByte()
+    assertEquals(1,buff.readerIndex)
+    b1 = buff.readSlice(2)
+    b2 = buff.readSlice(3)
+    assertEquals(6,buff.readerIndex)
+    assertEquals(0,b1.readerIndex)
+    assertEquals(2,b1.writerIndex)
+    assertEquals(0,b2.readerIndex)
+    assertEquals(3,b2.writerIndex)
+    assertEquals(10,buff.capacity)
+    assertEquals(2,b1.capacity)
+    assertEquals(3,b2.capacity)
+
+    buff.writerIndex(10)
+    assertEquals(10,buff.capacity)
+
+    buff.writeBytes("abcde".getBytes)
+    assertEquals(15,buff.writerIndex)
+
+    assertEquals(20,buff.capacity)  // 直接在原来基础上翻倍
+
+    // buff.writerIndex(25)  // TODO 必须用写，不能直接移到capacity以外
+
+    buff.readerIndex(0)
+    assertEquals(0,buff.readerIndex)
+
+    // println("hex dump:" + ChannelBuffers.hexDump(buff,0,buff.writerIndex)) // TODO
+
+    reply(assert_result_code)
+

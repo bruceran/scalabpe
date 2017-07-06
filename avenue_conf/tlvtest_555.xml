@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="tlvtest" id="555" version="2">
+
+ 	<type name="cmd_type" class="string" code="1"/>
+
+	<message name="test_channelbuffer" id="1">
+		<requestParameter>
+			<field name="cmd"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+	
+	<message name="test_codec" id="2">
+		<requestParameter>
+			<field name="cmd"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+
+	<message name="test_xhead" id="3">
+		<requestParameter>
+			<field name="cmd"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+
+	<message name="test_tlv" id="4">
+		<requestParameter>
+			<field name="cmd"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+
+</service>

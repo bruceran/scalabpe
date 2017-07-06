@@ -1,7 +1,6 @@
 package scalabpe.core
 
 import java.net.InetSocketAddress
-import java.nio.ByteBuffer
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.ThreadPoolExecutor
@@ -43,11 +42,11 @@ import org.jboss.netty.util.TimerTask;
 trait Soc4Netty {
     def connected(connId: String, addr: String, connidx: Int): Unit;
     def disconnected(connId: String, addr: String, connidx: Int): Unit;
-    def receive(res: ByteBuffer, connId: String): Tuple2[Boolean, Int]; // (true,sequence) or (false,0)
+    def receive(res: ChannelBuffer, connId: String): Tuple2[Boolean, Int]; // (true,sequence) or (false,0)
     def networkError(sequence: Int, connId: String): Unit;
     def timeoutError(sequence: Int, connId: String): Unit;
-    def generatePing(): ByteBuffer;
-    def generateReportSpsId(): ByteBuffer;
+    def generatePing(): ChannelBuffer;
+    def generateReportSpsId(): ChannelBuffer;
 }
 
 object NettyClient {
@@ -603,8 +602,7 @@ class NettyClient(
                     val buff = soc.generateReportSpsId()
                     if (buff != null) {
                         updateSpsId(buff, connInfo)
-                        val reqBuf = ChannelBuffers.wrappedBuffer(buff);
-                        ch.write(reqBuf);
+                        ch.write(buff);
                     }
                 }
             }
@@ -799,7 +797,7 @@ class NettyClient(
 
     }
 
-    def send(sequence: Int, buff: ByteBuffer, timeout: Int): Boolean = {
+    def send(sequence: Int, buff: ChannelBuffer, timeout: Int): Boolean = {
 
         val (connInfo, ch, idx) = nextChannel(sequence, timeout)
 
@@ -808,14 +806,12 @@ class NettyClient(
         }
 
         if (isSps) updateSpsId(buff, connInfo)
-
-        val reqBuf = ChannelBuffers.wrappedBuffer(buff);
-        ch.write(reqBuf);
+        ch.write(buff);
 
         return true
     }
 
-    def sendByAddr(sequence: Int, buff: ByteBuffer, timeout: Int, addr: String): Boolean = {
+    def sendByAddr(sequence: Int, buff: ChannelBuffer, timeout: Int, addr: String): Boolean = {
 
         val (connInfo, ch, idx) = nextChannel(sequence, timeout, addr)
 
@@ -824,38 +820,38 @@ class NettyClient(
         }
 
         if (isSps) updateSpsId(buff, connInfo)
-        val reqBuf = ChannelBuffers.wrappedBuffer(buff);
-        ch.write(reqBuf);
+        ch.write(buff);
 
         return true
     }
 
-    def updateSpsId(buff: ByteBuffer, connInfo: ConnInfo) {
+    def updateSpsId(buff: ChannelBuffer, connInfo: ConnInfo) {
         val array = buff.array()
         val spsId = connInfo.guid
         val spsIdArray = spsId.getBytes("ISO-8859-1")
+        
+        val version = buff.getByte(2).toInt
+        val offset = if( version == 1 ) 44 else 28
         var i = 0
         while (i < spsIdArray.length) {
-            array(44 + 4 + i) = spsIdArray(i) // start from the xhead (44), skip the xhead spsId head (4)
+            array(offset + 4 + i) = spsIdArray(i) // start from the xhead (44), skip the xhead spsId head (4)
             i += 1
         }
     }
 
-    def sendByConnId(sequence: Int, buff: ByteBuffer, timeout: Int, connId: String): Boolean = {
+    def sendByConnId(sequence: Int, buff: ChannelBuffer, timeout: Int, connId: String): Boolean = {
 
         var ch = nextChannelFromMap(sequence, timeout, connId)
 
         if (ch == null) {
             return false
         }
-
-        val reqBuf = ChannelBuffers.wrappedBuffer(buff);
-        ch.write(reqBuf);
+        ch.write(buff);
 
         return true
     }
 
-    def sendResponse(sequence: Int, buff: ByteBuffer, connId: String): Boolean = {
+    def sendResponse(sequence: Int, buff: ChannelBuffer, connId: String): Boolean = {
 
         var ch: Channel = null
 
@@ -881,8 +877,7 @@ class NettyClient(
             return false
         }
 
-        val reqBuf = ChannelBuffers.wrappedBuffer(buff);
-        ch.write(reqBuf);
+        ch.write(buff);
 
         return true
     }
@@ -910,7 +905,7 @@ class NettyClient(
 
     }
 
-    def onReceive(buff: ByteBuffer, connId: String): Unit = {
+    def onReceive(buff: ChannelBuffer, connId: String): Unit = {
 
         val (ok, sequence) = soc.receive(buff, connId)
 
@@ -958,8 +953,7 @@ class NettyClient(
         val ch = e.getChannel
         val connId = ctx.getAttachment().asInstanceOf[String]
         val buf = e.getMessage().asInstanceOf[ChannelBuffer]
-        val bb = buf.toByteBuffer()
-        onReceive(bb, connId)
+        onReceive(buf, connId)
     }
 
     def channelConnected(ctx: ChannelHandlerContext, e: ChannelStateEvent): Unit = {
@@ -986,8 +980,7 @@ class NettyClient(
     def channelIdle(ctx: ChannelHandlerContext, e: IdleStateEvent): Unit = {
         val ch = e.getChannel
         val buff = soc.generatePing()
-        val reqBuf = ChannelBuffers.wrappedBuffer(buff);
-        ch.write(reqBuf);
+        ch.write(buff);
     }
 
     class PipelineFactory extends Object with ChannelPipelineFactory {

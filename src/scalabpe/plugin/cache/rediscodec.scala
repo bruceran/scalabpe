@@ -786,7 +786,7 @@ object RedisCodec {
             return null;
         }
 
-        var s = buf.readerIndex()
+        var s = buf.readerIndex
         val max = s + len - 1
 
         val (valid, res) = decodeRecur(buf, s, max)
@@ -906,7 +906,7 @@ class RedisFrameDecoder extends FrameDecoder with Logging {
                 return null;
             }
 
-            var s = buf.readerIndex()
+            var s = buf.readerIndex
             val max = s + len - 1
 
             val valid = getValid(buf, s, max)

@@ -820,7 +820,7 @@ class HttpClientImpl(
                 httpReq.setHeader("Host", host) // the host include port already
                 for ((key, value) <- headers) httpReq.setHeader(key, value)
                 httpReq.setHeader("Content-Type", msg.requestContentType + "; charset=" + msg.charSet)
-                httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
+                httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex)
                 httpReq.setHeader("User-Agent", "scalabpe aht plugin")
 
                 if (msg.requestContentType == HttpMsgDefine.MIMETYPE_XML && msg.wsSOAPAction != "") {
@@ -847,7 +847,7 @@ class HttpClientImpl(
                 httpReq.setHeader("Host", host) // the host include port already
                 for ((key, value) <- headers) httpReq.setHeader(key, value)
                 httpReq.setHeader("Content-Type", msg.requestContentType + "; charset=" + msg.charSet)
-                httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex())
+                httpReq.setHeader("Content-Length", httpReq.getContent().writerIndex)
                 httpReq.setHeader("User-Agent", "scalabpe aht plugin")
 
                 if (msg.requestContentType == HttpMsgDefine.MIMETYPE_XML && msg.wsSOAPAction != "") {

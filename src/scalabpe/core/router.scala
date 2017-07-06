@@ -3,7 +3,6 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.InputStreamReader
 import java.io.StringReader
-import java.nio.ByteBuffer
 import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.collection.mutable.ArrayBuffer
@@ -13,6 +12,9 @@ import scala.io.Source
 import scala.reflect.runtime.universe
 import scala.xml.Elem
 import scala.xml.XML
+
+import org.jboss.netty.buffer.ChannelBuffer
+import org.jboss.netty.buffer.ChannelBuffers
 
 import org.apache.commons.io.FileUtils
 
@@ -38,7 +40,7 @@ class Router(val rootDir: String, val startSos: Boolean = true, var mockMode: Bo
 
     val avenueConfDir = rootDir + File.separator + "avenue_conf"
     val pluginConfFile = "scalabpe.plugins.conf"
-    val EMPTY_BUFFER = ByteBuffer.allocate(0)
+    val EMPTY_BUFFER = ChannelBuffers.buffer(0)
 
     val pReg = """@[0-9a-zA-Z_-]+[ <\]"]""".r // allowed: @xxx< @xxx]]> @xxx[SPACE]
     val pReg2 = """@[0-9a-zA-Z_-]+$""".r // allowed: @xxx

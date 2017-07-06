@@ -445,7 +445,7 @@ class MemCacheNettyClient(
     }
 
     def parseSequence(buff: ChannelBuffer): Int = {
-        var s = buff.readerIndex()
+        var s = buff.readerIndex
         val sequence = buff.getInt(s + 12)
         sequence
     }
@@ -563,7 +563,7 @@ class MemCacheNettyClient(
                 return null;
             }
 
-            var s = buf.readerIndex()
+            var s = buf.readerIndex
             val magic = buf.getByte(s)
             if (magic != magicReq && magic != magicRes)
                 throw new Exception("memcache frame is not valid")
