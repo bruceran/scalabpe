@@ -128,7 +128,9 @@ class AvenueCodec {
             req.readerIndex(req.readerIndex + 16)
         }
 
-        val xhead = req.readSlice(headLen - standardLen)
+        val xheadlen = headLen - standardLen
+        val xhead = ChannelBuffers.dynamicBuffer(xheadlen+12)
+        req.readBytes(xhead,xheadlen)
         var body = req.readSlice(packLen - headLen)
 
         if (key != null && key != "" && AvenueCodec.decrypt_f != null && body != null && body.writerIndex > 0) {
@@ -162,7 +164,7 @@ class AvenueCodec {
         }
         val packLen = standardLen + res.xhead.writerIndex + body.writerIndex
 
-        val b = ChannelBuffers.buffer(packLen)
+        val b = ChannelBuffers.buffer(standardLen)
 
         b.writeByte(res.flag.toByte) // type
         b.writeByte(headLen.toByte) // headLen
@@ -182,10 +184,7 @@ class AvenueCodec {
         if (res.version == 1)
             b.writeBytes(EMPTY_SIGNATURE) // signature
 
-        b.writeBytes(res.xhead)
-        b.writeBytes(body)
-
-        b
+        ChannelBuffers.wrappedBuffer(b,res.xhead,body)
     }
 
 }

@@ -1,0 +1,182 @@
+//$tlvtest.test_tlv2.with(AssertFlow)
+
+import FlowHelper._
+import org.jboss.netty.buffer._
+
+//#receive
+
+    assertEquals(2,Router.main.codecs.version(222))
+
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "s"->"aaa", "i" -> 3, 
+            "l"->"11111", "d"->"3.1",
+            "bs1"->Array[Byte](1,2,3),
+            "stuc1"-> HashMapStringAny( "f1"->"f1","f2"->"f2","f3"->3,"f4"->"4444"),
+            "obj1"-> HashMapStringAny( "s"-> "hello", "i"->"50", "l"->111111111111L,"d"->3.1415926, 
+                  "stuc1"-> HashMapStringAny( "f1"->"f1","f2"->"f2","f3"->3,"f4"->"4444" )  ),
+            "obj2"-> HashMapStringAny( "s"-> "abc",  
+                  "obj1"-> HashMapStringAny( "s"->"def","l"->123 )  ),
+            "mm"->"123"  // 不存在的key
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(222)
+        val (buff1,ec1) = tlvCodec.encodeRequest(1,m1,1)
+        assertEquals(0,ec1)
+        buff1.readerIndex(0)
+        val (m2,ec2) = tlvCodec.decodeRequest(1,buff1,1)
+        assertEquals(0,ec2)
+        assertEquals(8,m2.size)
+        assertEquals("aaa",m2.v("s"))
+        assertEquals(3,m2.v("i"))
+        assertEquals(11111,m2.v("l"))
+        assertEquals(3.1,m2.v("d"))
+        assertTrue(m2.v("stuc1").isInstanceOf[HashMapStringAny])
+        assertEquals("f1",m2.m("stuc1").v("f1"))
+        assertEquals("f2",m2.m("stuc1").v("f2"))
+        assertEquals(3,m2.m("stuc1").v("f3"))
+        assertEquals("4444",m2.m("stuc1").v("f4"))
+        assertTrue(m2.v("bs1").isInstanceOf[Array[Byte]])
+        assertEquals(3,m2.v("bs1").asInstanceOf[Array[Byte]](2))
+
+        assertTrue(m2.v("obj1").isInstanceOf[HashMapStringAny])
+        assertEquals("hello",m2.m("obj1").v("s"))
+        assertEquals(50,m2.m("obj1").v("i"))
+        assertEquals(111111111111L,m2.m("obj1").v("l"))
+        assertEquals(3.1415926d,m2.m("obj1").v("d"))
+
+        assertTrue(m2.v("obj2").isInstanceOf[HashMapStringAny])
+        assertEquals("abc",m2.m("obj2").v("s"))
+        assertEquals("def",m2.m("obj2").m("obj1").v("s"))
+        assertEquals(123,m2.m("obj2").m("obj1").v("l"))
+
+    }
+
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "s"->"aaa", "i" -> 3, 
+            "l"->"11111", "d"->"3.1",
+            "bs1"->Array[Byte](1,2,3),
+            "stuc1"-> HashMapStringAny( "f1"->"f1","f2"->"f2","f3"->3,"f4"->"4444"),
+            "obj1"-> HashMapStringAny( "s"-> "hello", "i"->"50", "l"->111111111111L,"d"->3.1415926, 
+                  "stuc1"-> HashMapStringAny( "f1"->"f1","f2"->"f2","f3"->3,"f4"->"4444" )  ),
+            "obj2"-> HashMapStringAny( "s"-> "abc",  
+                  "obj1"-> HashMapStringAny( "s"->"def","l"->123 )  ),
+            "mm"->"123"  // 不存在的key
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(222)
+        val (buff1,ec1) = tlvCodec.encodeResponse(1,m1,1)
+        assertEquals(0,ec1)
+        buff1.readerIndex(0)
+        val (m2,ec2) = tlvCodec.decodeResponse(1,buff1,1)
+        assertEquals(0,ec2)
+        assertEquals(8,m2.size)
+        assertEquals("aaa",m2.v("s"))
+        assertEquals(3,m2.v("i"))
+        assertEquals(11111,m2.v("l"))
+        assertEquals(3.1,m2.v("d"))
+        assertTrue(m2.v("stuc1").isInstanceOf[HashMapStringAny])
+        assertEquals("f1",m2.m("stuc1").v("f1"))
+        assertEquals("f2",m2.m("stuc1").v("f2"))
+        assertEquals(3,m2.m("stuc1").v("f3"))
+        assertEquals("4444",m2.m("stuc1").v("f4"))
+        assertTrue(m2.v("bs1").isInstanceOf[Array[Byte]])
+        assertEquals(3,m2.v("bs1").asInstanceOf[Array[Byte]](2))
+
+        assertTrue(m2.v("obj1").isInstanceOf[HashMapStringAny])
+        assertEquals("hello",m2.m("obj1").v("s"))
+        assertEquals(50,m2.m("obj1").v("i"))
+        assertEquals(111111111111L,m2.m("obj1").v("l"))
+        assertEquals(3.1415926d,m2.m("obj1").v("d"))
+
+        assertTrue(m2.v("obj2").isInstanceOf[HashMapStringAny])
+        assertEquals("abc",m2.m("obj2").v("s"))
+        assertEquals("def",m2.m("obj2").m("obj1").v("s"))
+        assertEquals(123,m2.m("obj2").m("obj1").v("l"))
+
+    }
+
+
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "s"->"aaa", "i" -> 3, 
+            "l"->"11111", "d"->"3.1",
+            "bs1"->Array[Byte](1,2,3),
+            "stuc1"-> HashMapStringAny( "f1"->"f1","f2"->"f2","f3"->3,"f4"->"4444"),
+            "obj1"-> HashMapStringAny( "s"-> "hello", "i"->"50", "l"->111111111111L,"d"->3.1415926, 
+                  "stuc1"-> HashMapStringAny( "f1"->"f1","f2"->"f2","f3"->3,"f4"->"4444" )  ),
+            "obj2"-> HashMapStringAny( "s"-> "abc",  
+                  "obj1"-> HashMapStringAny( "s"->"def","l"->123 )  ),
+            "mm"->"123"  // 不存在的key
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(222)
+        val (m2,ec2)  = tlvCodec.filterRequestInJvm(1,m1,true)
+        assertEquals(0,ec2)
+        assertEquals(8,m2.size)
+        assertEquals("aaa",m2.v("s"))
+        assertEquals(3,m2.v("i"))
+        assertEquals(11111,m2.v("l"))
+        assertEquals(3.1,m2.v("d"))
+        assertTrue(m2.v("stuc1").isInstanceOf[HashMapStringAny])
+        assertEquals("f1",m2.m("stuc1").v("f1"))
+        assertEquals("f2",m2.m("stuc1").v("f2"))
+        assertEquals(3,m2.m("stuc1").v("f3"))
+        assertEquals("4444",m2.m("stuc1").v("f4"))
+        assertTrue(m2.v("bs1").isInstanceOf[Array[Byte]])
+        assertEquals(3,m2.v("bs1").asInstanceOf[Array[Byte]](2))
+
+        assertTrue(m2.v("obj1").isInstanceOf[HashMapStringAny])
+        assertEquals("hello",m2.m("obj1").v("s"))
+        assertEquals(50,m2.m("obj1").v("i"))
+        assertEquals(111111111111L,m2.m("obj1").v("l"))
+        assertEquals(3.1415926d,m2.m("obj1").v("d"))
+
+        assertTrue(m2.v("obj2").isInstanceOf[HashMapStringAny])
+        assertEquals("abc",m2.m("obj2").v("s"))
+        assertEquals("def",m2.m("obj2").m("obj1").v("s"))
+        assertEquals(123,m2.m("obj2").m("obj1").v("l"))
+
+    }
+
+
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "s"->"aaa", "i" -> 3, 
+            "l"->"11111", "d"->"3.1",
+            "bs1"->Array[Byte](1,2,3),
+            "stuc1"-> HashMapStringAny( "f1"->"f1","f2"->"f2","f3"->3,"f4"->"4444"),
+            "obj1"-> HashMapStringAny( "s"-> "hello", "i"->"50", "l"->111111111111L,"d"->3.1415926, 
+                  "stuc1"-> HashMapStringAny( "f1"->"f1","f2"->"f2","f3"->3,"f4"->"4444" )  ),
+            "obj2"-> HashMapStringAny( "s"-> "abc",  
+                  "obj1"-> HashMapStringAny( "s"->"def","l"->123 )  ),
+            "mm"->"123"  // 不存在的key
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(222)
+        val (m2,ec2)  = tlvCodec.filterResponseInJvm(1,m1)
+        assertEquals(0,ec2)
+        assertEquals(8,m2.size)
+        assertEquals("aaa",m2.v("s"))
+        assertEquals(3,m2.v("i"))
+        assertEquals(11111,m2.v("l"))
+        assertEquals(3.1,m2.v("d"))
+        assertTrue(m2.v("stuc1").isInstanceOf[HashMapStringAny])
+        assertEquals("f1",m2.m("stuc1").v("f1"))
+        assertEquals("f2",m2.m("stuc1").v("f2"))
+        assertEquals(3,m2.m("stuc1").v("f3"))
+        assertEquals("4444",m2.m("stuc1").v("f4"))
+        assertTrue(m2.v("bs1").isInstanceOf[Array[Byte]])
+        assertEquals(3,m2.v("bs1").asInstanceOf[Array[Byte]](2))
+
+        assertTrue(m2.v("obj1").isInstanceOf[HashMapStringAny])
+        assertEquals("hello",m2.m("obj1").v("s"))
+        assertEquals(50,m2.m("obj1").v("i"))
+        assertEquals(111111111111L,m2.m("obj1").v("l"))
+        assertEquals(3.1415926d,m2.m("obj1").v("d"))
+
+        assertTrue(m2.v("obj2").isInstanceOf[HashMapStringAny])
+        assertEquals("abc",m2.m("obj2").v("s"))
+        assertEquals("def",m2.m("obj2").m("obj1").v("s"))
+        assertEquals(123,m2.m("obj2").m("obj1").v("l"))
+    }
+
+    reply(assert_result_code)
+

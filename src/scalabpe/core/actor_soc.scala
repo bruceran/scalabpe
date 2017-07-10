@@ -569,7 +569,7 @@ class SocImpl(
 
                 // append remote addr to xhead, the last addr is always remote addr
                 try {
-                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), false, data.version)
+                    TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), false, data.version)
                 } catch {
                     case e: Throwable =>
                 }

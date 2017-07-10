@@ -67,8 +67,8 @@ object TlvType {
     val EMPTY_STRUCTDEF = new StructDef()
     val EMPTY_OBJECTDEF = new ObjectDef()
 
-    def isSimple(cls: Int): Boolean = cls >= 1 && cls < 4
-    def isArray(cls: Int): Boolean = cls >= 11 && cls < 16
+    def isSimple(cls: Int): Boolean = cls >= 1 && cls <= 4
+    def isArray(cls: Int): Boolean = cls >= 11 && cls <= 16
 
     def clsToArrayType(cls: Int): Int = {
         if (cls >= 1 && cls <= 6) return 10 + cls
@@ -203,25 +203,31 @@ object TlvCodec {
     val EMPTY_STRINGMAP = new HashMapStringString()
     val EMPTY_BUFFER = ChannelBuffers.buffer(0)
     val CONVERT_FLAG = "__converted__"
-    val PADDING_1 = Array[Byte](0)
-    val PADDING_2 = Array[Byte](0, 0)
-    val PADDING_3 = Array[Byte](0, 0, 0)
 
     def hexDump(buff: ChannelBuffer): String = {
         // todo 
         ChannelBuffers.hexDump(buff, 0, buff.writerIndex)
     }
 
-    def writePad(buff: ChannelBuffer, pos: Int) {
-        val pad = pos - buff.writerIndex
+    def skipRead(buff: ChannelBuffer, n: Int) {
+        val newposition = Math.min(buff.readerIndex + n, buff.writerIndex)
+        buff.readerIndex(newposition)
+    }
+    
+    def writePad(buff: ChannelBuffer) {
+        val pad = aligned(buff.writerIndex) - buff.writerIndex
         pad match {
             case 0 =>
-            case 1 => buff.writeBytes(PADDING_1)
-            case 2 => buff.writeBytes(PADDING_2)
-            case 3 => buff.writeBytes(PADDING_3)
+            case 1 => 
+                buff.writeByte(0)
+            case 2 => 
+                buff.writeByte(0)
+                buff.writeByte(0)
+            case 3 => 
+                buff.writeByte(0)
+                buff.writeByte(0)
+                buff.writeByte(0)
             case _ =>
-                for (i <- 0 until pad)
-                    buff.writeByte(0)
         }
     }
 
@@ -906,7 +912,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         case CLS_OBJECT => {
                             val p = buff.readerIndex
                             val (value, ec) = decode(tlvType.objectDef.typeToKeyMap, tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldInfoMap,
-                                buff, p, len - tlvheadlen, encoding, needEncode)
+                                buff, p, p + len - tlvheadlen, encoding, needEncode)
                             map.put(key, value)
                             if (ec != 0 && errorCode == 0) errorCode = ec
                             var newposition = p + aligned(len) - tlvheadlen
@@ -1158,6 +1164,7 @@ class TlvCodec(val configFile: String) extends Logging {
         }
     }
 
+    // TODO 优化
     def encode(keyMap: HashMapStringString, fieldInfoMap: HashMap[String, FieldInfo],
                dataMap: HashMapStringAny, encoding: Int,
                needEncode: Boolean): Tuple2[ChannelBuffer, Int] = {
@@ -1256,7 +1263,7 @@ class TlvCodec(val configFile: String) extends Logging {
         }
 
         buff.writeBytes(bytes)
-        writePad(buff, buff.writerIndex + alignedLen - bytes.length - tlvheadlen)
+        writePad(buff)
     }
 
     def encodeBytes(buff: ChannelBuffer, code: Int, v: Any): Unit = {
@@ -1278,7 +1285,7 @@ class TlvCodec(val configFile: String) extends Logging {
         }
 
         buff.writeBytes(bytes)
-        writePad(buff, buff.writerIndex + alignedLen - bytes.length - tlvheadlen)
+        writePad(buff)
     }
 
     def encodeStruct(buff: ChannelBuffer, tlvType: TlvType, v: Any, encoding: Int) {
@@ -1424,7 +1431,7 @@ class TlvCodec(val configFile: String) extends Logging {
             }
         }
 
-        writePad(buff, buff.writerIndex + alignedLen - totalLen - tlvheadlen)
+        writePad(buff)
     }
 
     def encodeObject(buff: ChannelBuffer, tlvType: TlvType, v: Any, encoding: Int, needEncode: Boolean): Int = {
@@ -1458,7 +1465,7 @@ class TlvCodec(val configFile: String) extends Logging {
         }
 
         buff.writeBytes(bf)
-        writePad(buff, buff.writerIndex + alignedLen - totalLen - tlvheadlen)
+        writePad(buff)
 
         ec
     }

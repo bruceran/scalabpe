@@ -27,7 +27,28 @@
 		</responseParameter>
 	</message>
 
-	<message name="test_tlv" id="4">
+	<message name="test_tlv1" id="4">
+		<requestParameter>
+			<field name="cmd"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+	<message name="test_tlv1_2" id="42">
+		<requestParameter>
+			<field name="cmd"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+	<message name="test_tlv2" id="5">
+		<requestParameter>
+			<field name="cmd"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+	<message name="test_tlv2_2" id="52">
 		<requestParameter>
 			<field name="cmd"/>
 		</requestParameter>

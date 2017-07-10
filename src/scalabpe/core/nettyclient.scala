@@ -826,17 +826,7 @@ class NettyClient(
     }
 
     def updateSpsId(buff: ChannelBuffer, connInfo: ConnInfo) {
-        val array = buff.array()
-        val spsId = connInfo.guid
-        val spsIdArray = spsId.getBytes("ISO-8859-1")
-        
-        val version = buff.getByte(2).toInt
-        val offset = if( version == 1 ) 44 else 28
-        var i = 0
-        while (i < spsIdArray.length) {
-            array(offset + 4 + i) = spsIdArray(i) // start from the xhead (44), skip the xhead spsId head (4)
-            i += 1
-        }
+        TlvCodec4Xhead.updateSpsId(buff,connInfo.guid)
     }
 
     def sendByConnId(sequence: Int, buff: ChannelBuffer, timeout: Int, connId: String): Boolean = {

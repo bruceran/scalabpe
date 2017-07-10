@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="tlvv2_2" version="2" id="224" IsTreeStruct ="false">
+	
+    <type name="s_type" class="string" code="111"/> 
+    <type name="s2_type" class="string" default="31" code="112" array="s2_array_type"/> 
+    <type name="i_type" class="int" code="113"/> 
+    <type name="i2_type" class="int" code="114" default="32"  array="i2_array_type"/> 
+
+    <type name="l_type" class="long" code="3" array="l_array_type"/>
+    <type name="d_type" class="double" code="4" array="d_array_type"/>
+    <type name="l2_type" class="long" code="103" default="33" />
+    <type name="d2_type" class="double" code="104" default="34.4" />
+    <type name="bs1_type" class="string" isbytes="1" code="5"/> 
+    <type name="bs2_type" class="bytes" code="6"/> 
+
+    <type name="stuc1_type" class="struct" code="7" array="stuc1_array_type"> 
+			<field name="f1"/>
+			<field name="f2" type="string" len="3"/>
+			<field name="f3" type="int"/>
+			<field name="f4" type="string"/>
+    </type>
+    <type name="stuc2_type" class="struct" code="8"> 
+			<field name="f11"/>
+			<field name="f12" type="string"/>
+			<field name="f2" type="int"/>
+			<field name="f3" type="long"/>
+			<field name="f4" type="double"/>
+    </type>
+    <type name="stuc2_array_type" class="array" itemType="stuc2_type"/> 
+
+    <type name="obj1_type" class="object" code="9" array="obj1_array_type"> 
+			<field name="s"/>
+			<field name="s2"/>
+			<field name="i2"/>
+			<field name="l2"/>
+			<field name="d2"/>
+			<field name="bs1"/>
+			<field name="bs2" type="bs2_type"/>
+			<field name="stuc1"/>
+    </type>
+
+    <type name="obj2_type" class="object" code="10"> 
+			<field name="s"/>
+			<field name="obj1"/>
+    </type> 
+    
+    <type name="obj3_type" class="object" code="11" array="obj3_array_type"> 
+			<field name="s"/>
+	</type> 
+
+	<message name="msg1" id="1">
+		<requestParameter>
+			<field name="s" default="99.1"/>
+			<field name="i" default="99"/>
+			<field name="l" default="100"/>
+			<field name="d"  default="101.1"/>
+			<field name="stuc1"/>
+			<field name="obj1"/>
+			<field name="obj3"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="s2"/>
+			<field name="i2"/>
+			<field name="l2"/>
+			<field name="d2"/>
+			<field name="stuc1"/>
+			<field name="obj1"/>
+		</responseParameter>
+	</message>
+
+	<message name="msg2" id="2">
+		<requestParameter>
+			<field name="obj1_array"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="obj1_array"/>
+		</responseParameter>
+	</message>
+
+	<message name="msg3" id="3">
+		<requestParameter>
+			<field name="s" required="true"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="obj1_array"/>
+		</responseParameter>
+	</message>
+ 
+	<message name="msg4" id="4">
+		<requestParameter>
+			<field name="obj3"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+</service>

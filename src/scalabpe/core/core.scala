@@ -278,7 +278,7 @@ class AvenueData(
         val mustReach: Int,
         val encoding: Int,
         val code: Int,
-        var xhead: ChannelBuffer,
+        val xhead: ChannelBuffer,
         val body: ChannelBuffer) {
     override def toString() = "sequence=%d,serviceId=%d,msgId=%d,code=%d,xhead.length=%d,body.length=%d".format(
         sequence, serviceId, msgId, code, xhead.writerIndex, body.writerIndex)

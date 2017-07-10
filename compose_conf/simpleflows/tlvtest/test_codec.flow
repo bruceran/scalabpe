@@ -68,9 +68,8 @@ import org.jboss.netty.buffer._
     assertEquals(1,nad.encoding)
     assertEquals(-1,nad.code) // 0 only for 0xa2
     assertEquals(16,nad.xhead.writerIndex)
-    assertEquals(44,nad.xhead.arrayOffset)
+    assertEquals(0,nad.xhead.arrayOffset)
     assertEquals(3,nad.body.writerIndex)
-    assertEquals(60,nad.body.arrayOffset)
 
     xhead.readerIndex(0)
     body.readerIndex(0)
@@ -89,9 +88,43 @@ import org.jboss.netty.buffer._
     assertEquals(1,nad.encoding)
     assertEquals(0,nad.code)
     assertEquals(16,nad.xhead.writerIndex)
-    assertEquals(28,nad.xhead.arrayOffset)
+    assertEquals(0,nad.xhead.arrayOffset)
     assertEquals(3,nad.body.writerIndex)
-    assertEquals(44,nad.body.arrayOffset)
+
+    val SPS_ID = "11000000000000000000000000000033"
+    m = HashMapStringAny(  )
+    xhead = TlvCodec4Xhead.encode(10,m,1)
+    TlvCodec4Xhead.appendAddr(xhead,"1.1.1.1:1",true,2)
+    ad = new AvenueData(0xa2,1,3,4,5,0,1,-1,
+        xhead,body)  // version 1
+    buff = codec.encode(ad)
+    TlvCodec4Xhead.updateSpsId(buff,SPS_ID)
+
+    nad = codec.decode(buff)
+    var nxhead = TlvCodec4Xhead.decode(10,nad.xhead)
+    assertEquals("1.1.1.1:1",nxhead.nls("addrs").mkString(","))
+    assertEquals("1.1.1.1:1",nxhead.ns("socId"))
+    assertEquals(SPS_ID,nxhead.ns("spsId"))
+
+    assertEquals(2,buff.getShort(44))
+    assertEquals(1,buff.getShort(56))
+    assertEquals(11,buff.getShort(72))
+
+    ad = new AvenueData(0xa2,2,3,4,5,0,1,-1,
+        xhead,body)  // version 2
+    buff = codec.encode(ad)
+    TlvCodec4Xhead.updateSpsId(buff,SPS_ID)
+
+    nad = codec.decode(buff)
+    nxhead = TlvCodec4Xhead.decode(10,nad.xhead)
+    assertEquals("1.1.1.1:1",nxhead.nls("addrs").mkString(","))
+    assertEquals("1.1.1.1:1",nxhead.ns("socId"))
+    assertEquals(SPS_ID,nxhead.ns("spsId"))
+
+    assertEquals(2,buff.getShort(28))
+    assertEquals(1,buff.getShort(40))
+    assertEquals(11,buff.getShort(56))
+
 
     reply(assert_result_code)
 

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="tlvv1_2" id="223" IsTreeStruct ="false">
+	
+    <type name="s_type" class="string" code="111"/> 
+    <type name="s2_type" class="string" default="mmm60" code="112" array="s2_array_type"/> 
+    <type name="i_type" class="int" code="113"/> 
+    <type name="i2_type" class="int" code="114" default="61"  array="i2_array_type"/> 
+
+    <type name="stuc1_type" class="struct" code="7" array="stuc1_array_type"> 
+			<field name="f1" default="100"/>
+			<field name="f2" default="101" type="string" len="3"/>
+			<field name="f3" default="102" type="int"/>
+			<field name="f4" type="string"/>
+    </type>
+    <type name="stuc2_type" class="struct" code="8"> 
+			<field name="f11" default="m70"/>
+			<field name="f12" type="systemstring"/>
+			<field name="f13" default="72" type="int"/>
+    </type>
+    <type name="stuc2_array_type" class="array" itemType="stuc2_type"/> 
+	  	  	  	
+	<message name="msg1" id="1">
+		<requestParameter>
+			<field name="s" default="abc"/>
+			<field name="i" default="30"/>
+			<field name="stuc1"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="s2"/>
+			<field name="i2"/>
+			<field name="stuc2_array"/>
+		</responseParameter>
+	</message>
+	
+</service>

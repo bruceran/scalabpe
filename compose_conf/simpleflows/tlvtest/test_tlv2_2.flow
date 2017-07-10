@@ -1,0 +1,87 @@
+//$tlvtest.test_tlv2_2.with(AssertFlow)
+
+import FlowHelper._
+import org.jboss.netty.buffer._
+
+//#receive
+
+    assertEquals(2,Router.main.codecs.version(224))
+
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "obj3"-> HashMapStringAny( "s"->"mmm")
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(224)
+        val (buff1,ec1) = tlvCodec.encodeRequest(4,m1,1)
+        val (m2,ec2) = tlvCodec.decodeRequest(4,buff1,1)
+        assertEquals("mmm",m2.nm("obj3").v("s"))
+        val (m3,ec3) = tlvCodec.filterRequestInJvm(4,m1,true)
+        assertEquals("mmm",m3.nm("obj3").v("s"))
+    }
+    
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "obj1"-> HashMapStringAny( "s"->"mmm")
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(224)
+        val (buff1,ec1) = tlvCodec.encodeRequest(1,m1,1)
+        val (m2,ec2) = tlvCodec.decodeRequest(1,buff1,1)
+        assertEquals("99.1",m2.v("s"))
+        assertEquals(99,m2.v("i"))
+        assertEquals(100,m2.v("l"))
+        assertEquals(101.1,m2.v("d"))
+        assertEquals("mmm",m2.nm("obj1").v("s"))
+        assertEquals("31",m2.nm("obj1").v("s2"))
+        assertEquals(32,m2.nm("obj1").v("i2"))
+        assertEquals(33,m2.nm("obj1").v("l2"))
+        assertEquals(34.4,m2.nm("obj1").v("d2"))
+    }
+    
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "obj1_array"-> ArrayBufferMap( HashMapStringAny( "s"->"mmm") )
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(224)
+        val (buff1,ec1) = tlvCodec.encodeResponse(2,m1,1)
+        val (m2,ec2) = tlvCodec.decodeResponse(2,buff1,1)
+        
+        assertEquals("mmm",m2.nlm("obj1_array")(0).v("s"))
+        assertEquals("31",m2.nlm("obj1_array")(0).v("s2"))
+        assertEquals(32,m2.nlm("obj1_array")(0).v("i2"))
+        assertEquals(33,m2.nlm("obj1_array")(0).v("l2"))
+        assertEquals(34.4,m2.nlm("obj1_array")(0).v("d2"))
+    }
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "obj1"->  HashMapStringAny( "s"->"mmm") 
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(224)
+        val (m2,ec2) = tlvCodec.filterRequestInJvm(1,m1,true)
+        assertEquals("99.1",m2.v("s"))
+        assertEquals(99,m2.v("i"))
+        assertEquals(100,m2.v("l"))
+        assertEquals(101.1,m2.v("d"))
+
+        assertEquals("mmm",m2.nm("obj1").v("s"))
+        assertEquals("31",m2.nm("obj1").v("s2"))
+        assertEquals(32,m2.nm("obj1").v("i2"))
+        assertEquals(33,m2.nm("obj1").v("l2"))
+        assertEquals(34.4,m2.nm("obj1").v("d2"))
+    }
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "obj1_array"-> ArrayBufferMap( HashMapStringAny( "s"->"mmm") )
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(224)
+        val (m2,ec2) = tlvCodec.filterResponseInJvm(2,m1)
+        
+        assertEquals("mmm",m2.nlm("obj1_array")(0).v("s"))
+        assertEquals("31",m2.nlm("obj1_array")(0).v("s2"))
+        assertEquals(32,m2.nlm("obj1_array")(0).v("i2"))
+        assertEquals(33,m2.nlm("obj1_array")(0).v("l2"))
+        assertEquals(34.4,m2.nlm("obj1_array")(0).v("d2"))
+    }
+    
+        
+    reply(assert_result_code)
+

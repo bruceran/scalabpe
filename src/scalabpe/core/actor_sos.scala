@@ -307,11 +307,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
             0,
             EMPTY_BUFFER, EMPTY_BUFFER)
 
-        try {
-            data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps, version)
-        } catch {
-            case e: Throwable =>
-        }
+        TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps, version)
         val requestId = "SOS" + RequestIdGenerator.nextId()
         val rr = new RawRequest(requestId, data, connId, this)
         receive(rr)
@@ -680,11 +676,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
                 }
 
                 // append remote addr to xhead, the last addr is always remote addr
-                try {
-                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps, data.version)
-                } catch {
-                    case e: Throwable =>
-                }
+                TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps, data.version)
 
                 val requestId = RequestIdGenerator.nextId()
                 val rr = new RawRequest(requestId, data, connId, this)
@@ -704,11 +696,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
                 }
 
                 // append remote addr to xhead, the last addr is always remote addr
-                try {
-                    data.xhead = TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId),false,data.version)
-                } catch {
-                    case e: Throwable =>
-                }
+                TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId),false,data.version)
 
                 try {
                     receive(SosSendResponse(data, connId))

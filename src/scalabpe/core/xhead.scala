@@ -33,8 +33,8 @@ object Xhead {
 
     def init() {
         add(0, "signature", "bytes") // 签名，目前并没有使用到, 要用的时候再加
-        add(CODE_SOC_ID, KEY_SOC_ID, "string") // 客户端连接标识，serviceId=3时需特殊处理
-        add(CODE_ADDRS, KEY_ADDRS, "addr") // 每个节点的IP和端口，格式特殊
+        add(CODE_SOC_ID, KEY_SOC_ID, "string") // 1 客户端连接标识，serviceId=3时需特殊处理
+        add(CODE_ADDRS, KEY_ADDRS, "addr") // 2 每个节点的IP和端口，格式特殊
         add(3, "appId", "int")
         add(4, "areaId", "int")
         add(5, "groupId", "int")
@@ -58,6 +58,7 @@ object Xhead {
 object TlvCodec4Xhead extends Logging {
 
     import Xhead._
+    import TlvCodec._
 
     val SPS_ID_0 = "00000000000000000000000000000000"
 
@@ -81,8 +82,7 @@ object TlvCodec4Xhead extends Logging {
 
         if (isServiceId3) {
             // only a "socId" field
-            var len = 32
-            if (limit < len) len = limit
+            val len = Math.min(limit, 32)
             val value = getString(buff, len).trim()
             map.put(KEY_SOC_ID, value)
             return map
@@ -93,19 +93,19 @@ object TlvCodec4Xhead extends Logging {
         while (buff.readerIndex + 4 <= limit && !brk) {
 
             val code = buff.readShort.toInt;
-            val len: Int = buff.readShort & 0xffff;
+            val len = buff.readShort & 0xffff;
 
             if (len < 4) {
                 if (log.isDebugEnabled) {
                     log.debug("xhead_length_error,code=" + code + ",len=" + len + ",map=" + map + ",limit=" + limit);
-                    log.debug("xhead hexDump=" + TlvCodec.hexDump(buff))
+                    log.debug("xhead hexDump=" + hexDump(buff))
                 }
                 brk = true
             }
             if (buff.readerIndex + len - 4 > limit) {
                 if (log.isDebugEnabled) {
                     log.debug("xhead_length_error,code=" + code + ",len=" + len + ",map=" + map + ",limit=" + limit);
-                    log.debug("xhead bytes=" + TlvCodec.hexDump(buff))
+                    log.debug("xhead bytes=" + hexDump(buff))
                 }
                 brk = true
             }
@@ -123,9 +123,7 @@ object TlvCodec4Xhead extends Logging {
                             decodeAddr(buff, len, tp.name, map)
                     }
                 } else {
-                    var newposition = buff.readerIndex + aligned(len) - 4
-                    if (newposition > buff.writerIndex) newposition = buff.writerIndex
-                    buff.readerIndex(newposition)
+                    skipRead(buff, aligned(len) - 4)
                 }
             }
         }
@@ -144,14 +142,14 @@ object TlvCodec4Xhead extends Logging {
         if (!map.contains(key))
             map.put(key, value)
     }
+
     def decodeString(buff: ChannelBuffer, len: Int, key: String, map: HashMapStringAny): Unit = {
         val value = getString(buff, len - 4)
         if (!map.contains(key))
             map.put(key, value)
-        var newposition = buff.readerIndex + aligned(len) - 4
-        if (newposition > buff.writerIndex) newposition = buff.writerIndex
-        buff.readerIndex(newposition)
+        skipRead(buff, aligned(len) - 4)
     }
+
     def decodeAddr(buff: ChannelBuffer, len: Int, key: String, map: HashMapStringAny): Unit = {
         if (len != 12) return
         val ips = new Array[Byte](4)
@@ -161,32 +159,24 @@ object TlvCodec4Xhead extends Logging {
         val ipstr = InetAddress.getByAddress(ips).getHostAddress()
         val value = ipstr + ":" + port
 
-        var a = map.getOrElse(key, null)
-        if (a == null) {
-            val aa = new ArrayBufferString()
-            aa += value
-            map.put(key, aa)
-        } else {
-            val aa = a.asInstanceOf[ArrayBufferString]
-            aa += value
-        }
+        val addrs = map.nls(key)
+        addrs += value
+        map.put(key, addrs)
     }
 
     def getString(buff: ChannelBuffer, len: Int): String = {
         val bytes = new Array[Byte](len)
         buff.getBytes(buff.readerIndex, bytes)
-        new String(bytes, "UTF-8")
+        new String(bytes, "utf-8")
     }
 
     def encode(serviceId: Int, map: HashMapStringAny, version: Int): ChannelBuffer = {
         try {
-            val buff = encodeInternal(serviceId, map, version)
-            buff
+            return encodeInternal(serviceId, map, version)
         } catch {
             case e: Exception =>
                 log.error("xhead encode exception, e={}", e.getMessage)
-                val buff = ChannelBuffers.buffer(0)
-                return buff
+                return ChannelBuffers.buffer(0)
         }
     }
 
@@ -213,7 +203,7 @@ object TlvCodec4Xhead extends Logging {
             }
         }
 
-        val max = if (version == 1) 256 - 44 else 1024 - 28
+        val max = maxXheadLen(version)
         val buff = ChannelBuffers.dynamicBuffer(128)
 
         for ((k, v) <- map if v != null) {
@@ -240,31 +230,20 @@ object TlvCodec4Xhead extends Logging {
         buff
     }
 
-    def appendAddr(buff: ChannelBuffer, addr: String, insertSpsId: Boolean, version: Int): ChannelBuffer = {
-
-        var newlen = aligned(buff.writerIndex) + 12
-
-        if (insertSpsId)
-            newlen += (aligned(addr.length) + 4 + aligned(SPS_ID_0.length) + 4)
-
-        val newbuff = ChannelBuffers.buffer(newlen)
-
-        if (insertSpsId) {
-            encodeString(newbuff, CODE_SPS_ID, SPS_ID_0, newlen)
-            encodeString(newbuff, CODE_SOC_ID, addr, newlen)
+    def appendAddr(buff: ChannelBuffer, addr: String, insertSocId: Boolean, version: Int): Unit = {
+        val max = maxXheadLen(version)
+        encodeAddr(buff, CODE_ADDRS, addr, max)
+        if (insertSocId) {
+            encodeString(buff, CODE_SOC_ID, addr, max)
+            encodeString(buff, CODE_SPS_ID, SPS_ID_0, max) // 预写入一个值，调用updateSpsId再更新为实际值
         }
-
-        newbuff.writeBytes(buff)
-        TlvCodec.writePad(newbuff, aligned(newbuff.writerIndex))
-        encodeAddr(newbuff, CODE_ADDRS, addr, newlen)
-
-        newbuff
     }
 
     def encodeAddr(buff: ChannelBuffer, code: Int, s: String, max: Int): Unit = {
-
-        if (max - buff.writerIndex < 12)
-            throw new CodecException("xhead is too long")
+        if (max - buff.writerIndex < 12) {
+            log.error("xhead is too long, addr cannot be encoded")
+            return
+        }
 
         val ss = s.split(":")
         val ipBytes = InetAddress.getByName(ss(0)).getAddress()
@@ -276,8 +255,10 @@ object TlvCodec4Xhead extends Logging {
     }
 
     def encodeInt(buff: ChannelBuffer, code: Int, v: Any, max: Int): Unit = {
-        if (max - buff.writerIndex < 8)
-            throw new CodecException("xhead is too long")
+        if (max - buff.writerIndex < 8) {
+            log.error("xhead is too long, Int " + code + " cannot be encoded")
+            return
+        }
         val value = TypeSafe.anyToInt(v)
         buff.writeShort(code.toShort)
         buff.writeShort(8.toShort)
@@ -287,21 +268,43 @@ object TlvCodec4Xhead extends Logging {
     def encodeString(buff: ChannelBuffer, code: Int, v: Any, max: Int): Unit = {
         val value = TypeSafe.anyToString(v)
         if (value == null) return
-        val bytes = value.getBytes() // don't support chinese
+        val bytes = value.getBytes("utf-8") // don't support chinese
         val alignedLen = aligned(bytes.length + 4)
-        if (max - buff.writerIndex < alignedLen)
-            throw new CodecException("xhead is too long")
+        if (max - buff.writerIndex < alignedLen) {
+            log.error("xhead is too long, String " + code + " cannot be encoded")
+            return
+        }
         buff.writeShort(code.toShort)
         buff.writeShort((bytes.length + 4).toShort)
         buff.writeBytes(bytes)
-        TlvCodec.writePad(buff, buff.writerIndex + alignedLen - bytes.length - 4)
+        writePad(buff)
     }
 
-    def aligned(len: Int): Int = {
-        if ((len & 0x03) != 0)
-            ((len >> 2) + 1) << 2
-        else
-            len
+    def maxXheadLen(version: Int): Int = {
+        if (version == 1) 256 - 44
+        else 1024 - 28
+    }
+
+    // buff是一个完整的avenue包, 必须定位到扩展包头的开始再按code查找到CODE_SPS_ID
+    def updateSpsId(buff: ChannelBuffer, spsId: String): Unit = {
+
+        val version = buff.getByte(2).toInt
+        val standardlen = if (version == 1) 44 else 28
+        val headLen0 = buff.getByte(1) & 0xff;
+        val headLen = if (version == 1) headLen0 else headLen0 * 4
+
+        var start = standardlen
+        while (start + 4 <= headLen) {
+            val code = buff.getShort(start).toInt;
+            val len = buff.getShort(start + 2) & 0xffff;
+            if (code != CODE_SPS_ID) {
+                start += aligned(len)
+            } else {
+                buff.setBytes(start + 4, spsId.getBytes("ISO-8859-1"))
+                return
+            }
+        }
+
     }
 }
 

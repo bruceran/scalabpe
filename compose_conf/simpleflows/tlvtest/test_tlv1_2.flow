@@ -1,0 +1,63 @@
+//$tlvtest.test_tlv1_2.with(AssertFlow)
+
+import FlowHelper._
+import org.jboss.netty.buffer._
+
+//#receive
+
+    assertEquals(1,Router.main.codecs.version(223))
+
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "stuc1"-> HashMapStringAny( "f4"->"mmm")
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(223)
+        val (buff1,ec1) = tlvCodec.encodeRequest(1,m1,1)
+        val (m2,ec2) = tlvCodec.decodeRequest(1,buff1,1)
+        assertEquals("abc",m2.v("s"))
+        assertEquals(30,m2.v("i"))
+        assertEquals("100",m2.nm("stuc1").v("f1"))
+        assertEquals("101",m2.nm("stuc1").v("f2"))
+        assertEquals(102,m2.nm("stuc1").v("f3"))
+        assertEquals("mmm",m2.nm("stuc1").v("f4"))
+    }
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "stuc2_array"-> ArrayBufferMap( HashMapStringAny( "f12"->"sss") )
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(223)
+        val (buff1,ec1) = tlvCodec.encodeResponse(1,m1,1)
+        val (m2,ec2) = tlvCodec.decodeResponse(1,buff1,1)
+        assertEquals("mmm60",m2.v("s2"))
+        assertEquals(61,m2.v("i2"))
+        assertEquals("m70",m2.nlm("stuc2_array")(0).v("f11"))
+        assertEquals("sss",m2.nlm("stuc2_array")(0).v("f12"))
+        assertEquals(72,m2.nlm("stuc2_array")(0).v("f13"))
+    }
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "stuc1"-> HashMapStringAny( "f4"->"mmm")
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(223)
+        val (m2,ec2) = tlvCodec.filterRequestInJvm(1,m1,true)
+        assertEquals("abc",m2.v("s"))
+        assertEquals(30,m2.v("i"))
+        assertEquals("100",m2.nm("stuc1").v("f1"))
+        assertEquals("101",m2.nm("stuc1").v("f2"))
+        assertEquals(102,m2.nm("stuc1").v("f3"))
+        assertEquals("mmm",m2.nm("stuc1").v("f4"))
+    }
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "stuc2_array"-> ArrayBufferMap( HashMapStringAny( "f12"->"sss") )
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(223)
+        val (m2,ec2) = tlvCodec.filterResponseInJvm(1,m1)
+        assertEquals("mmm60",m2.v("s2"))
+        assertEquals(61,m2.v("i2"))
+        assertEquals("m70",m2.nlm("stuc2_array")(0).v("f11"))
+        assertEquals("sss",m2.nlm("stuc2_array")(0).v("f12"))
+        assertEquals(72,m2.nlm("stuc2_array")(0).v("f13"))
+    }
+    reply(assert_result_code)
+

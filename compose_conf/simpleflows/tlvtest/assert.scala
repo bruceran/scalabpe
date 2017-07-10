@@ -16,6 +16,12 @@ abstract class AssertFlow extends Flow {
     def assertEquals(r:Int,v:Any) {
         if( r != v) { output(r,v) }
     }
+    def assertEquals(r:Long,v:Any) {
+        if( r != v) { output(r,v) }
+    }
+    def assertEquals(r:Double,v:Any) {
+        if( r != v) { output(r,v) }
+    }
     def assertEquals(r:String,v:Any) {
         if( r != v) { output(r,v) }
     }
