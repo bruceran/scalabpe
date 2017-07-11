@@ -828,10 +828,7 @@ class TlvCodec(val configFile: String) extends Logging {
 
                 if (tlvType == UNKNOWN || key == null) {
 
-                    var newposition = buff.readerIndex + aligned(len) - tlvheadlen
-                    if (newposition > buff.writerIndex) newposition = buff.writerIndex
-
-                    buff.readerIndex(newposition)
+                    skipRead(buff, aligned(len) - tlvheadlen)
 
                 } else {
 
@@ -859,9 +856,7 @@ class TlvCodec(val configFile: String) extends Logging {
                             val value = getString(buff, len - tlvheadlen, AvenueCodec.toEncoding(encoding))
                             map.put(key, value)
 
-                            var newposition = buff.readerIndex + aligned(len) - tlvheadlen
-                            if (newposition > buff.writerIndex) newposition = buff.writerIndex
-                            buff.readerIndex(newposition)
+                            skipRead(buff, aligned(len) - tlvheadlen)
                         }
 
                         case CLS_BYTES => {
@@ -870,8 +865,7 @@ class TlvCodec(val configFile: String) extends Logging {
                             buff.readBytes(value)
                             map.put(key, value)
 
-                            var newposition = p + aligned(len) - tlvheadlen
-                            if (newposition > buff.writerIndex) newposition = buff.writerIndex
+                            val newposition = Math.min(p + aligned(len) - tlvheadlen, buff.writerIndex)
                             buff.readerIndex(newposition)
                         }
 
@@ -886,8 +880,8 @@ class TlvCodec(val configFile: String) extends Logging {
                                 buff, p, p + len - tlvheadlen, encoding, needEncode)
                             map.put(key, value)
                             if (ec != 0 && errorCode == 0) errorCode = ec
-                            var newposition = p + aligned(len) - tlvheadlen
-                            if (newposition > buff.writerIndex) newposition = buff.writerIndex
+
+                            val newposition = Math.min(p + aligned(len) - tlvheadlen, buff.writerIndex)
                             buff.readerIndex(newposition)
                         }
 
@@ -949,10 +943,7 @@ class TlvCodec(val configFile: String) extends Logging {
                                 aa += value
                             }
 
-                            var newposition = buff.readerIndex + aligned(len) - tlvheadlen
-                            if (newposition > buff.writerIndex) newposition = buff.writerIndex
-
-                            buff.readerIndex(newposition)
+                            skipRead(buff, aligned(len) - tlvheadlen)
                         }
 
                         case CLS_STRUCTARRAY => {
@@ -987,17 +978,12 @@ class TlvCodec(val configFile: String) extends Logging {
                             }
 
                             if (ec != 0 && errorCode == 0) errorCode = ec
-                            var newposition = p + aligned(len) - tlvheadlen
-                            if (newposition > buff.writerIndex) newposition = buff.writerIndex
-                            buff.readerIndex(newposition)
 
+                            val newposition = Math.min(p + aligned(len) - tlvheadlen, buff.writerIndex)
+                            buff.readerIndex(newposition)
                         }
                         case _ => {
-
-                            var newposition = buff.readerIndex + aligned(len) - tlvheadlen
-                            if (newposition > buff.writerIndex) newposition = buff.writerIndex
-
-                            buff.readerIndex(newposition)
+                            skipRead(buff, aligned(len) - tlvheadlen)
                         }
                     }
                 }
@@ -1045,10 +1031,7 @@ class TlvCodec(val configFile: String) extends Logging {
                     val value = getString(buff, len, AvenueCodec.toEncoding(encoding)).trim()
                     map.put(key, value)
 
-                    var newposition = buff.readerIndex + aligned(len)
-                    if (newposition > buff.writerIndex) newposition = buff.writerIndex
-
-                    buff.readerIndex(newposition)
+                    skipRead(buff, aligned(len))
                 }
                 case CLS_SYSTEMSTRING if version == 1 => {
                     len = buff.readInt // length for system string
@@ -1060,10 +1043,7 @@ class TlvCodec(val configFile: String) extends Logging {
                     val value = getString(buff, len, AvenueCodec.toEncoding(encoding)).trim()
                     map.put(key, value)
 
-                    var newposition = buff.readerIndex + aligned(len)
-                    if (newposition > buff.writerIndex) newposition = buff.writerIndex
-
-                    buff.readerIndex(newposition)
+                    skipRead(buff, aligned(len))
                 }
                 case CLS_STRING if version == 2 => {
 
@@ -1078,11 +1058,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         val value = getString(buff, len, AvenueCodec.toEncoding(encoding)).trim()
                         map.put(key, value)
 
-                        var newposition = buff.readerIndex + aligned(6 + len) - 6
-                        if (newposition > buff.writerIndex) newposition = buff.writerIndex
-
-                        buff.readerIndex(newposition)
-
+                        skipRead(buff, aligned(6 + len) - 6)
                     } else {
 
                         len = t
@@ -1093,11 +1069,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         val value = getString(buff, len, AvenueCodec.toEncoding(encoding)).trim()
                         map.put(key, value)
 
-                        var newposition = buff.readerIndex + aligned(2 + len) - 2
-                        if (newposition > buff.writerIndex) newposition = buff.writerIndex
-
-                        buff.readerIndex(newposition)
-
+                        skipRead(buff, aligned(2 + len) - 2)
                     }
 
                 }

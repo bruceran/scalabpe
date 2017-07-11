@@ -62,12 +62,13 @@ start_app()
 		echo -n "starting scalabpe"
 
 		java -Dapplication.name=$APPLICATION_NAME -Dscalabpe.profile=$SCALABPE_PROFILE -Dscalabpe.tempdirroot=$SCALABPE_TEMPDIRROOT -server -Xms$mem -Xmx$mem -XX:+UseConcMarkSweepGC -XX:NewSize=$newsize -XX:MaxNewSize=$newsize -cp "$CLASSPATH" scalabpe.core.Main 1>$consolelog 2>&1 &
-		parentpid=$!
+		pid=$!
+	    echo $pid > $pidfile
 		echo -n " ."
 
 		succmsg="scalabpe started"
 		exceptionmsg="Exception"
-		found=`tail -n 1 $consolelog | grep -c "$succmsg"`
+		found=`tail -n 10 $consolelog | grep -c "$succmsg"`
 
 		while [ $found = "0" ]; do
 			sleep 1
@@ -78,14 +79,10 @@ start_app()
 				echo "scalabpe start failed"
 				exit 1
 			fi
-			found=`tail -n 1 $consolelog | grep -c "$succmsg"`
+			found=`tail -n 10 $consolelog | grep -c "$succmsg"`
 		done
 
-		pid=`ps -ef|grep 'scalabpe.core.Main' | awk '{print $2}' | grep "$parentpid" | awk '{print $1}'`
-    echo $pid > $pidfile
-
-    echo " done, pid=$pid"
-
+	    echo " done, pid=$pid"
 }
 
 stop_app()
