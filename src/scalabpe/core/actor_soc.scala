@@ -735,7 +735,7 @@ class SocImpl(
         }
 
         val sequence = generateSequence()
-        val version = Router.main.codecs.version(req.serviceId)
+        val version = tlvCodec.version
         val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead, version)
         val (body, ec) = tlvCodec.encodeRequest(req.msgId, req.body, req.encoding)
         if (ec != 0) {
@@ -783,7 +783,7 @@ class SocImpl(
 
         val sequence = generateSequence()
 
-        val version = Router.main.codecs.version(req.serviceId)
+        val version = tlvCodec.version
         val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead,version)
 
         val (body, ec) = tlvCodec.encodeRequest(req.msgId, req.body, req.encoding)

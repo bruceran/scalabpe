@@ -571,7 +571,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         val sequence = generateSequence()
 
-        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead, router.codecs.version(req.serviceId))
+        val xhead = TlvCodec4Xhead.encode(req.serviceId, req.xhead, tlvCodec.version)
         val (body, ec) = tlvCodec.encodeRequest(req.msgId, req.body, req.encoding)
         if (ec != 0) {
             log.error("encode request error, serviceId=" + req.serviceId + ", msgId=" + req.msgId)
@@ -583,7 +583,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         val data = new AvenueData(
             AvenueCodec.TYPE_REQUEST,
-            router.codecs.version(req.serviceId),
+            tlvCodec.version,
             req.serviceId,
             req.msgId,
             sequence,
