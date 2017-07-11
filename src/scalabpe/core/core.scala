@@ -40,10 +40,54 @@ class HashMapStringAny extends HashMap[String, Any] {
     def exists(names: String): Boolean = TypeSafe.exists(names, this)
 }
 
-class ArrayBufferString extends ArrayBuffer[String]
-class ArrayBufferInt extends ArrayBuffer[Int]
-class ArrayBufferLong extends ArrayBuffer[Long]
-class ArrayBufferDouble extends ArrayBuffer[Double]
+class ArrayBufferString extends ArrayBuffer[String] {
+    override def filter(f: (String) => Boolean): ArrayBufferString = {
+        ArrayBufferString(super.filter(f))
+    }
+    override def filterNot(f: (String) => Boolean): ArrayBufferString = {
+        ArrayBufferString(super.filterNot(f))
+    }
+
+    override def sortWith(f: (String, String) => Boolean): ArrayBufferString = {
+        ArrayBufferString(super.sortWith(f))
+    }
+}
+class ArrayBufferInt extends ArrayBuffer[Int] {
+    override def filter(f: (Int) => Boolean): ArrayBufferInt = {
+        ArrayBufferInt(super.filter(f))
+    }
+    override def filterNot(f: (Int) => Boolean): ArrayBufferInt = {
+        ArrayBufferInt(super.filterNot(f))
+    }
+
+    override def sortWith(f: (Int, Int) => Boolean): ArrayBufferInt = {
+        ArrayBufferInt(super.sortWith(f))
+    }
+}
+class ArrayBufferLong extends ArrayBuffer[Long] {
+    override def filter(f: (Long) => Boolean): ArrayBufferLong = {
+        ArrayBufferLong(super.filter(f))
+    }
+    override def filterNot(f: (Long) => Boolean): ArrayBufferLong = {
+        ArrayBufferLong(super.filterNot(f))
+    }
+
+    override def sortWith(f: (Long, Long) => Boolean): ArrayBufferLong = {
+        ArrayBufferLong(super.sortWith(f))
+    }
+}
+class ArrayBufferDouble extends ArrayBuffer[Double] {
+    override def filter(f: (Double) => Boolean): ArrayBufferDouble = {
+        ArrayBufferDouble(super.filter(f))
+    }
+    override def filterNot(f: (Double) => Boolean): ArrayBufferDouble = {
+        ArrayBufferDouble(super.filterNot(f))
+    }
+
+    override def sortWith(f: (Double, Double) => Boolean): ArrayBufferDouble = {
+        ArrayBufferDouble(super.sortWith(f))
+    }
+}
 class ArrayBufferMap extends ArrayBuffer[HashMapStringAny] {
     override def filter(f: (HashMapStringAny) => Boolean): ArrayBufferMap = {
         ArrayBufferMap(super.filter(f))
@@ -59,40 +103,16 @@ class ArrayBufferMap extends ArrayBuffer[HashMapStringAny] {
 
 class ArrayBufferAny extends ArrayBuffer[Any]
 
-class LinkedHashMapStringAny extends LinkedHashMap[String, Any] {
-
-    def s(name: String): String = {
-        val v = getOrElse(name, null)
-        if (v == null) return null
-        return v.toString
-    }
-    def s(name: String, defaultValue: String): String = {
-        val v = getOrElse(name, null)
-        if (v == null) return defaultValue
-        return v.toString
-    }
-    def ns(name: String): String = {
-        val v = getOrElse(name, "")
-        return v.toString
-    }
-    def ns(name: String, defaultValue: String): String = {
-        val v = getOrElse(name, "")
-        if (v == "") return defaultValue
-        return v.toString
-    }
-
-    def toHashMapStringAny(): HashMapStringAny = {
-        val m = HashMapStringAny()
-        m ++= this
-        m
-    }
-}
-
 object HashMapStringString {
     def apply(elems: Tuple2[String, String]*): HashMapStringString = {
         val m = new HashMapStringString()
         for (t <- elems) m += t
         m
+    }
+    def apply(l: HashMap[String, String]): HashMapStringString = {
+        val map = new HashMapStringString()
+        map ++= l
+        map
     }
 }
 
@@ -101,6 +121,11 @@ object HashMapStringAny {
         val m = new HashMapStringAny()
         for (t <- elems) m += t
         m
+    }
+    def apply(l: HashMap[String, Any]): HashMapStringAny = {
+        val map = new HashMapStringAny()
+        map ++= l
+        map
     }
 }
 
@@ -177,6 +202,24 @@ object ArrayBufferAny {
         buff ++= l
         buff
     }
+}
+
+class LinkedHashMapStringAny extends LinkedHashMap[String, Any] {
+
+    def v(name: String): Any = getOrElse(name, null)
+    def s(name: String): String = TypeSafe.s(name, this)
+    def s(name: String, defaultValue: String): String = TypeSafe.s(name, this, defaultValue)
+    def ns(name: String): String = TypeSafe.ns(name, this)
+    def ns(name: String, defaultValue: String): String = TypeSafe.ns(name, this, defaultValue)
+
+    /*
+    def toHashMapStringAny(): HashMapStringAny = {
+        val m = HashMapStringAny()
+        m ++= this
+        m
+    }
+    * 
+    */
 }
 
 trait Actor {
@@ -566,6 +609,30 @@ object TypeSafe {
         }
     }
 
+    def s(name: String, body: LinkedHashMapStringAny): String = {
+        val value = body.getOrElse(name, null)
+        anyToString(value)
+    }
+
+    def s(name: String, body: LinkedHashMapStringAny, defaultValue: String): String = {
+        val value = s(name, body)
+        if (value == null) defaultValue
+        else value
+    }
+
+    def ns(name: String, body: LinkedHashMapStringAny): String = {
+        val value = body.getOrElse(name, null)
+        val v = anyToString(value)
+        if (v == null) ""
+        else v
+    }
+
+    def ns(name: String, body: LinkedHashMapStringAny, defaultValue: String): String = {
+        val value = ns(name, body)
+        if (value == "") defaultValue
+        else value
+    }    
+    
     def s(name: String, body: HashMapStringAny): String = {
         val value = body.getOrElse(name, null)
         anyToString(value)

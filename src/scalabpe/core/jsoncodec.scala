@@ -19,20 +19,9 @@ object JsonCodec {
     val jsonFactory = new JsonFactory()
 
     def parseSimpleJson(s: String): HashMapStringAny = {
-        if (s == null || s == "") return null
-        try {
-            val valueTree = mapper.readTree(s)
-            val names = valueTree.fieldNames
-            val body = new HashMapStringAny()
-            while (names.hasNext) {
-                val name = names.next()
-                body.put(name, valueTree.get(name).asText)
-            }
-            body
-        } catch {
-            case _: Throwable => return null
-        }
+        parseObject(s)
     }
+    
     def parseJson(s: String): Any = {
         if (s == null || s == "") return null
         val node = mapper.readTree(s)

@@ -60,7 +60,7 @@ object TlvCodec4Xhead extends Logging {
     import Xhead._
     import TlvCodec._
 
-    val SPS_ID_0 = "00000000000000000000000000000000"
+    val SPS_ID_0 = "00000000000000000000000000000000"  // 32个字符
 
     def decode(serviceId: Int, buff: ChannelBuffer): HashMapStringAny = {
         try {

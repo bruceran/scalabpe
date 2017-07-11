@@ -32,7 +32,7 @@ class PersistData(
     val msgId: Int,
     val encoding: Int,
     val createTime: Long,
-    var xhead: ChannelBuffer,
+    val xhead: ChannelBuffer,
     val body: ChannelBuffer) {}
 
 class MustReachSendingData(

@@ -67,8 +67,12 @@ object TlvType {
     val EMPTY_STRUCTDEF = new StructDef()
     val EMPTY_OBJECTDEF = new ObjectDef()
 
-    def isSimple(cls: Int): Boolean = cls >= 1 && cls <= 4
-    def isArray(cls: Int): Boolean = cls >= 11 && cls <= 16
+    def isSimple(cls: Int): Boolean = {
+        cls >= 1 && cls <= 4
+    }
+    def isArray(cls: Int): Boolean = {
+        cls >= 11 && cls <= 16
+    }
 
     def clsToArrayType(cls: Int): Int = {
         if (cls >= 1 && cls <= 6) return 10 + cls
@@ -76,7 +80,6 @@ object TlvType {
     }
 
     def clsToInt(cls: String, isbytes: String = ""): Int = {
-
         cls.toLowerCase match {
             case "string"       => if (TypeSafe.isTrue(isbytes)) CLS_BYTES else CLS_STRING
             case "bytes"        => CLS_BYTES
@@ -89,11 +92,9 @@ object TlvType {
             case "systemstring" => CLS_SYSTEMSTRING
             case _              => CLS_UNKNOWN
         }
-
     }
 
     def clsToName(cls: Int): String = {
-
         cls match {
             case CLS_STRING       => "string"
             case CLS_BYTES        => "bytes"
@@ -106,33 +107,33 @@ object TlvType {
             case CLS_SYSTEMSTRING => "systemstring"
             case _                => "unknown cls"
         }
-
     }
 
     def checkTypeCls(version: Int, tp: Int): Boolean = {
-        if (version == 1) {
-            if (tp != CLS_INT && tp != CLS_STRING && tp != CLS_BYTES) {
-                return false
-            }
-        } else {
-            if (tp != CLS_INT && tp != CLS_LONG && tp != CLS_DOUBLE && tp != CLS_STRING && tp != CLS_BYTES) {
-                return false
-            }
+        (version, tp) match {
+            case (1, CLS_INT)    => true
+            case (1, CLS_STRING) => true
+            case (1, CLS_BYTES)  => true
+            case (2, CLS_INT)    => true
+            case (2, CLS_LONG)   => true
+            case (2, CLS_DOUBLE) => true
+            case (2, CLS_STRING) => true
+            case (2, CLS_BYTES)  => true
+            case _               => false
         }
-        return true
     }
 
     def checkStructFieldCls(version: Int, fieldType: Int): Boolean = {
-        if (version == 1) {
-            if (fieldType != CLS_INT && fieldType != CLS_STRING && fieldType != CLS_SYSTEMSTRING) {
-                return false
-            }
-        } else {
-            if (fieldType != CLS_INT && fieldType != CLS_LONG && fieldType != CLS_DOUBLE && fieldType != CLS_STRING) {
-                return false
-            }
+        (version, fieldType) match {
+            case (1, CLS_INT)          => true
+            case (1, CLS_STRING)       => true
+            case (1, CLS_SYSTEMSTRING) => true
+            case (2, CLS_INT)          => true
+            case (2, CLS_LONG)         => true
+            case (2, CLS_DOUBLE)       => true
+            case (2, CLS_STRING)       => true
+            case _                     => false
         }
-        return true
     }
 }
 
@@ -148,13 +149,13 @@ class ObjectDef {
     val keyToFieldInfoMap = HashMap[String, FieldInfo]()
 }
 
-class TlvType(val name: String, val cls: Int, val code: Int, val fieldInfo: FieldInfo) {
+class TlvType(val name: String, val cls: Int, val code: Int, val fieldInfo: FieldInfo,
+              val itemType: TlvType = TlvType.UNKNOWN, // for array
+              val structDef: StructDef = TlvType.EMPTY_STRUCTDEF, // for struct
+              val objectDef: ObjectDef = TlvType.EMPTY_OBJECTDEF // for object 
+              ) {
 
     import TlvType._
-
-    var itemType = UNKNOWN // for array
-    var structDef = EMPTY_STRUCTDEF // for struct
-    var objectDef = EMPTY_OBJECTDEF // for object
 
     def defaultValue = if (fieldInfo == null) null else fieldInfo.defaultValue
 
@@ -170,25 +171,6 @@ class TlvType(val name: String, val cls: Int, val code: Int, val fieldInfo: Fiel
             case _ =>
                 false
         }
-    }
-
-    // constructor for array
-    def this(name: String, cls: Int, code: Int, fieldInfo: FieldInfo, itemType: TlvType) {
-        this(name, cls, code, fieldInfo)
-        this.itemType = itemType
-    }
-
-    // constructor for struct
-    def this(name: String, cls: Int, code: Int, fieldInfo: FieldInfo, structDef: StructDef) {
-        this(name, cls, code, fieldInfo)
-        structDef.fields.foreach(f => structDef.keys.add(f.name))
-        this.structDef = structDef
-    }
-
-    // constructor for object
-    def this(name: String, cls: Int, code: Int, fieldInfo: FieldInfo, objectDef: ObjectDef) {
-        this(name, cls, code, fieldInfo)
-        this.objectDef = objectDef
     }
 
     override def toString() = {
@@ -213,17 +195,17 @@ object TlvCodec {
         val newposition = Math.min(buff.readerIndex + n, buff.writerIndex)
         buff.readerIndex(newposition)
     }
-    
+
     def writePad(buff: ChannelBuffer) {
         val pad = aligned(buff.writerIndex) - buff.writerIndex
         pad match {
             case 0 =>
-            case 1 => 
+            case 1 =>
                 buff.writeByte(0)
-            case 2 => 
+            case 2 =>
                 buff.writeByte(0)
                 buff.writeByte(0)
-            case 3 => 
+            case 3 =>
                 buff.writeByte(0)
                 buff.writeByte(0)
                 buff.writeByte(0)
@@ -405,13 +387,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         throw new CodecException("itemType not valid,name=%s,itemType=%s".format(name, itemType))
                     }
                     val arraycls = clsToArrayType(itemConfig.cls)
-                    val c = new TlvType(name, arraycls, itemConfig.code, fieldInfo, itemConfig)
-                    if (arraycls == CLS_STRUCTARRAY) {
-                        c.structDef = itemConfig.structDef
-                    }
-                    if (arraycls == CLS_OBJECTARRAY) {
-                        c.objectDef = itemConfig.objectDef
-                    }
+                    val c = new TlvType(name, arraycls, itemConfig.code, fieldInfo, itemConfig, itemConfig.structDef, itemConfig.objectDef)
 
                     if (typeCodeToNameMap.getOrElse(c.code, null) != null) {
                         val tlvType = typeCodeToNameMap.getOrElse(c.code, null)
@@ -491,7 +467,8 @@ class TlvCodec(val configFile: String) extends Logging {
 
                     val structDef = new StructDef()
                     structDef.fields ++= structFields
-                    val c = new TlvType(name, cls, code, fieldInfo, structDef)
+                    structDef.fields.foreach(f => structDef.keys.add(f.name))
+                    val c = new TlvType(name, cls, code, fieldInfo, structDef = structDef)
 
                     if (typeCodeToNameMap.getOrElse(c.code, null) != null) {
                         throw new CodecException("code duplicated, code=%d,serviceId=%d".format(c.code, serviceId))
@@ -561,7 +538,7 @@ class TlvCodec(val configFile: String) extends Logging {
                     objectDef.typeToKeyMap ++= m2req
                     objectDef.keyToFieldInfoMap ++= m4req
 
-                    val c = new TlvType(name, cls, code, fieldInfo, objectDef)
+                    val c = new TlvType(name, cls, code, fieldInfo, objectDef = objectDef)
 
                     if (typeCodeToNameMap.getOrElse(c.code, null) != null) {
                         throw new CodecException("code duplicated, code=%d,serviceId=%d".format(c.code, serviceId))
@@ -605,13 +582,7 @@ class TlvCodec(val configFile: String) extends Logging {
 
                 val itemConfig = typeNameToCodeMap.getOrElse(name, UNKNOWN)
                 val arraycls = clsToArrayType(itemConfig.cls)
-                val c = new TlvType(arrayTypeName, arraycls, itemConfig.code, null, itemConfig)
-                if (arraycls == CLS_STRUCTARRAY) {
-                    c.structDef = itemConfig.structDef
-                }
-                if (arraycls == CLS_OBJECTARRAY) {
-                    c.objectDef = itemConfig.objectDef
-                }
+                val c = new TlvType(arrayTypeName, arraycls, itemConfig.code, null, itemConfig, itemConfig.structDef, itemConfig.objectDef)
 
                 if (typeCodeToNameMap.getOrElse(c.code, null) != null) {
                     val tlvType = typeCodeToNameMap.getOrElse(c.code, null)
@@ -1144,7 +1115,9 @@ class TlvCodec(val configFile: String) extends Logging {
         try {
             val keyMap = msgKeyToTypeMapForReq.getOrElse(msgId, EMPTY_STRINGMAP)
             val fieldInfoMap = msgKeyToFieldInfoMapForReq.getOrElse(msgId, null)
-            return encode(keyMap, fieldInfoMap, map, encoding, needEncode = false)
+            val buff = ChannelBuffers.dynamicBuffer(256)
+            val ec = encode(buff, keyMap, fieldInfoMap, map, encoding, needEncode = false)
+            return (buff, ec)
         } catch {
             case e: Throwable =>
                 log.error("encode request error", e)
@@ -1156,7 +1129,9 @@ class TlvCodec(val configFile: String) extends Logging {
         try {
             val keyMap = msgKeyToTypeMapForRes.getOrElse(msgId, EMPTY_STRINGMAP)
             val fieldInfoMap = msgKeyToFieldInfoMapForRes.getOrElse(msgId, null)
-            return encode(keyMap, fieldInfoMap, map, encoding, needEncode = true)
+            val buff = ChannelBuffers.dynamicBuffer(256)
+            val ec = encode(buff, keyMap, fieldInfoMap, map, encoding, needEncode = true)
+            return (buff, ec)
         } catch {
             case e: Throwable =>
                 log.error("encode response error", e)
@@ -1164,16 +1139,13 @@ class TlvCodec(val configFile: String) extends Logging {
         }
     }
 
-    // TODO 优化
-    def encode(keyMap: HashMapStringString, fieldInfoMap: HashMap[String, FieldInfo],
+    def encode(buff: ChannelBuffer, keyMap: HashMapStringString, fieldInfoMap: HashMap[String, FieldInfo],
                dataMap: HashMapStringAny, encoding: Int,
-               needEncode: Boolean): Tuple2[ChannelBuffer, Int] = {
+               needEncode: Boolean): Int = {
 
         var errorCode = 0
         val ec = validate(keyMap, fieldInfoMap, dataMap, needEncode, addConvertFlag = false)
         if (ec != 0 && errorCode == 0) errorCode = ec
-
-        val buff = ChannelBuffers.dynamicBuffer(256)
 
         for ((key, value) <- dataMap if value != null) {
 
@@ -1218,7 +1190,7 @@ class TlvCodec(val configFile: String) extends Logging {
                 }
             }
         }
-        (buff, errorCode)
+        errorCode
     }
 
     def encodeInt(buff: ChannelBuffer, code: Int, v: Any): Unit = {
@@ -1441,11 +1413,14 @@ class TlvCodec(val configFile: String) extends Logging {
         }
 
         val datamap = v.asInstanceOf[HashMapStringAny]
+        buff.writeShort(tlvType.code.toShort)
+        buff.writeShort(0) // 待定, 后面再写入实际值
+        val ps = buff.writerIndex
 
-        val (bf, ec) = encode(tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldInfoMap,
+        val ec = encode(buff, tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldInfoMap,
             datamap, encoding, needEncode)
 
-        val totalLen = bf.writerIndex
+        val totalLen = buff.writerIndex - ps
 
         var tlvheadlen = 4
         var alignedLen = aligned(totalLen + tlvheadlen)
@@ -1455,16 +1430,19 @@ class TlvCodec(val configFile: String) extends Logging {
             alignedLen = aligned(totalLen + tlvheadlen)
         }
 
-        buff.writeShort(tlvType.code.toShort)
+        if (tlvheadlen == 4) {
+            buff.setShort(ps - 2, (totalLen + tlvheadlen).toShort) // 写入实际长度
+        } else { // object 需整体向后移动4字节
+            buff.writeInt(0)
+            val pe = buff.writerIndex
+            for (i <- 0 until totalLen) {
+                buff.setByte(pe - 1 - i, buff.getByte(pe - 1 - i - 4))
+            }
 
-        if (tlvheadlen == 8) {
-            buff.writeShort(0)
-            buff.writeInt(totalLen + tlvheadlen)
-        } else {
-            buff.writeShort((totalLen + tlvheadlen).toShort)
+            buff.setShort(ps - 2, 0) // 写入0
+            buff.setInt(ps, totalLen + tlvheadlen) // 写入实际长度
         }
 
-        buff.writeBytes(bf)
         writePad(buff)
 
         ec
