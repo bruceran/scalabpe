@@ -1,0 +1,13 @@
+//$kafkatest.test1
+
+import FlowHelper._
+
+//#receive
+    invoke(callback,"kafkaproducer.write",3000,
+        "topic"->"bslog",
+        "value"->"123")
+
+//#callback
+    val ret = lastresult()
+    reply(ret.code)
+

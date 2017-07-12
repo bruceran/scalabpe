@@ -113,8 +113,10 @@ import org.jboss.netty.buffer._
     ad = new AvenueData(0xa2,2,3,4,5,0,1,-1,
         xhead,body)  // version 2
     buff = codec.encode(ad)
-    TlvCodec4Xhead.updateSpsId(buff,SPS_ID)
+    //TlvCodec4Xhead.updateSpsId(buff,SPS_ID)
 
+	// println("hexdump="+TlvCodec.hexDump(buff))
+	
     nad = codec.decode(buff)
     nxhead = TlvCodec4Xhead.decode(10,nad.xhead)
     assertEquals("1.1.1.1:1",nxhead.nls("addrs").mkString(","))

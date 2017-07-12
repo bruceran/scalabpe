@@ -40,10 +40,10 @@ object Validator extends Logging {
         val rc = if (returnCode == null || returnCode == "") -10242400 else returnCode.toInt
 
         val key = cls.toLowerCase + ":param=" + param + ":rc=" + rc
-        var v = cache.getOrElse(key, null)
-        if (v != null) return v
+        val v0 = cache.getOrElse(key, null)
+        if (v0 != null) return v0
 
-        v = cls.toLowerCase match {
+        val v = cls.toLowerCase match {
             case "required" =>
                 new RequireValidator(cls.toLowerCase, param, rc)
             case "regex" =>
@@ -243,7 +243,7 @@ class TimeRangeValidator(val cls: String, val param: String, val returnCode: Int
 }
 class ValueSetValidator(val cls: String, val param: String, val returnCode: Int) extends Validator with Logging {
 
-    var set = HashSet[String]()
+    val set = HashSet[String]()
 
     init
 

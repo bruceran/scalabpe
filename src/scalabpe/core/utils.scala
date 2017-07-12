@@ -193,16 +193,15 @@ object CryptHelper {
     }
 
     def sign(source: Array[Byte], algorithm: String): Array[Byte] = {
-        var bytes: Array[Byte] = null;
         if (source != null) {
             try {
                 val md5 = MessageDigest.getInstance(algorithm);
-                bytes = md5.digest(source)
+                return md5.digest(source)
             } catch {
                 case e: Throwable =>
             }
         }
-        bytes
+        return null
     }
 
     def md5(source: String, charset: String = "UTF-8"): String = {

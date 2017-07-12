@@ -1250,10 +1250,10 @@ class TlvCodec(val configFile: String) extends Logging {
 
         val datamap = v.asInstanceOf[HashMapStringAny]
 
-        // TODO 直接完成encode,不要先存在data中
-        val data = new ArrayBufferAny()
-        var totalLen = 0
-
+        buff.writeShort(tlvType.code.toShort)
+        buff.writeShort(0) // 后面再更新为实际值
+        val ps = buff.writerIndex
+        
         for (i <- 0 until tlvType.structDef.fields.length) {
 
             val f = tlvType.structDef.fields(i)
@@ -1271,18 +1271,12 @@ class TlvCodec(val configFile: String) extends Logging {
 
             t match {
 
-                case CLS_INT => {
-                    totalLen += 4
-                    data += TypeSafe.anyToInt(v)
-                }
-                case CLS_LONG => {
-                    totalLen += 8
-                    data += TypeSafe.anyToLong(v)
-                }
-                case CLS_DOUBLE => {
-                    totalLen += 8
-                    data += TypeSafe.anyToDouble(v)
-                }
+                case CLS_INT => 
+                    buff.writeInt(TypeSafe.anyToInt(v))
+                case CLS_LONG => 
+                    buff.writeLong(TypeSafe.anyToLong(v))
+                case CLS_DOUBLE => 
+                    buff.writeDouble(TypeSafe.anyToDouble(v))
                 case CLS_STRING if version == 1 => {
 
                     if (v == null) v = ""
@@ -1290,19 +1284,17 @@ class TlvCodec(val configFile: String) extends Logging {
 
                     var actuallen = s.length
                     if (len == -1 || s.length == len) {
-                        totalLen += s.length
-                        data += s
+                        buff.writeBytes(s)
                     } else if (s.length < len) {
-                        totalLen += len
-                        data += s
-                        data += new Array[Byte](len - s.length) // pad zeros
+                        buff.writeBytes(s)
+                        buff.writeBytes(new Array[Byte](len - s.length))
+                        
                     } else {
                         throw new CodecException("string_too_long");
                     }
                     var alignedLen = aligned(len)
                     if (alignedLen != len) {
-                        totalLen += (alignedLen - len)
-                        data += new Array[Byte](alignedLen - len) // pad zeros
+                        buff.writeBytes(new Array[Byte](alignedLen - len))
                     }
                 }
                 case CLS_SYSTEMSTRING if version == 1 => {
@@ -1310,13 +1302,12 @@ class TlvCodec(val configFile: String) extends Logging {
                     if (v == null) v = ""
                     val s = TypeSafe.anyToString(v).getBytes(AvenueCodec.toEncoding(encoding))
 
+                    buff.writeInt(TypeSafe.anyToInt(s.length))
+                    buff.writeBytes(s)
+                    
                     var alignedLen = aligned(s.length)
-                    totalLen += 4
-                    data += TypeSafe.anyToInt(s.length)
-                    totalLen += alignedLen
-                    data += s
                     if (s.length != alignedLen) {
-                        data += new Array[Byte](alignedLen - s.length) // pad zeros
+                        buff.writeBytes(new Array[Byte](alignedLen - s.length))
                     }
                 }
                 case CLS_STRING if version == 2 => {
@@ -1326,32 +1317,30 @@ class TlvCodec(val configFile: String) extends Logging {
 
                     if (s.length >= 65535) { // 0xffff
                         var alignedLen = aligned(6 + s.length)
-                        totalLen += alignedLen
-                        data += 65535.toShort
-                        data += TypeSafe.anyToInt(s.length)
-                        data += s
+                        buff.writeShort(65535.toShort)
+                        buff.writeInt(TypeSafe.anyToInt(s.length))
+                        buff.writeBytes(s)
                         if (alignedLen - s.length - 6 > 0) {
-                            data += new Array[Byte](alignedLen - s.length - 6) // pad zeros
+                            buff.writeBytes(new Array[Byte](alignedLen - s.length - 6))
                         }
                     } else {
                         var alignedLen = aligned(2 + s.length)
-                        totalLen += alignedLen
-                        data += TypeSafe.anyToInt(s.length).toShort
-                        data += s
+                        buff.writeShort(TypeSafe.anyToInt(s.length).toShort)
+                        buff.writeBytes(s)
                         if (alignedLen - s.length - 2 > 0) {
-                            data += new Array[Byte](alignedLen - s.length - 2) // pad zeros
+                            buff.writeBytes( new Array[Byte](alignedLen - s.length - 2))
                         }
                     }
                 }
 
                 case _ =>
-
                     log.error("unknown type")
-
             }
 
         }
-
+        
+        val totalLen = buff.writerIndex - ps
+        
         var tlvheadlen = 4
         var alignedLen = aligned(totalLen + tlvheadlen)
 
@@ -1359,31 +1348,20 @@ class TlvCodec(val configFile: String) extends Logging {
             tlvheadlen = 8
             alignedLen = aligned(totalLen + tlvheadlen)
         }
-
-        buff.writeShort(tlvType.code.toShort)
-
-        if (tlvheadlen == 8) {
-            buff.writeShort(0)
-            buff.writeInt(totalLen + tlvheadlen)
-        } else {
-            buff.writeShort((totalLen + tlvheadlen).toShort)
-        }
-
-        for (v <- data) {
-            v match {
-                case s: Short =>
-                    buff.writeShort(s)
-                case i: Int =>
-                    buff.writeInt(i)
-                case l: Long =>
-                    buff.writeLong(l)
-                case d: Double =>
-                    buff.writeDouble(d)
-                case s: Array[Byte] =>
-                    buff.writeBytes(s)
-                case _ =>
-
+        
+        if (tlvheadlen == 4) {
+            buff.setShort(ps - 2, (totalLen + tlvheadlen).toShort) // 写入实际长度
+        } else { // struct 需整体向后移动4字节
+            buff.writeInt(0)
+            val pe = buff.writerIndex
+            var i = 0
+            while (i < totalLen) {
+                buff.setByte(pe - 1 - i, buff.getByte(pe - 1 - i - 4))
+                i += 1
             }
+
+            buff.setShort(ps - 2, 0) // 写入0
+            buff.setInt(ps, totalLen + tlvheadlen) // 写入实际长度
         }
 
         writePad(buff)

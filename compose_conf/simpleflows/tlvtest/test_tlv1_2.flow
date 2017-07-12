@@ -13,6 +13,9 @@ import org.jboss.netty.buffer._
             )
         var tlvCodec = Router.main.codecs.findTlvCodec(223)
         val (buff1,ec1) = tlvCodec.encodeRequest(1,m1,1)
+        
+        //println("buff1="+TlvCodec.hexDump(buff1))
+        
         val (m2,ec2) = tlvCodec.decodeRequest(1,buff1,1)
         assertEquals("abc",m2.v("s"))
         assertEquals(30,m2.v("i"))
