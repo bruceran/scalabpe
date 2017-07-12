@@ -14,7 +14,7 @@ import org.jboss.netty.buffer._
         var tlvCodec = Router.main.codecs.findTlvCodec(223)
         val (buff1,ec1) = tlvCodec.encodeRequest(1,m1,1)
         
-        //println("buff1="+TlvCodec.hexDump(buff1))
+//println("buff1="+TlvCodec.hexDump(buff1))
         
         val (m2,ec2) = tlvCodec.decodeRequest(1,buff1,1)
         assertEquals("abc",m2.v("s"))
@@ -23,7 +23,12 @@ import org.jboss.netty.buffer._
         assertEquals("101",m2.nm("stuc1").v("f2"))
         assertEquals(102,m2.nm("stuc1").v("f3"))
         assertEquals("mmm",m2.nm("stuc1").v("f4"))
+
+        val (m3,ec3) = tlvCodec.decodeRequest(1,ChannelBuffers.buffer(0),1)
+        assertEquals("abc",m3.v("s"))
+        assertEquals(30,m3.v("i"))
     }
+
     if( true ) {
         val m1 = HashMapStringAny( 
             "stuc2_array"-> ArrayBufferMap( HashMapStringAny( "f12"->"sss") )
@@ -36,6 +41,10 @@ import org.jboss.netty.buffer._
         assertEquals("m70",m2.nlm("stuc2_array")(0).v("f11"))
         assertEquals("sss",m2.nlm("stuc2_array")(0).v("f12"))
         assertEquals(72,m2.nlm("stuc2_array")(0).v("f13"))
+
+        val (m3,ec3) = tlvCodec.decodeResponse(1,ChannelBuffers.buffer(0),1)
+        assertEquals("mmm60",m3.v("s2"))
+        assertEquals(61,m3.v("i2"))
     }
     if( true ) {
         val m1 = HashMapStringAny( 

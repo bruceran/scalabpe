@@ -185,8 +185,20 @@ object TlvCodec {
     val CONVERTED_FLAG = "__converted__"
 
     def hexDump(buff: ChannelBuffer): String = {
-        // todo 
-        ChannelBuffers.hexDump(buff, 0, buff.writerIndex)
+        val s = ChannelBuffers.hexDump(buff, 0, buff.writerIndex)
+        val sb = new StringBuilder()
+        var i = 0
+        var cnt = 0
+        sb.append("\n")
+        while( i < s.length ) {
+            sb.append(s.charAt(i))
+            i += 1
+            cnt += 1
+            if( (cnt%2) == 0 ) sb.append(" ")
+            if( (cnt%8) == 0 ) sb.append("  ")
+            if( (cnt%16) == 0 ) sb.append("\n")
+        }
+        sb.toString
     }
 
     def writePad(buff: ChannelBuffer) {
