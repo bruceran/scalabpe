@@ -173,7 +173,7 @@ class HttpServerActor(val router: Router, val cfgNode: Node) extends Actor
     val MIMETYPE_MULTIPART = "multipart/form-data"
 
     val EMPTY_STRINGMAP = new HashMapStringString()
-    
+
     val errorFormat = """{"return_code":%d,"return_message":"%s","data":{}}"""
     val errorFormatCodeMessageNoData = """{"code":%d,"message":"%s"}"""
     val rpcFormat = """{"jsonrpc":"2.0","id":"%s","result":%s}"""
@@ -208,6 +208,7 @@ class HttpServerActor(val router: Router, val cfgNode: Node) extends Actor
     var sessionMode = 1 // 1=auto 2=manual
     var sessionIpBind = false
     var sessionHttpOnly = true
+    var sessionMaxAge = -1
     var sessionPath = ""
     var jsonRpcUrl = "/jsonrpc"
     var jsonpName = "jsonp"
@@ -353,6 +354,9 @@ application/x-gzip gz
 
         s = (cfgNode \ "@sessionHttpOnly").text
         if (s != "") sessionHttpOnly = TypeSafe.isTrue(s)
+
+        s = (cfgNode \ "@sessionMaxAge").text
+        if (s != "") sessionMaxAge = s.toInt
 
         s = (cfgNode \ "@sessionPath").text
         if (s != "") sessionPath = s
@@ -1403,6 +1407,7 @@ application/x-gzip gz
                 val c = new DefaultCookie(sessionCookieName, req.xhead.s("sessionId", ""))
                 c.setHttpOnly(sessionHttpOnly)
                 if (sessionPath != "") c.setPath(sessionPath)
+                if (sessionMaxAge != -1) c.setMaxAge(sessionMaxAge)
                 cookies.put(sessionCookieName, c)
             }
         }
@@ -1414,6 +1419,7 @@ application/x-gzip gz
                     val c = new DefaultCookie(sessionCookieName, sessionId)
                     c.setHttpOnly(sessionHttpOnly)
                     if (sessionPath != "") c.setPath(sessionPath)
+                    if (sessionMaxAge != -1) c.setMaxAge(sessionMaxAge)
                     cookies.put(sessionCookieName, c)
                 }
                 body.remove(sessionFieldName)
@@ -2344,6 +2350,8 @@ application/x-gzip gz
         var clientIp = parseClientIp(httpReq, connId)
         val map = HashMapStringAny()
         map.put(Xhead.KEY_ADDRS, ArrayBufferString(clientIp))
+        map.put(Xhead.KEY_FIRST_ADDR, clientIp)
+        map.put(Xhead.KEY_LAST_ADDR, clientIp)
         map.put(Xhead.KEY_UNIQUE_ID, requestId)
 
         val httpType = parseHttpType(httpReq)
@@ -2485,7 +2493,7 @@ application/x-gzip gz
                     case d: Double =>
                         val v = convertValue(value, key, fields)
                         newBody.put(key, v)
-                        
+
                     case m: HashMapStringAny =>
 
                         val newMap = convertMap(m, key, fields)

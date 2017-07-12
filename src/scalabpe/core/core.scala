@@ -212,14 +212,6 @@ class LinkedHashMapStringAny extends LinkedHashMap[String, Any] {
     def ns(name: String): String = TypeSafe.ns(name, this)
     def ns(name: String, defaultValue: String): String = TypeSafe.ns(name, this, defaultValue)
 
-    /*
-    def toHashMapStringAny(): HashMapStringAny = {
-        val m = HashMapStringAny()
-        m ++= this
-        m
-    }
-    * 
-    */
 }
 
 trait Actor {

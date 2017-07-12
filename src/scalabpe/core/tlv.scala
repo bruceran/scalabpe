@@ -22,10 +22,10 @@ object FieldInfo extends Logging {
         if (defaultValue == null && validatorCls == null && encoderCls == null) return null
 
         val key = "defaultValue=" + defaultValue + ",validatorCls=" + validatorCls + ",validatorParam=" + validatorParam + ",validatorReturnCode=" + validatorReturnCode + ",encoderCls=" + encoderCls + ",encoderParam=" + encoderParam
-        var v = cache.getOrElse(key, null)
-        if (v != null) return v
+        val v0 = cache.getOrElse(key, null)
+        if (v0 != null) return v0
 
-        v = new FieldInfo(defaultValue, validatorCls, validatorParam, validatorReturnCode, encoderCls, encoderParam)
+        val v = new FieldInfo(defaultValue, validatorCls, validatorParam, validatorReturnCode, encoderCls, encoderParam)
         cache.put(key, v)
         return v
     }
@@ -146,7 +146,7 @@ class ObjectDef {
     val fields = ArrayBuffer[TlvType]()
     val keyToTypeMap = HashMapStringString()
     val typeToKeyMap = HashMapStringString()
-    val keyToFieldInfoMap = HashMap[String, FieldInfo]()
+    val keyToFieldMap = HashMap[String, FieldInfo]()
 }
 
 class TlvType(val name: String, val cls: Int, val code: Int, val fieldInfo: FieldInfo,
@@ -174,9 +174,7 @@ class TlvType(val name: String, val cls: Int, val code: Int, val fieldInfo: Fiel
     }
 
     override def toString() = {
-        val s = new StringBuilder()
-        s.append(name + "," + cls + "," + code)
-        s.toString
+        name + "," + cls + "," + code
     }
 }
 
@@ -184,16 +182,11 @@ object TlvCodec {
 
     val EMPTY_STRINGMAP = new HashMapStringString()
     val EMPTY_BUFFER = ChannelBuffers.buffer(0)
-    val CONVERT_FLAG = "__converted__"
+    val CONVERTED_FLAG = "__converted__"
 
     def hexDump(buff: ChannelBuffer): String = {
         // todo 
         ChannelBuffers.hexDump(buff, 0, buff.writerIndex)
-    }
-
-    def skipRead(buff: ChannelBuffer, n: Int) {
-        val newposition = Math.min(buff.readerIndex + n, buff.writerIndex)
-        buff.readerIndex(newposition)
     }
 
     def writePad(buff: ChannelBuffer) {
@@ -211,6 +204,18 @@ object TlvCodec {
                 buff.writeByte(0)
             case _ =>
         }
+    }
+
+    def skipRead(buff: ChannelBuffer, n: Int) {
+        val newposition = Math.min(buff.readerIndex + n, buff.writerIndex)
+        buff.readerIndex(newposition)
+    }
+
+    def readString(buff: ChannelBuffer, len: Int, encoding: String): String = {
+        val bytes = new Array[Byte](len)
+        buff.getBytes(buff.readerIndex, bytes)
+        skipRead(buff, aligned(len))
+        new String(bytes, encoding)
     }
 
     def getString(buff: ChannelBuffer, len: Int, encoding: String): String = {
@@ -249,12 +254,12 @@ class TlvCodec(val configFile: String) extends Logging {
     val msgKeyToTypeMapForReq = new HashMap[Int, HashMapStringString]()
     val msgTypeToKeyMapForReq = new HashMap[Int, HashMapStringString]()
     val msgKeysForReq = new HashMap[Int, ArrayBufferString]()
-    val msgKeyToFieldInfoMapForReq = new HashMap[Int, HashMap[String, FieldInfo]]()
+    val msgKeyToFieldMapForReq = new HashMap[Int, HashMap[String, FieldInfo]]()
 
     val msgKeyToTypeMapForRes = new HashMap[Int, HashMapStringString]()
     val msgTypeToKeyMapForRes = new HashMap[Int, HashMapStringString]()
     val msgKeysForRes = new HashMap[Int, ArrayBufferString]()
-    val msgKeyToFieldInfoMapForRes = new HashMap[Int, HashMap[String, FieldInfo]]()
+    val msgKeyToFieldMapForRes = new HashMap[Int, HashMap[String, FieldInfo]]()
 
     val codecAttributes = new HashMapStringString()
     val msgAttributes = new HashMap[Int, HashMapStringString]()
@@ -271,9 +276,16 @@ class TlvCodec(val configFile: String) extends Logging {
         }
     }
 
-    def getAttribute(t: Node, field1: String): String = {
-        var s = (t \ ("@" + field1)).toString
-        s
+    def getAttribute(t: Node, field: String): String = {
+        (t \ ("@" + field)).toString
+    }
+
+    def getValidatorCls(t: Node): String = {
+        val validatorCls = getAttribute(t, "validator").toLowerCase
+        if (validatorCls != "") return validatorCls
+        val required = getAttribute(t, "required")
+        if (TypeSafe.isTrue(required)) return "required"
+        else return null
     }
 
     def getFieldInfo(t: Node): FieldInfo = {
@@ -284,18 +296,43 @@ class TlvCodec(val configFile: String) extends Logging {
             case None    => null
         }
 
-        var validatorCls = getAttribute(t, "validator")
-        if (validatorCls == "") validatorCls = null
-        if (validatorCls == null) {
-            var required = getAttribute(t, "required")
-            if (TypeSafe.isTrue(required)) validatorCls = "required"
-        }
+        val validatorCls = getValidatorCls(t)
         val validatorParam = getAttribute(t, "validatorParam")
         val returnCode = getAttribute(t, "returnCode")
-        var encoderCls = getAttribute(t, "encoder")
-        if (encoderCls == "") encoderCls = null
+        val encoderCls0 = getAttribute(t, "encoder")
+        val encoderCls = if (encoderCls0 == "") null else encoderCls0
         val encoderParam = getAttribute(t, "encoderParam")
         FieldInfo.getFieldInfo(defaultValue, validatorCls, validatorParam, returnCode, encoderCls, encoderParam)
+    }
+
+    def getValidatorInfo(fieldInfo: FieldInfo, tlvType: TlvType): Tuple3[String, String, String] = {
+        if (fieldInfo.validator != null) {
+            val validatorCls = fieldInfo.validatorCls
+            val validatorParam = fieldInfo.validatorParam
+            val returnCode = fieldInfo.validatorReturnCode
+            (validatorCls, validatorParam, returnCode)
+        } else if (tlvType.fieldInfo.validator != null) {
+            val validatorCls = tlvType.fieldInfo.validatorCls
+            val validatorParam = tlvType.fieldInfo.validatorParam
+            val returnCode = tlvType.fieldInfo.validatorReturnCode
+            (validatorCls, validatorParam, returnCode)
+        } else {
+            (null, "", "")
+        }
+    }
+
+    def getEncoderInfo(fieldInfo: FieldInfo, tlvType: TlvType): Tuple2[String, String] = {
+        if (fieldInfo.encoder != null) {
+            val encoderCls = fieldInfo.encoderCls
+            val encoderParam = fieldInfo.encoderParam
+            (encoderCls, encoderParam)
+        } else if (tlvType.fieldInfo.encoder != null) {
+            val encoderCls = tlvType.fieldInfo.encoderCls
+            val encoderParam = tlvType.fieldInfo.encoderParam
+            (encoderCls, encoderParam)
+        } else {
+            (null, "")
+        }
     }
 
     def getFieldInfo(t: Node, tlvType: TlvType): FieldInfo = {
@@ -305,33 +342,43 @@ class TlvCodec(val configFile: String) extends Logging {
         if (tlvType.fieldInfo == null) return fieldInfo
 
         val defaultValue = if (fieldInfo.defaultValue != null) fieldInfo.defaultValue else tlvType.fieldInfo.defaultValue
-
-        var validatorCls: String = null
-        var validatorParam = ""
-        var returnCode = ""
-
-        if (fieldInfo.validator != null) {
-            validatorCls = fieldInfo.validatorCls
-            validatorParam = fieldInfo.validatorParam
-            returnCode = fieldInfo.validatorReturnCode
-        } else if (tlvType.fieldInfo.validator != null) {
-            validatorCls = tlvType.fieldInfo.validatorCls
-            validatorParam = tlvType.fieldInfo.validatorParam
-            returnCode = tlvType.fieldInfo.validatorReturnCode
-        }
-
-        var encoderCls: String = null
-        var encoderParam = ""
-
-        if (fieldInfo.encoder != null) {
-            encoderCls = fieldInfo.encoderCls
-            encoderParam = fieldInfo.encoderParam
-        } else if (tlvType.fieldInfo.encoder != null) {
-            encoderCls = tlvType.fieldInfo.encoderCls
-            encoderParam = tlvType.fieldInfo.encoderParam
-        }
+        val (validatorCls, validatorParam, returnCode) = getValidatorInfo(fieldInfo, tlvType)
+        val (encoderCls, encoderParam) = getEncoderInfo(fieldInfo, tlvType)
 
         FieldInfo.getFieldInfo(defaultValue, validatorCls, validatorParam, returnCode, encoderCls, encoderParam)
+    }
+
+    def getStructType(t: Node): String = {
+        val s = (t \ "@type").toString
+        if (s != "") return s
+        if (version == 1) return "systemstring"
+        else return "string"
+    }
+
+    def getStructLen(t: Node, fieldType: Int): Int = {
+
+        fieldType match {
+            case CLS_INT                    => return 4
+            case CLS_LONG                   => return 8
+            case CLS_DOUBLE                 => return 8
+            case CLS_SYSTEMSTRING           => return 0
+            case CLS_STRING if version == 2 => return 0
+            case CLS_STRING if version == 1 =>
+                val s = (t \ "@len").toString
+                if (s == "") return -1
+                else return s.toInt
+            case _ =>
+                throw new CodecException("unknown type for struct, type=%d".format(fieldType))
+        }
+
+    }
+
+    def checkStructLen(name: String, structFields: ArrayBuffer[StructField]) {
+        for (i <- 0 until structFields.length - 1) { // don't include the last field
+            if (structFields(i).len == -1) {
+                throw new CodecException("struct length not valid,name=%s,serviceId=%d".format(name, serviceId))
+            }
+        }
     }
 
     def initInternal(): Unit = {
@@ -381,28 +428,30 @@ class TlvCodec(val configFile: String) extends Logging {
 
                 case CLS_ARRAY =>
 
-                    val itemType = (t \ "@itemType").toString.toLowerCase
-                    val itemConfig = typeNameToCodeMap.getOrElse(itemType, UNKNOWN)
-                    if (itemConfig == UNKNOWN) {
-                        throw new CodecException("itemType not valid,name=%s,itemType=%s".format(name, itemType))
+                    val itemTypeName = (t \ "@itemType").toString.toLowerCase
+                    val itemTlvType = typeNameToCodeMap.getOrElse(itemTypeName, UNKNOWN)
+                    if (itemTlvType == UNKNOWN) {
+                        throw new CodecException("itemType not valid,name=%s,itemType=%s".format(name, itemTypeName))
                     }
-                    val arraycls = clsToArrayType(itemConfig.cls)
-                    val c = new TlvType(name, arraycls, itemConfig.code, fieldInfo, itemConfig, itemConfig.structDef, itemConfig.objectDef)
-
-                    if (typeCodeToNameMap.getOrElse(c.code, null) != null) {
-                        val tlvType = typeCodeToNameMap.getOrElse(c.code, null)
-                        if (isArray(tlvType.cls))
-                            throw new CodecException("multiple array definitions for one code!!! code=%d,serviceId=%d".format(c.code, serviceId))
+                    val arraycls = clsToArrayType(itemTlvType.cls)
+                    if (arraycls == CLS_UNKNOWN) {
+                        throw new CodecException("itemType not valid,name=%s,itemType=%s".format(name, itemTypeName))
                     }
-                    typeCodeToNameMap.put(c.code, c); // overwrite itemtype's map
+                    val tlvType = new TlvType(name, arraycls, itemTlvType.code, fieldInfo, itemTlvType, itemTlvType.structDef, itemTlvType.objectDef)
 
-                    if (typeNameToCodeMap.getOrElse(c.name, null) != null) {
-                        throw new CodecException("name duplicated, name=%s,serviceId=%d".format(c.name, serviceId))
+                    if (typeCodeToNameMap.getOrElse(tlvType.code, null) != null) {
+                        val foundTlvType = typeCodeToNameMap.getOrElse(tlvType.code, null)
+                        if (isArray(foundTlvType.cls))
+                            throw new CodecException("multiple array definitions for one code!!! code=%d,serviceId=%d".format(tlvType.code, serviceId))
                     }
+                    typeCodeToNameMap.put(tlvType.code, tlvType); // overwrite itemtype's map
 
-                    typeNameToCodeMap.put(c.name, c);
+                    if (typeNameToCodeMap.getOrElse(tlvType.name, null) != null) {
+                        throw new CodecException("name duplicated, name=%s,serviceId=%d".format(tlvType.name, serviceId))
+                    }
+                    typeNameToCodeMap.put(tlvType.name, tlvType);
 
-                    val classex = codecAttributes.getOrElse("classex-" + itemType, null)
+                    val classex = codecAttributes.getOrElse("classex-" + itemTypeName, null)
                     if (classex != null) {
                         codecAttributes.put("classex-" + name, classex)
                     }
@@ -416,27 +465,13 @@ class TlvCodec(val configFile: String) extends Logging {
                     for (f <- fields) {
 
                         val fieldName = (f \ "@name").toString
-                        var fieldTypeStr = (f \ "@type").toString
-                        if (fieldTypeStr == "") {
-                            if (version == 1) fieldTypeStr = "systemstring"
-                            else fieldTypeStr = "string"
-                        }
-                        val fieldType = clsToInt(fieldTypeStr)
-
+                        val fieldTypeName = getStructType(f)
+                        val fieldType = clsToInt(fieldTypeName)
                         if (!checkStructFieldCls(version, fieldType)) {
                             throw new CodecException("not supported field type,name=%s,type=%s".format(name, clsToName(fieldType)))
                         }
 
-                        var fieldLen = -1
-                        var lenstr = (f \ "@len").toString
-                        fieldLen = if (lenstr == "") -1 else lenstr.toInt
-
-                        if (fieldType == CLS_INT) fieldLen = 4
-                        if (fieldType == CLS_LONG) fieldLen = 8
-                        if (fieldType == CLS_DOUBLE) fieldLen = 8
-                        if (fieldType == CLS_SYSTEMSTRING) fieldLen = 0
-                        if (version == 2 && fieldType == CLS_STRING) fieldLen = 0
-
+                        val fieldLen = getStructLen(f, fieldType)
                         val fieldInfo = getFieldInfo(f)
 
                         val sf = new StructField(fieldName, fieldType, fieldLen, fieldInfo)
@@ -448,38 +483,29 @@ class TlvCodec(val configFile: String) extends Logging {
                             codecAttributes.put("classex-" + name, "some") // 做标记,简化处理时扫描
                         }
 
-                        val itemmetadatas = f.attributes.filter(_.key != "name").filter(_.key != "type").filter(_.key != "len")
-                        for (m <- itemmetadatas) {
+                        val fieldMetaDatas = f.attributes.filter(_.key != "name").filter(_.key != "type").filter(_.key != "len")
+                        for (m <- fieldMetaDatas) {
                             codecAttributes.put("type-" + name + "-" + fieldName + "-" + m.key, m.value.text)
                         }
                     }
 
-                    var lenOk = true
-                    for (i <- 0 until structFields.length - 1) { // don't include the last field
-                        if (structFields(i).len == -1) {
-                            lenOk = false
-                        }
-                    }
-
-                    if (!lenOk) {
-                        throw new CodecException("struct length not valid,name=%s,serviceId=%d".format(name, serviceId))
-                    }
+                    checkStructLen(name, structFields)
 
                     val structDef = new StructDef()
                     structDef.fields ++= structFields
                     structDef.fields.foreach(f => structDef.keys.add(f.name))
-                    val c = new TlvType(name, cls, code, fieldInfo, structDef = structDef)
+                    val tlvType = new TlvType(name, cls, code, fieldInfo, structDef = structDef)
 
-                    if (typeCodeToNameMap.getOrElse(c.code, null) != null) {
-                        throw new CodecException("code duplicated, code=%d,serviceId=%d".format(c.code, serviceId))
+                    if (typeCodeToNameMap.getOrElse(tlvType.code, null) != null) {
+                        throw new CodecException("code duplicated, code=%d,serviceId=%d".format(tlvType.code, serviceId))
                     }
 
-                    if (typeNameToCodeMap.getOrElse(c.name, null) != null) {
-                        throw new CodecException("name duplicated, name=%s,serviceId=%d".format(c.name, serviceId))
+                    if (typeNameToCodeMap.getOrElse(tlvType.name, null) != null) {
+                        throw new CodecException("name duplicated, name=%s,serviceId=%d".format(tlvType.name, serviceId))
                     }
 
-                    typeCodeToNameMap.put(c.code, c);
-                    typeNameToCodeMap.put(c.name, c);
+                    typeCodeToNameMap.put(tlvType.code, tlvType);
+                    typeNameToCodeMap.put(tlvType.name, tlvType);
 
                 case CLS_OBJECT =>
 
@@ -487,37 +513,37 @@ class TlvCodec(val configFile: String) extends Logging {
                         throw new CodecException("object not supported in version 1")
                     }
 
-                    val m1req = new HashMapStringString()
-                    val m2req = new HashMapStringString()
-                    val m3req = new ArrayBuffer[TlvType]()
-                    val m4req = new HashMap[String, FieldInfo]()
+                    val t_keyToTypeMap = new HashMapStringString()
+                    val t_typeToKeyMap = new HashMapStringString()
+                    val t_tlvTypes = new ArrayBuffer[TlvType]()
+                    val t_keyToFieldMap = new HashMap[String, FieldInfo]()
 
                     val fields = t \ "field"
 
                     for (f <- fields) {
 
                         val key = (f \ "@name").toString
-                        var typeName = (f \ "@type").toString.toLowerCase
-                        if (typeName == "") typeName = (key + "_type").toLowerCase
+                        val typeName0 = (f \ "@type").toString.toLowerCase
+                        val typeName = if (typeName0 == "") (key + "_type").toLowerCase else typeName0
 
                         val tlvType = typeNameToCodeMap.getOrElse(typeName, null)
                         if (tlvType == null) {
                             throw new CodecException("typeName %s not found".format(typeName));
                         }
 
-                        if (m1req.getOrElse(key, null) != null) {
+                        if (t_keyToTypeMap.getOrElse(key, null) != null) {
                             throw new CodecException("key duplicated, key=%s,serviceId=%d,msgId=%d".format(key, serviceId))
                         }
-                        if (m2req.getOrElse(typeName, null) != null) {
+                        if (t_typeToKeyMap.getOrElse(typeName, null) != null) {
                             throw new CodecException("type duplicated, type=%s,serviceId=%d,msgId=%d".format(typeName, serviceId))
                         }
 
-                        m1req.put(key, typeName)
-                        m2req.put(typeName, key)
-                        m3req += tlvType
+                        t_keyToTypeMap.put(key, typeName)
+                        t_typeToKeyMap.put(typeName, key)
+                        t_tlvTypes += tlvType
                         val fieldInfo = getFieldInfo(f, tlvType)
                         if (fieldInfo != null) {
-                            m4req.put(key, fieldInfo)
+                            t_keyToFieldMap.put(key, fieldInfo)
                         }
 
                         val classex = (f \ "@classex").toString
@@ -526,30 +552,30 @@ class TlvCodec(val configFile: String) extends Logging {
                             codecAttributes.put("classex-" + name, "some") // 做标记,简化处理时扫描
                         }
 
-                        val itemmetadatas = f.attributes.filter(_.key != "name").filter(_.key != "type")
-                        for (m <- itemmetadatas) {
+                        val fieldMetaDatas = f.attributes.filter(_.key != "name").filter(_.key != "type")
+                        for (m <- fieldMetaDatas) {
                             codecAttributes.put("type-" + name + "-" + key + "-" + m.key, m.value.text)
                         }
                     }
 
                     val objectDef = new ObjectDef()
-                    objectDef.fields ++= m3req
-                    objectDef.keyToTypeMap ++= m1req
-                    objectDef.typeToKeyMap ++= m2req
-                    objectDef.keyToFieldInfoMap ++= m4req
+                    objectDef.fields ++= t_tlvTypes
+                    objectDef.keyToTypeMap ++= t_keyToTypeMap
+                    objectDef.typeToKeyMap ++= t_typeToKeyMap
+                    objectDef.keyToFieldMap ++= t_keyToFieldMap
 
-                    val c = new TlvType(name, cls, code, fieldInfo, objectDef = objectDef)
+                    val tlvType = new TlvType(name, cls, code, fieldInfo, objectDef = objectDef)
 
-                    if (typeCodeToNameMap.getOrElse(c.code, null) != null) {
-                        throw new CodecException("code duplicated, code=%d,serviceId=%d".format(c.code, serviceId))
+                    if (typeCodeToNameMap.getOrElse(tlvType.code, null) != null) {
+                        throw new CodecException("code duplicated, code=%d,serviceId=%d".format(tlvType.code, serviceId))
                     }
 
-                    if (typeNameToCodeMap.getOrElse(c.name, null) != null) {
-                        throw new CodecException("name duplicated, name=%s,serviceId=%d".format(c.name, serviceId))
+                    if (typeNameToCodeMap.getOrElse(tlvType.name, null) != null) {
+                        throw new CodecException("name duplicated, name=%s,serviceId=%d".format(tlvType.name, serviceId))
                     }
 
-                    typeCodeToNameMap.put(c.code, c);
-                    typeNameToCodeMap.put(c.name, c);
+                    typeCodeToNameMap.put(tlvType.code, tlvType);
+                    typeNameToCodeMap.put(tlvType.name, tlvType);
 
                 case _ =>
 
@@ -557,18 +583,18 @@ class TlvCodec(val configFile: String) extends Logging {
                         throw new CodecException("not supported type,name=%s,type=%s".format(name, clsToName(cls)))
                     }
 
-                    val c = new TlvType(name, cls, code, fieldInfo)
+                    val tlvType = new TlvType(name, cls, code, fieldInfo)
 
-                    if (typeCodeToNameMap.getOrElse(c.code, null) != null) {
-                        throw new CodecException("code duplicated, code=%d,serviceId=%d".format(c.code, serviceId))
+                    if (typeCodeToNameMap.getOrElse(tlvType.code, null) != null) {
+                        throw new CodecException("code duplicated, code=%d,serviceId=%d".format(tlvType.code, serviceId))
                     }
 
-                    if (typeNameToCodeMap.getOrElse(c.name, null) != null) {
-                        throw new CodecException("name duplicated, name=%s,serviceId=%d".format(c.name, serviceId))
+                    if (typeNameToCodeMap.getOrElse(tlvType.name, null) != null) {
+                        throw new CodecException("name duplicated, name=%s,serviceId=%d".format(tlvType.name, serviceId))
                     }
 
-                    typeCodeToNameMap.put(c.code, c);
-                    typeNameToCodeMap.put(c.name, c);
+                    typeCodeToNameMap.put(tlvType.code, tlvType);
+                    typeNameToCodeMap.put(tlvType.name, tlvType);
 
                     val classex = (t \ "@classex").toString
                     if (classex != "") {
@@ -580,22 +606,21 @@ class TlvCodec(val configFile: String) extends Logging {
             val arrayTypeName = (t \ "@array").toString.toLowerCase // 可以在type上直接加array属性申明数组类型
             if (arrayTypeName != "" && cls != CLS_ARRAY) {
 
-                val itemConfig = typeNameToCodeMap.getOrElse(name, UNKNOWN)
-                val arraycls = clsToArrayType(itemConfig.cls)
-                val c = new TlvType(arrayTypeName, arraycls, itemConfig.code, null, itemConfig, itemConfig.structDef, itemConfig.objectDef)
+                val itemTlvType = typeNameToCodeMap.getOrElse(name, UNKNOWN)
+                val arraycls = clsToArrayType(itemTlvType.cls)
+                val tlvType = new TlvType(arrayTypeName, arraycls, itemTlvType.code, null, itemTlvType, itemTlvType.structDef, itemTlvType.objectDef)
 
-                if (typeCodeToNameMap.getOrElse(c.code, null) != null) {
-                    val tlvType = typeCodeToNameMap.getOrElse(c.code, null)
-                    if (isArray(tlvType.cls))
-                        throw new CodecException("multiple array definitions for one code!!! code=%d,serviceId=%d".format(c.code, serviceId))
+                if (typeCodeToNameMap.getOrElse(tlvType.code, null) != null) {
+                    val foundTlvType = typeCodeToNameMap.getOrElse(tlvType.code, null)
+                    if (isArray(foundTlvType.cls))
+                        throw new CodecException("multiple array definitions for one code!!! code=%d,serviceId=%d".format(tlvType.code, serviceId))
                 }
-                typeCodeToNameMap.put(c.code, c); // overwrite itemtype's map
+                typeCodeToNameMap.put(tlvType.code, tlvType); // overwrite itemtype's map
 
-                if (typeNameToCodeMap.getOrElse(c.name, null) != null) {
-                    throw new CodecException("name duplicated, name=%s,serviceId=%d".format(c.name, serviceId))
+                if (typeNameToCodeMap.getOrElse(tlvType.name, null) != null) {
+                    throw new CodecException("name duplicated, name=%s,serviceId=%d".format(tlvType.name, serviceId))
                 }
-
-                typeNameToCodeMap.put(c.name, c);
+                typeNameToCodeMap.put(tlvType.name, tlvType);
             }
         }
 
@@ -633,99 +658,96 @@ class TlvCodec(val configFile: String) extends Logging {
             if (sql != "")
                 attributes.put("sql", sql)
 
-            val fieldsreq = t \ "requestParameter" \ "field"
-            val m1req = new HashMapStringString()
-            val m2req = new HashMapStringString()
-            val m3req = new ArrayBufferString()
+            val fieldsReq = t \ "requestParameter" \ "field"
+            val t_keyToTypeMapForReq = new HashMapStringString()
+            val t_typeToKeyMapForReq = new HashMapStringString()
+            val t_keysForReq = new ArrayBufferString()
+            val t_KeyToFieldMapForReq = new HashMap[String, FieldInfo]()
 
-            val m4req = new HashMap[String, FieldInfo]()
-
-            for (f <- fieldsreq) {
+            for (f <- fieldsReq) {
                 val key = (f \ "@name").toString
-                var typeName = (f \ "@type").toString.toLowerCase
-                if (typeName == "") typeName = (key + "_type").toLowerCase
+                val typeName0 = (f \ "@type").toString.toLowerCase
+                val typeName = if (typeName0 == "") (key + "_type").toLowerCase else typeName0
 
                 val tlvType = typeNameToCodeMap.getOrElse(typeName, null)
                 if (tlvType == null) {
                     throw new CodecException("typeName %s not found".format(typeName));
                 }
 
-                if (m1req.getOrElse(key, null) != null) {
+                if (t_keyToTypeMapForReq.getOrElse(key, null) != null) {
                     throw new CodecException("req key duplicated, key=%s,serviceId=%d,msgId=%d".format(key, serviceId, msgId))
                 }
-                if (m2req.getOrElse(typeName, null) != null) {
+                if (t_typeToKeyMapForReq.getOrElse(typeName, null) != null) {
                     throw new CodecException("req type duplicated, type=%s,serviceId=%d,msgId=%d".format(typeName, serviceId, msgId))
                 }
 
-                m1req.put(key, typeName)
-                m2req.put(typeName, key)
-                m3req += key
+                t_keyToTypeMapForReq.put(key, typeName)
+                t_typeToKeyMapForReq.put(typeName, key)
+                t_keysForReq += key
                 val fieldInfo = getFieldInfo(f, tlvType)
                 if (fieldInfo != null) {
-                    m4req.put(key, fieldInfo)
+                    t_KeyToFieldMapForReq.put(key, fieldInfo)
                 } else if (tlvType.hasSubFieldInfo()) {
-                    m4req.put(key, null)
+                    t_KeyToFieldMapForReq.put(key, null)
                 }
 
-                val metadatas = f.attributes.filter(_.key != "name").filter(_.key != "type").filter(_.key != "required")
+                val metadatas = f.attributes.filter(_.key != "name").filter(_.key != "type")
                 for (m <- metadatas) {
                     attributes.put("req-" + key + "-" + m.key, m.value.text)
                 }
 
             }
-            msgKeyToTypeMapForReq.put(msgId, m1req)
-            msgTypeToKeyMapForReq.put(msgId, m2req)
-            msgKeysForReq.put(msgId, m3req)
-            if (m4req.size > 0)
-                msgKeyToFieldInfoMapForReq.put(msgId, m4req)
+            msgKeyToTypeMapForReq.put(msgId, t_keyToTypeMapForReq)
+            msgTypeToKeyMapForReq.put(msgId, t_typeToKeyMapForReq)
+            msgKeysForReq.put(msgId, t_keysForReq)
+            if (t_KeyToFieldMapForReq.size > 0)
+                msgKeyToFieldMapForReq.put(msgId, t_KeyToFieldMapForReq)
 
-            val fieldsres = t \ "responseParameter" \ "field"
-            val m1res = new HashMapStringString()
-            val m2res = new HashMapStringString()
-            val m3res = new ArrayBufferString()
-            val m4res = new HashMap[String, FieldInfo]()
-            for (f <- fieldsres) {
+            val fieldsRes = t \ "responseParameter" \ "field"
+            val t_keyToTypeMapForRes = new HashMapStringString()
+            val t_typeToKeyMapForRes = new HashMapStringString()
+            val t_keysForRes = new ArrayBufferString()
+            val t_keyToFieldMapForRes = new HashMap[String, FieldInfo]()
+            for (f <- fieldsRes) {
                 val key = (f \ "@name").toString
-                var typeName = (f \ "@type").toString.toLowerCase
-                if (typeName == "") typeName = (key + "_type").toLowerCase
+                val typeName0 = (f \ "@type").toString.toLowerCase
+                val typeName = if (typeName0 == "") (key + "_type").toLowerCase else typeName0
 
                 val tlvType = typeNameToCodeMap.getOrElse(typeName, null)
                 if (tlvType == null) {
                     throw new CodecException("typeName %s not found".format(typeName));
                 }
 
-                if (m1res.getOrElse(key, null) != null) {
+                if (t_keyToTypeMapForRes.getOrElse(key, null) != null) {
                     throw new CodecException("res key duplicated, key=%s,serviceId=%d,msgId=%d".format(key, serviceId, msgId))
                 }
-                if (m2res.getOrElse(typeName, null) != null) {
+                if (t_typeToKeyMapForRes.getOrElse(typeName, null) != null) {
                     throw new CodecException("res type duplicated, type=%s,serviceId=%d,msgId=%d".format(typeName, serviceId, msgId))
                 }
 
-                m1res.put(key, typeName)
-                m2res.put(typeName, key)
-                m3res += key
+                t_keyToTypeMapForRes.put(key, typeName)
+                t_typeToKeyMapForRes.put(typeName, key)
+                t_keysForRes += key
                 val fieldInfo = getFieldInfo(f, tlvType)
                 if (fieldInfo != null) {
-                    m4res.put(key, fieldInfo)
+                    t_keyToFieldMapForRes.put(key, fieldInfo)
                 } else if (tlvType.hasSubFieldInfo()) {
-                    m4res.put(key, null)
+                    t_keyToFieldMapForRes.put(key, null)
                 }
 
-                val metadatas = f.attributes.filter(_.key != "name").filter(_.key != "type").filter(_.key != "required")
+                val metadatas = f.attributes.filter(_.key != "name").filter(_.key != "type")
                 for (m <- metadatas) {
                     attributes.put("res-" + key + "-" + m.key, m.value.text)
                 }
             }
 
-            msgKeyToTypeMapForRes.put(msgId, m1res)
-            msgTypeToKeyMapForRes.put(msgId, m2res)
-            msgKeysForRes.put(msgId, m3res)
-            if (m4res.size > 0)
-                msgKeyToFieldInfoMapForRes.put(msgId, m4res)
+            msgKeyToTypeMapForRes.put(msgId, t_keyToTypeMapForRes)
+            msgTypeToKeyMapForRes.put(msgId, t_typeToKeyMapForRes)
+            msgKeysForRes.put(msgId, t_keysForRes)
+            if (t_keyToFieldMapForRes.size > 0)
+                msgKeyToFieldMapForRes.put(msgId, t_keyToFieldMapForRes)
 
             msgAttributes.put(msgId, attributes)
-
-            // if( attributes.size > 0 ) println( attributes )
         }
 
     }
@@ -750,10 +772,9 @@ class TlvCodec(val configFile: String) extends Logging {
         try {
             val typeMap = msgTypeToKeyMapForReq.getOrElse(msgId, EMPTY_STRINGMAP)
             val keyMap = msgKeyToTypeMapForReq.getOrElse(msgId, EMPTY_STRINGMAP)
-            val fieldInfoMap = msgKeyToFieldInfoMapForReq.getOrElse(msgId, null)
-            return decode(typeMap, keyMap, fieldInfoMap,
-                buff, 0, buff.writerIndex, encoding,
-                needEncode = true)
+            val fieldMap = msgKeyToFieldMapForReq.getOrElse(msgId, null)
+            return decode(typeMap, keyMap, fieldMap,
+                buff, 0, buff.writerIndex, encoding, needEncode = true)
         } catch {
             case e: Throwable =>
                 log.error("decode request error", e)
@@ -765,10 +786,9 @@ class TlvCodec(val configFile: String) extends Logging {
         try {
             val typeMap = msgTypeToKeyMapForRes.getOrElse(msgId, EMPTY_STRINGMAP)
             val keyMap = msgKeyToTypeMapForRes.getOrElse(msgId, EMPTY_STRINGMAP)
-            val fieldInfoMap = msgKeyToFieldInfoMapForRes.getOrElse(msgId, null)
-            return decode(typeMap, keyMap, fieldInfoMap,
-                buff, 0, buff.writerIndex, encoding,
-                needEncode = false)
+            val fieldMap = msgKeyToFieldMapForRes.getOrElse(msgId, null)
+            return decode(typeMap, keyMap, fieldMap,
+                buff, 0, buff.writerIndex, encoding, needEncode = false)
         } catch {
             case e: Throwable =>
                 log.error("decode response error", e)
@@ -776,7 +796,7 @@ class TlvCodec(val configFile: String) extends Logging {
         }
     }
 
-    def decode(typeMap: HashMapStringString, keyMap: HashMapStringString, fieldInfoMap: HashMap[String, FieldInfo],
+    def decode(typeMap: HashMapStringString, keyMap: HashMapStringString, fieldMap: HashMap[String, FieldInfo],
                buff: ChannelBuffer, start: Int, limit: Int, encoding: Int, needEncode: Boolean): Tuple2[HashMapStringAny, Int] = {
 
         buff.readerIndex(start)
@@ -853,10 +873,8 @@ class TlvCodec(val configFile: String) extends Logging {
                         }
 
                         case CLS_STRING => {
-                            val value = getString(buff, len - tlvheadlen, AvenueCodec.toEncoding(encoding))
+                            val value = readString(buff, len - tlvheadlen, AvenueCodec.toEncoding(encoding))
                             map.put(key, value)
-
-                            skipRead(buff, aligned(len) - tlvheadlen)
                         }
 
                         case CLS_BYTES => {
@@ -876,7 +894,7 @@ class TlvCodec(val configFile: String) extends Logging {
 
                         case CLS_OBJECT => {
                             val p = buff.readerIndex
-                            val (value, ec) = decode(tlvType.objectDef.typeToKeyMap, tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldInfoMap,
+                            val (value, ec) = decode(tlvType.objectDef.typeToKeyMap, tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldMap,
                                 buff, p, p + len - tlvheadlen, encoding, needEncode)
                             map.put(key, value)
                             if (ec != 0 && errorCode == 0) errorCode = ec
@@ -931,7 +949,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         }
 
                         case CLS_STRINGARRAY => {
-                            val value = getString(buff, len - tlvheadlen, AvenueCodec.toEncoding(encoding))
+                            val value = readString(buff, len - tlvheadlen, AvenueCodec.toEncoding(encoding))
 
                             var a = map.getOrElse(key, null)
                             if (a == null) {
@@ -942,8 +960,6 @@ class TlvCodec(val configFile: String) extends Logging {
                                 val aa = a.asInstanceOf[ArrayBufferString]
                                 aa += value
                             }
-
-                            skipRead(buff, aligned(len) - tlvheadlen)
                         }
 
                         case CLS_STRUCTARRAY => {
@@ -964,7 +980,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         case CLS_OBJECTARRAY => {
 
                             val p = buff.readerIndex
-                            val (value, ec) = decode(tlvType.objectDef.typeToKeyMap, tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldInfoMap,
+                            val (value, ec) = decode(tlvType.objectDef.typeToKeyMap, tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldMap,
                                 buff, p, len - tlvheadlen, encoding, needEncode)
 
                             var a = map.getOrElse(key, null)
@@ -990,7 +1006,7 @@ class TlvCodec(val configFile: String) extends Logging {
             }
         }
 
-        val ec = validate(keyMap, fieldInfoMap, map, needEncode, addConvertFlag = false)
+        val ec = validate(keyMap, fieldMap, map, needEncode, addConvertFlag = false)
         if (ec != 0 && errorCode == 0) errorCode = ec
         (map, errorCode)
     }
@@ -1028,10 +1044,8 @@ class TlvCodec(val configFile: String) extends Logging {
                     map.put(key, value)
                 }
                 case CLS_STRING if version == 1 => {
-                    val value = getString(buff, len, AvenueCodec.toEncoding(encoding)).trim()
+                    val value = readString(buff, len, AvenueCodec.toEncoding(encoding)).trim()
                     map.put(key, value)
-
-                    skipRead(buff, aligned(len))
                 }
                 case CLS_SYSTEMSTRING if version == 1 => {
                     len = buff.readInt // length for system string
@@ -1040,16 +1054,13 @@ class TlvCodec(val configFile: String) extends Logging {
                     if (totalLen > maxLen) {
                         throw new CodecException("struct_data_not_valid")
                     }
-                    val value = getString(buff, len, AvenueCodec.toEncoding(encoding)).trim()
+                    val value = readString(buff, len, AvenueCodec.toEncoding(encoding)).trim()
                     map.put(key, value)
-
-                    skipRead(buff, aligned(len))
                 }
                 case CLS_STRING if version == 2 => {
 
                     var t = buff.readShort & 0xffff
                     if (t == 0xffff) {
-
                         len = buff.readInt
                         totalLen += aligned(6 + len)
                         if (totalLen > maxLen) {
@@ -1060,7 +1071,6 @@ class TlvCodec(val configFile: String) extends Logging {
 
                         skipRead(buff, aligned(6 + len) - 6)
                     } else {
-
                         len = t
                         totalLen += aligned(2 + len)
                         if (totalLen > maxLen) {
@@ -1086,9 +1096,9 @@ class TlvCodec(val configFile: String) extends Logging {
     def encodeRequest(msgId: Int, map: HashMapStringAny, encoding: Int): Tuple2[ChannelBuffer, Int] = {
         try {
             val keyMap = msgKeyToTypeMapForReq.getOrElse(msgId, EMPTY_STRINGMAP)
-            val fieldInfoMap = msgKeyToFieldInfoMapForReq.getOrElse(msgId, null)
+            val fieldMap = msgKeyToFieldMapForReq.getOrElse(msgId, null)
             val buff = ChannelBuffers.dynamicBuffer(256)
-            val ec = encode(buff, keyMap, fieldInfoMap, map, encoding, needEncode = false)
+            val ec = encode(buff, keyMap, fieldMap, map, encoding, needEncode = false)
             return (buff, ec)
         } catch {
             case e: Throwable =>
@@ -1100,9 +1110,9 @@ class TlvCodec(val configFile: String) extends Logging {
     def encodeResponse(msgId: Int, map: HashMapStringAny, encoding: Int): Tuple2[ChannelBuffer, Int] = {
         try {
             val keyMap = msgKeyToTypeMapForRes.getOrElse(msgId, EMPTY_STRINGMAP)
-            val fieldInfoMap = msgKeyToFieldInfoMapForRes.getOrElse(msgId, null)
+            val fieldMap = msgKeyToFieldMapForRes.getOrElse(msgId, null)
             val buff = ChannelBuffers.dynamicBuffer(256)
-            val ec = encode(buff, keyMap, fieldInfoMap, map, encoding, needEncode = true)
+            val ec = encode(buff, keyMap, fieldMap, map, encoding, needEncode = true)
             return (buff, ec)
         } catch {
             case e: Throwable =>
@@ -1111,12 +1121,12 @@ class TlvCodec(val configFile: String) extends Logging {
         }
     }
 
-    def encode(buff: ChannelBuffer, keyMap: HashMapStringString, fieldInfoMap: HashMap[String, FieldInfo],
+    def encode(buff: ChannelBuffer, keyMap: HashMapStringString, fieldMap: HashMap[String, FieldInfo],
                dataMap: HashMapStringAny, encoding: Int,
                needEncode: Boolean): Int = {
 
         var errorCode = 0
-        val ec = validate(keyMap, fieldInfoMap, dataMap, needEncode, addConvertFlag = false)
+        val ec = validate(keyMap, fieldMap, dataMap, needEncode, addConvertFlag = false)
         if (ec != 0 && errorCode == 0) errorCode = ec
 
         for ((key, value) <- dataMap if value != null) {
@@ -1240,6 +1250,7 @@ class TlvCodec(val configFile: String) extends Logging {
 
         val datamap = v.asInstanceOf[HashMapStringAny]
 
+        // TODO 直接完成encode,不要先存在data中
         val data = new ArrayBufferAny()
         var totalLen = 0
 
@@ -1389,7 +1400,7 @@ class TlvCodec(val configFile: String) extends Logging {
         buff.writeShort(0) // 待定, 后面再写入实际值
         val ps = buff.writerIndex
 
-        val ec = encode(buff, tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldInfoMap,
+        val ec = encode(buff, tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldMap,
             datamap, encoding, needEncode)
 
         val totalLen = buff.writerIndex - ps
@@ -1407,8 +1418,10 @@ class TlvCodec(val configFile: String) extends Logging {
         } else { // object 需整体向后移动4字节
             buff.writeInt(0)
             val pe = buff.writerIndex
-            for (i <- 0 until totalLen) {
+            var i = 0
+            while (i < totalLen) {
                 buff.setByte(pe - 1 - i, buff.getByte(pe - 1 - i - 4))
+                i += 1
             }
 
             buff.setShort(ps - 2, 0) // 写入0
@@ -1454,8 +1467,8 @@ class TlvCodec(val configFile: String) extends Logging {
     def filterRequestInJvm(msgId: Int, dataMap: HashMapStringAny, needEncode: Boolean): Tuple2[HashMapStringAny, Int] = {
         try {
             val keyMap = msgKeyToTypeMapForReq.getOrElse(msgId, EMPTY_STRINGMAP)
-            val fieldInfoMap = msgKeyToFieldInfoMapForReq.getOrElse(msgId, null)
-            return filter(keyMap, fieldInfoMap, dataMap, needEncode)
+            val fieldMap = msgKeyToFieldMapForReq.getOrElse(msgId, null)
+            return filter(keyMap, fieldMap, dataMap, needEncode)
         } catch {
             case e: Throwable =>
                 log.error("encode request in jvm error", e)
@@ -1466,8 +1479,8 @@ class TlvCodec(val configFile: String) extends Logging {
     def filterResponseInJvm(msgId: Int, dataMap: HashMapStringAny): Tuple2[HashMapStringAny, Int] = {
         try {
             val keyMap = msgKeyToTypeMapForRes.getOrElse(msgId, EMPTY_STRINGMAP)
-            val fieldInfoMap = msgKeyToFieldInfoMapForRes.getOrElse(msgId, null)
-            return filter(keyMap, fieldInfoMap, dataMap, needEncode = true)
+            val fieldMap = msgKeyToFieldMapForRes.getOrElse(msgId, null)
+            return filter(keyMap, fieldMap, dataMap, needEncode = true)
         } catch {
             case e: Throwable =>
                 log.error("encode response in jvm error", e)
@@ -1475,12 +1488,12 @@ class TlvCodec(val configFile: String) extends Logging {
         }
     }
 
-    def filter(keyMap: HashMapStringString, fieldInfoMap: HashMap[String, FieldInfo],
+    def filter(keyMap: HashMapStringString, fieldMap: HashMap[String, FieldInfo],
                dataMap: HashMap[String, Any], needEncode: Boolean): Tuple2[HashMapStringAny, Int] = {
 
         var errorCode = 0
 
-        val ec = validate(keyMap, fieldInfoMap, dataMap, needEncode, addConvertFlag = true)
+        val ec = validate(keyMap, fieldMap, dataMap, needEncode, addConvertFlag = true)
         if (ec != 0 && errorCode == 0) errorCode = ec
 
         val retmap = new HashMapStringAny();
@@ -1551,8 +1564,7 @@ class TlvCodec(val configFile: String) extends Logging {
 
         val datamap = v.asInstanceOf[HashMapStringAny]
 
-        return filter(tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldInfoMap,
-            datamap, needEncode)
+        return filter(tlvType.objectDef.keyToTypeMap, tlvType.objectDef.keyToFieldMap, datamap, needEncode)
     }
 
     def anyToIntArray(v: Any): ArrayBufferInt = {
@@ -1628,8 +1640,8 @@ class TlvCodec(val configFile: String) extends Logging {
 
     def fastConvertStruct(tlvType: TlvType, datamap: HashMapStringAny, addConvertFlag: Boolean) {
 
-        if (datamap.contains(CONVERT_FLAG)) {
-            datamap.remove(CONVERT_FLAG)
+        if (datamap.contains(CONVERTED_FLAG)) {
+            datamap.remove(CONVERTED_FLAG)
             return
         }
 
@@ -1687,7 +1699,7 @@ class TlvCodec(val configFile: String) extends Logging {
         }
 
         if (addConvertFlag) {
-            datamap.put(CONVERT_FLAG, "1")
+            datamap.put(CONVERTED_FLAG, "1")
         }
 
     }
@@ -1716,14 +1728,14 @@ class TlvCodec(val configFile: String) extends Logging {
 
     // 编码，解码，内存中过滤都会调用此函数
     // 此函数 实现  1) 默认值设置  2) 校验  3) 编码转换功能
-    def validate(keyMap: HashMapStringString, fieldInfoMap: HashMap[String, FieldInfo],
+    def validate(keyMap: HashMapStringString, fieldMap: HashMap[String, FieldInfo],
                  dataMap: HashMap[String, Any], needEncode: Boolean, addConvertFlag: Boolean): Int = {
 
-        if (fieldInfoMap == null || fieldInfoMap.size == 0) return 0
+        if (fieldMap == null || fieldMap.size == 0) return 0
 
         var errorCode = 0
 
-        for ((key, fieldInfo) <- fieldInfoMap) { // 只对做标记的field进行处理
+        for ((key, fieldInfo) <- fieldMap) { // 只对做标记的field进行处理
 
             var typeName = keyMap.getOrElse(key, null)
             val tlvType = typeNameToCodeMap.getOrElse(typeName, null)

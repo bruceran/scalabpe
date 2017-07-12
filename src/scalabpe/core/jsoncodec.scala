@@ -18,20 +18,23 @@ object JsonCodec {
     val mapper = new ObjectMapper()
     val jsonFactory = new JsonFactory()
 
-    def parseSimpleJson(s: String): HashMapStringAny = {
-        parseObject(s)
-    }
-    
     def parseJson(s: String): Any = {
         if (s == null || s == "") return null
         val node = mapper.readTree(s)
         if (node == null) return null
-        if (node.isInstanceOf[ObjectNode])
-            return parseObject(node)
-        if (node.isInstanceOf[ArrayNode])
-            return parseArray(node)
+        node match {
+            case _: ObjectNode =>
+                return parseObject(node)
+            case _: ArrayNode =>
+                return parseArray(node)
+        }
         null
     }
+
+    def parseSimpleJson(s: String): HashMapStringAny = {
+        parseObject(s)
+    }
+
     def parseObject(s: String): HashMapStringAny = {
         if (s == null || s == "") return null
         try {
@@ -61,6 +64,7 @@ object JsonCodec {
             case _: Throwable => return null
         }
     }
+
     def parseArrayNotNull(s: String): ArrayBufferAny = {
         val l = parseArray(s)
         if (l == null) return ArrayBufferAny()
@@ -87,7 +91,7 @@ object JsonCodec {
         if (a == null) return null
         val as = new ArrayBufferString()
         for (i <- a) {
-            as += i.asInstanceOf[String]
+            as += TypeSafe.anyToString(i)
         }
         as
     }
@@ -113,11 +117,11 @@ object JsonCodec {
     def parseArrayLong(s: String): ArrayBufferLong = {
         val a = parseArray(s)
         if (a == null) return null
-        val ai = new ArrayBufferLong()
+        val al = new ArrayBufferLong()
         for (i <- a) {
-            ai += TypeSafe.anyToLong(i)
+            al += TypeSafe.anyToLong(i)
         }
-        ai
+        al
     }
     def parseArrayLongNotNull(s: String): ArrayBufferLong = {
         val l = parseArrayLong(s)
@@ -127,74 +131,81 @@ object JsonCodec {
     def parseArrayDouble(s: String): ArrayBufferDouble = {
         val a = parseArray(s)
         if (a == null) return null
-        val ai = new ArrayBufferDouble()
+        val ad = new ArrayBufferDouble()
         for (i <- a) {
-            ai += TypeSafe.anyToDouble(i)
+            ad += TypeSafe.anyToDouble(i)
         }
-        ai
+        ad
     }
     def parseArrayDoubleNotNull(s: String): ArrayBufferDouble = {
         val l = parseArrayDouble(s)
         if (l == null) return ArrayBufferDouble()
         l
-    }    
-    
+    }
+
     def parseObject(node: JsonNode): HashMapStringAny = {
         val names = node.fieldNames
         val body = new HashMapStringAny()
         while (names.hasNext) {
             val name = names.next()
             val o = node.get(name)
-            if (o.isInstanceOf[ArrayNode]) {
-                val a = parseArray(o)
-                body.put(name, a)
-            } else if (o.isInstanceOf[ObjectNode]) {
-                val m = parseObject(o)
-                body.put(name, m)
-            } else if (o.isInstanceOf[TextNode]) {
-                body.put(name, o.asText)
-            } else if (o.isInstanceOf[IntNode]) {
-                body.put(name, o.asText.toInt)
-            } else if (o.isInstanceOf[LongNode]) {
-                body.put(name, o.asText.toLong)
-            } else if (o.isInstanceOf[DoubleNode]) {
-                body.put(name, o.asText.toDouble)
-            } else if (o.isInstanceOf[BooleanNode]) {
-                body.put(name, o.asText.toBoolean)
-            } else if (o.isInstanceOf[NullNode]) {
-                body.put(name, null)
-            } else {
-                body.put(name, o.asText)
+
+            o match {
+                case _: ArrayNode =>
+                    val a = parseArray(o)
+                    body.put(name, a)
+                case _: ObjectNode =>
+                    val m = parseObject(o)
+                    body.put(name, m)
+                case _: TextNode =>
+                    body.put(name, o.asText)
+                case _: IntNode =>
+                    body.put(name, o.asText.toInt)
+                case _: LongNode =>
+                    body.put(name, o.asText.toLong)
+                case _: DoubleNode =>
+                    body.put(name, o.asText.toDouble)
+                case _: BooleanNode =>
+                    body.put(name, o.asText.toBoolean)
+                case _: NullNode =>
+                    body.put(name, null)
+                case _ =>
+                    body.put(name, o.asText)
             }
+
         }
         body
     }
+
     def parseArray(node: JsonNode): ArrayBufferAny = {
         val elems = node.elements
         val body = new ArrayBufferAny()
         while (elems.hasNext) {
             val o = elems.next()
-            if (o.isInstanceOf[ArrayNode]) {
-                val a = parseArray(o)
-                body += a
-            } else if (o.isInstanceOf[ObjectNode]) {
-                val m = parseObject(o)
-                body += m
-            } else if (o.isInstanceOf[TextNode]) {
-                body += o.asText
-            } else if (o.isInstanceOf[IntNode]) {
-                body += o.asText.toInt
-            } else if (o.isInstanceOf[LongNode]) {
-                body += o.asText.toLong
-            } else if (o.isInstanceOf[DoubleNode]) {
-                body += o.asText.toDouble
-            } else if (o.isInstanceOf[BooleanNode]) {
-                body += o.asText.toBoolean
-            } else if (o.isInstanceOf[NullNode]) {
-                body += null
-            } else {
-                body += o.asText
+
+            o match {
+                case _: ArrayNode =>
+                    val a = parseArray(o)
+                    body += a
+                case _: ObjectNode =>
+                    val m = parseObject(o)
+                    body += m
+                case _: TextNode =>
+                    body += o.asText
+                case _: IntNode =>
+                    body += o.asText.toInt
+                case _: LongNode =>
+                    body += o.asText.toLong
+                case _: DoubleNode =>
+                    body += o.asText.toDouble
+                case _: BooleanNode =>
+                    body += o.asText.toBoolean
+                case _: NullNode =>
+                    body += null
+                case _ =>
+                    body += o.asText
             }
+
         }
         body
     }
@@ -372,6 +383,9 @@ object JsonCodec {
                     case map: HashMapStringAny =>
                         val s = mkString(map)
                         jsonGenerator.writeRawValue(s)
+                    case map: LinkedHashMapStringAny =>
+                        val s = mkString(map)
+                        jsonGenerator.writeRawValue(s)
                     case buff: ArrayBufferString =>
                         val s = mkString(buff)
                         jsonGenerator.writeRawValue(s)
@@ -478,7 +492,7 @@ object JsonCodec {
 
         writer.toString()
     }
-    
+
     def mkString(a: ArrayBufferString): String = {
 
         if (a == null) return null

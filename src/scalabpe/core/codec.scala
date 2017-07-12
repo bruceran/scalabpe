@@ -55,7 +55,7 @@ class AvenueCodec {
         val length = req.writerIndex
 
         val flag = req.readByte() & MASK
-        var headLen = req.readByte() & MASK
+        val headLen0 = req.readByte() & MASK
         val version = req.readByte() & MASK
         req.readByte() // ignore the field
 
@@ -67,7 +67,7 @@ class AvenueCodec {
         }
 
         val standardLen = if (version == 1) STANDARD_HEADLEN_V1 else STANDARD_HEADLEN_V2
-        if (version == 2) headLen *= 4
+        val headLen = if (version == 2) headLen0 * 4 else headLen0
 
         if (length < standardLen) {
             throw new CodecException("package_size_error")
@@ -129,16 +129,15 @@ class AvenueCodec {
         }
 
         val xheadlen = headLen - standardLen
-        val xhead = ChannelBuffers.dynamicBuffer(xheadlen+12)
-        req.readBytes(xhead,xheadlen)
-        var body = req.readSlice(packLen - headLen)
+        val xhead = ChannelBuffers.dynamicBuffer(xheadlen + 12)
+        req.readBytes(xhead, xheadlen)
+        val body0 = req.readSlice(packLen - headLen)
 
-        if (key != null && key != "" && AvenueCodec.decrypt_f != null && body != null && body.writerIndex > 0) {
-            body = AvenueCodec.decrypt_f(body, key)
-        }
+        val body = get_decrypted_body(body0, key)
 
         val r = new AvenueData(
-            flag, version, serviceId, msgId, sequence,
+            flag, version,
+            serviceId, msgId, sequence,
             mustReach, encoding,
             if (flag == TYPE_REQUEST) 0 else code,
             xhead, body)
@@ -148,20 +147,19 @@ class AvenueCodec {
 
     def encode(res: AvenueData, key: String = ""): ChannelBuffer = {
 
-        var body = res.body
-        if (key != null && key != "" && AvenueCodec.encrypt_f != null && body != null && body.writerIndex > 0) {
-            body = AvenueCodec.encrypt_f(body, key)
-        }
+        val body = get_encrypted_body(res.body, key)
 
         val standardLen = if (res.version == 1) STANDARD_HEADLEN_V1 else STANDARD_HEADLEN_V2
 
-        var headLen = standardLen + res.xhead.writerIndex
+        val headLen0 = standardLen + res.xhead.writerIndex
         if (res.version == 2) {
-            if ((headLen % 4) != 0) {
+            if ((headLen0 % 4) != 0) {
                 throw new CodecException("package_xhead_padding_error")
             }
-            headLen /= 4
         }
+
+        val headLen = if (res.version == 2) headLen0 / 4 else headLen0
+
         val packLen = standardLen + res.xhead.writerIndex + body.writerIndex
 
         val b = ChannelBuffers.buffer(standardLen)
@@ -179,12 +177,29 @@ class AvenueCodec {
         b.writeByte(ZERO) // format
         b.writeByte(res.encoding.toByte) // encoding
 
-        b.writeInt(if (res.flag == TYPE_REQUEST) 0 else res.code) // code
+        val code = if (res.flag == TYPE_REQUEST) 0 else res.code
+        b.writeInt(code) // code
 
         if (res.version == 1)
             b.writeBytes(EMPTY_SIGNATURE) // signature
 
-        ChannelBuffers.wrappedBuffer(b,res.xhead,body)
+        ChannelBuffers.wrappedBuffer(b, res.xhead, body)
+    }
+    
+    def get_decrypted_body(body0: ChannelBuffer, key: String = ""): ChannelBuffer = {
+        if (key != null && key != "" && AvenueCodec.decrypt_f != null && body0 != null && body0.writerIndex > 0) {
+            AvenueCodec.decrypt_f(body0, key)
+        } else {
+            body0
+        }
+    }
+
+    def get_encrypted_body(body0: ChannelBuffer, key: String = ""): ChannelBuffer = {
+        if (key != null && key != "" && AvenueCodec.encrypt_f != null && body0 != null && body0.writerIndex > 0) {
+            AvenueCodec.encrypt_f(body0, key)
+        } else {
+            body0
+        }
     }
 
 }
