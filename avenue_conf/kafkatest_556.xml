@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<service  name="kafkatest" id="556" version="2">
+
+ 	<type name="cmd_type" class="string" code="1"/>
+
+	<message name="test1" id="1">
+		<requestParameter>
+			<field name="cmd"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
+
+</service>

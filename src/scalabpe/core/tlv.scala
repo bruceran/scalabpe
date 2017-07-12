@@ -1448,6 +1448,28 @@ class TlvCodec(val configFile: String) extends Logging {
                     }
                 }
                 return errorCode
+
+            case list: Array[_] =>
+
+                var errorCode = 0
+                for (v <- list) {
+                    tlvType.cls match {
+                        case CLS_INTARRAY =>
+                            encodeInt(buff, tlvType.code, v)
+                        case CLS_LONGARRAY =>
+                            encodeLong(buff, tlvType.code, v)
+                        case CLS_DOUBLEARRAY =>
+                            encodeDouble(buff, tlvType.code, v)
+                        case CLS_STRINGARRAY =>
+                            encodeString(buff, tlvType.code, v, encoding)
+                        case CLS_STRUCTARRAY =>
+                            encodeStruct(buff, tlvType, v, encoding)
+                        case CLS_OBJECTARRAY =>
+                            val ec = encodeObject(buff, tlvType, v, encoding, needEncode)
+                            if (ec != 0 && errorCode == 0) errorCode = ec
+                    }
+                }
+                return errorCode
             case _ =>
                 throw new CodecException("not supported type in encodeArray, type=%s".format(v.getClass.getName));
         }
@@ -1566,6 +1588,10 @@ class TlvCodec(val configFile: String) extends Logging {
                 val arr = new ArrayBufferInt()
                 list.foreach(arr += TypeSafe.anyToInt(_))
                 arr
+            case list: Array[_] =>
+                val arr = new ArrayBufferInt()
+                list.foreach(arr += TypeSafe.anyToInt(_))
+                arr
             case _ =>
                 throw new CodecException("not supported type in anyToIntArray, type=%s".format(v.getClass.getName));
         }
@@ -1577,6 +1603,10 @@ class TlvCodec(val configFile: String) extends Logging {
             case list: ArrayBufferLong =>
                 list
             case list: ArrayBuffer[_] =>
+                val arr = new ArrayBufferLong()
+                list.foreach(arr += TypeSafe.anyToLong(_))
+                arr
+            case list: Array[_] =>
                 val arr = new ArrayBufferLong()
                 list.foreach(arr += TypeSafe.anyToLong(_))
                 arr
@@ -1594,6 +1624,10 @@ class TlvCodec(val configFile: String) extends Logging {
                 val arr = new ArrayBufferDouble()
                 list.foreach(arr += TypeSafe.anyToDouble(_))
                 arr
+            case list: Array[_] =>
+                val arr = new ArrayBufferDouble()
+                list.foreach(arr += TypeSafe.anyToDouble(_))
+                arr
             case _ =>
                 throw new CodecException("not supported type in anyToDoubleArray, type=%s".format(v.getClass.getName));
         }
@@ -1605,6 +1639,10 @@ class TlvCodec(val configFile: String) extends Logging {
             case list: ArrayBufferString =>
                 list
             case list: ArrayBuffer[_] =>
+                val arr = new ArrayBufferString()
+                list.foreach(arr += TypeSafe.anyToString(_))
+                arr
+            case list: Array[_] =>
                 val arr = new ArrayBufferString()
                 list.foreach(arr += TypeSafe.anyToString(_))
                 arr
@@ -1620,6 +1658,10 @@ class TlvCodec(val configFile: String) extends Logging {
                 list.foreach(fastConvertStruct(tlvType, _, addConvertFlag)) // 相比anyToStruct，不生成对象，直接在内部转换; 查询的时候这种类型特别多
                 return list
             case list: ArrayBuffer[_] =>
+                val arr = new ArrayBufferMap()
+                list.foreach(arr += anyToStruct(tlvType, _, addConvertFlag))
+                arr
+            case list: Array[_] =>
                 val arr = new ArrayBufferMap()
                 list.foreach(arr += anyToStruct(tlvType, _, addConvertFlag))
                 arr
@@ -1699,6 +1741,19 @@ class TlvCodec(val configFile: String) extends Logging {
         value match {
 
             case list: ArrayBuffer[_] =>
+
+                val arr = new ArrayBufferMap()
+                var errorCode = 0
+
+                for (v <- list) {
+                    val (m, ec) = anyToObject(tlvType, v, needEncode)
+                    arr += m
+                    if (ec != 0 && errorCode == 0) errorCode = ec
+                }
+
+                (arr, errorCode)
+
+            case list: Array[_] =>
 
                 val arr = new ArrayBufferMap()
                 var errorCode = 0

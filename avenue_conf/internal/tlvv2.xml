@@ -64,4 +64,11 @@
 		</responseParameter>
 	</message>
 
+	<message name="msg2" id="2">
+		<requestParameter>
+			<field name="s2_array"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
 </service>

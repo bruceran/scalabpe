@@ -97,5 +97,19 @@ import org.jboss.netty.buffer._
         assertEquals(3,m2.v("bs1").asInstanceOf[Array[Byte]](2))
     }
 
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "s2_array"->Array("123","456")
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(221)
+        val (buff1,ec1) = tlvCodec.encodeRequest(2,m1,1)
+        assertEquals(0,ec1)
+        buff1.readerIndex(0)
+        val (m2,ec2) = tlvCodec.decodeRequest(2,buff1,1)
+        assertEquals(0,ec2)
+        assertEquals(1,m2.size)
+        assertEquals("123",m2.nls("s2_array")(0))
+        assertEquals("456",m2.nls("s2_array")(1))
+    }
     reply(assert_result_code)
 
