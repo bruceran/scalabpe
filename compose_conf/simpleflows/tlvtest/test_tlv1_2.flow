@@ -71,5 +71,6 @@ import org.jboss.netty.buffer._
         assertEquals("sss",m2.nlm("stuc2_array")(0).v("f12"))
         assertEquals(72,m2.nlm("stuc2_array")(0).v("f13"))
     }
+
     reply(assert_result_code)
 

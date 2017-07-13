@@ -355,7 +355,7 @@ class KafkaProducerClient(val router:Router,val cfgNode: Node, val actor:KafkaPr
                         log.debug("send success, requestId=%s,topic=%s,partition=%d,key=%s,value=%s".format(requestId,topic,metadata.partition,key,value))
                     }
                 } else {
-                    log.error("send failed, requestId=%s,topic=%s,key=%s,value=%s,retry=%d".format(requestId,topic,key,value,retry))
+                    log.error("send failed, requestId=%s,topic=%s,key=%s,value=%s,retry=%d".format(requestId,topic,key,value,retry),e)
                     retry += 1 
                     data.put("retry",retry)
                     data.put("timestamp",System.currentTimeMillis.toString)

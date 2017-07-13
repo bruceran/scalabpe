@@ -277,6 +277,8 @@ object TlvCodec4Xhead extends Logging {
         if (insertSocId) {
             encodeString(buff, CODE_SOC_ID, addr, max)
             encodeString(buff, CODE_SPS_ID, SPS_ID_0, max) // 预写入一个值，调用updateSpsId再更新为实际值
+            val uuid = java.util.UUID.randomUUID().toString().replaceAll("-", "")
+            encodeString(buff, CODE_UNIQUE_ID, uuid, max)
         }
     }
 

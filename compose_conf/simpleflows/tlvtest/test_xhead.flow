@@ -75,7 +75,7 @@ import org.jboss.netty.buffer._
     buff = TlvCodec4Xhead.encode(10,m,1)
     assertEquals(12,buff.writerIndex)
     TlvCodec4Xhead.appendAddr(buff,"2.2.2.2:2",true,1)
-    assertEquals(24+32+4+4+12,buff.writerIndex)
+    assertEquals(24+32+4+4+12+36,buff.writerIndex) // last 36 is a uuid
     buff.readerIndex(0)
     nm = TlvCodec4Xhead.decode(10,buff)
     assertEquals("1.1.1.1:1",nm.nls("addrs")(0))

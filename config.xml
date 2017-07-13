@@ -254,10 +254,13 @@
 
 <!-- kafka consumer配置 -->
 <!-- 
-    <KafkaConsumer>
-        <ZooKeeper>192.168.52.128:2181</ZooKeeper>
+    <KafkaConsumerV2>
+        <BootstrapServers>192.168.52.128:9092</BootstrapServers>
         <Topic name="bslog" receiver="661.1" />
-    </KafkaConsumer>
+        <Config key="session.timeout.ms">30000</Config>
+        <Config key="key.deserializer">org.apache.kafka.common.serialization.StringDeserializer</Config>
+        <Config key="value.deserializer">org.apache.kafka.common.serialization.StringDeserializer</Config>
+    </KafkaConsumerV2>
 -->
 
 <!-- activemq producer配置 -->

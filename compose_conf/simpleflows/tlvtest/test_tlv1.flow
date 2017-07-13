@@ -111,5 +111,6 @@ import org.jboss.netty.buffer._
         assertEquals("123",m2.nls("s2_array")(0))
         assertEquals("456",m2.nls("s2_array")(1))
     }
+
     reply(assert_result_code)
 
