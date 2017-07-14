@@ -96,7 +96,7 @@ class MqActor(val router: Router, val cfgNode: Node) extends Actor with Logging 
 
         var localDir = (cfgNode \ "LocalDir").text
         if (localDir == "") {
-            localDir = "data" + File.separator + "mq"
+            localDir = Router.dataDir + File.separator + "activemq"
         }
 
         val s = (cfgNode \ "@plugin").text.toString
@@ -123,7 +123,9 @@ class MqActor(val router: Router, val cfgNode: Node) extends Actor with Logging 
             throw new RuntimeException("Mq localDir cannot be the same, the default is data/mq")
         }
         MqActor.localDirs.add(localDir)
-        val dataDir = router.rootDir + File.separator + localDir
+        var dataDir = ""
+        if (localDir.startsWith("/")) dataDir = localDir
+        else dataDir = router.rootDir + File.separator + localDir
         new File(dataDir).mkdirs()
         persistQueueManager = new PersistQueueManagerImpl()
         persistQueueManager.setDataDir(dataDir)
@@ -264,7 +266,7 @@ class MqActor(val router: Router, val cfgNode: Node) extends Actor with Logging 
                 } catch {
                     case e: Exception =>
                         log.error("cannot save data to local mq data={}", s)
-                        replyError(ResultCodes.MQ_IO_ERROR, req)
+                        replyError(-10242500, req)
                         hasIOException.set(true)
                 }
 

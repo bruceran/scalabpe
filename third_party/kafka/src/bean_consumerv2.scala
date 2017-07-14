@@ -7,9 +7,6 @@ import java.util.concurrent.locks.{ReentrantLock,Condition}
 import java.util.concurrent.atomic.{AtomicBoolean,AtomicInteger}
 import scala.xml._
 import scala.collection.mutable.{ArrayBuffer,HashMap,HashSet}
-//import kafka.javaapi.consumer.ConsumerConnector;
-//import kafka.consumer.ConsumerConfig;
-//import kafka.consumer.KafkaStream;
 import org.apache.kafka.clients.consumer._
 import org.apache.kafka.common.errors._
 
@@ -28,6 +25,7 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
     var bootstrap : String = _
     var groupId = "scalabpe"
     var retryInterval = 5000
+    var batchSize = 10
 
     val receiverMap = new HashMap[String,Tuple2[Int,Int]]()
     var receiverLockMap = new java.util.HashMap[String,ReentrantLock]()
@@ -67,9 +65,13 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
         if( s != "" )
             retryInterval = s.toInt
 
+        s = (cfgNode \ "@batchSize").text
+        if( s != "" )
+            batchSize = s.toInt
+
         var localDir = (cfgNode \ "LocalDir").text
         if( localDir == "" ) {
-            localDir = "data" + File.separator + "kafkaconsumerv2"
+            localDir = Router.dataDir + File.separator + "kafkaconsumerv2"
         }
 
         if( KafkaConsumerBeanV2.localDirs.contains(localDir) ) {
@@ -77,7 +79,9 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
         }
 
         KafkaConsumerBeanV2.localDirs.add(localDir)
-        val dataDir = router.rootDir + File.separator + localDir
+        var dataDir = ""
+        if (localDir.startsWith("/")) dataDir = localDir
+        else dataDir = router.rootDir + File.separator + localDir
         new File(dataDir).mkdirs()
 
         persistQueueManager = new PersistQueueManagerImpl()
@@ -258,7 +262,6 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
         val props = new Properties()
         props.put("bootstrap.servers", bootstrap)
         props.put("group.id", groupId)
-        props.put("enable.auto.commit", "false")
 
         val configList = (cfgNode \ "Config")
         for( t <- configList ) {
@@ -267,6 +270,10 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
             if( !props.contains(key ) )
                 props.put(key,value)
         }
+
+        props.put("enable.auto.commit", "false")
+        props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
+        props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer")
 
         var consumer : KafkaConsumer[String, String] = null
         while(consumer == null) {
@@ -294,7 +301,7 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
         val queue = persistQueueManager.getQueue(topic)
         try {
             while (!shutdown.get()) {
-                val records = consumer.poll(100);
+                val records = consumer.poll(batchSize);
                 val it = records.iterator()
                 while( it.hasNext() ) {
                   val record = it.next()

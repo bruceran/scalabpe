@@ -97,7 +97,7 @@ class MqReceiverBean(override val router: Router, override val cfgNode: Node)
 
         localDir = (cfgNode \ "LocalDir").text
         if (localDir == "") {
-            localDir = "data" + File.separator + queueTypeName
+            localDir = Router.dataDir + File.separator + queueTypeName
         }
 
         if (MqReceiverBean.localDirs.contains(localDir)) {

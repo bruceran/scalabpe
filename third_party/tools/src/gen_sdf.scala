@@ -29,6 +29,7 @@ object GenSdfTool {
 
     var messageIdSeq = 0
     var typeCodeSeq = 0
+    var version = 1
 
     def help() {
         println(
@@ -429,6 +430,7 @@ options:
         val map = parseMap(l)
         val name = map.ns("service")
         val id = map.ns("id")
+        version = map.ns("version","1").toInt
         map.remove("service")
         map.remove("id")
         var extra = ""
@@ -613,7 +615,7 @@ options:
                         " type=\"%s\"".format(tp) + extra+"/>" 
                 buff += xml
             case "struct" =>
-                tp = "systemstring"
+                tp = if(version == 1) "systemstring" else "string"
                 val p = name.indexOf("#")
                 if( p > 0 ) {
                     tp = name.substring(p+1)
@@ -716,6 +718,7 @@ options:
                             val attrs = parseAllXmlAttrs(l)
                             var name = attrs.ns("name")
                             val id = attrs.ns("id")
+                            version = attrs.ns("version","1").toInt
                             val desc = attrs.getOrElse("desc",null)
                             attrs.remove("name")
                             attrs.remove("id")
@@ -770,8 +773,12 @@ options:
                             attrs.remove("desc")
                             if( context == "struct" ) {
                                 var s = indent2+name
-                                //if( tp != "systemstring" ) s +=indent + "type:"+tp 
-                                if( tp != "systemstring" ) s +="#"+tp 
+                                version match {
+                                    case 1 =>
+                                        if( tp != "systemstring" ) s +="#"+tp 
+                                    case 2 =>
+                                        if( tp != "string" ) s +="#"+tp 
+                                }
                                 s = StringUtils.rightPad(s,40,' ')
                                 for( (k,v) <- attrs ) s += indent+k+":"+escape0(v.toString)
                                 if( desc != null ) 

@@ -67,7 +67,7 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
 
         var localDir = (cfgNode \ "LocalDir").text
         if( localDir == "" ) {
-            localDir = "data" + File.separator + "kafkaconsumer"
+            localDir = Router.dataDir + File.separator + "kafkaconsumer"
         }
 
         if( KafkaConsumerBean.localDirs.contains(localDir) ) {
@@ -75,7 +75,9 @@ extends Logging with Actor with Bean with Closable with SelfCheckLike with Dumpa
         }
 
         KafkaConsumerBean.localDirs.add(localDir)
-        val dataDir = router.rootDir + File.separator + localDir
+        var dataDir = ""
+        if (localDir.startsWith("/")) dataDir = localDir
+        else dataDir = router.rootDir + File.separator + localDir
         new File(dataDir).mkdirs()
 
         persistQueueManager = new PersistQueueManagerImpl()

@@ -198,7 +198,7 @@ class KafkaProducerClient(val router:Router,val cfgNode: Node, val actor:KafkaPr
 
         var localDir = (cfgNode \ "LocalDir").text
         if( localDir == "" ) {
-            localDir = "data" + File.separator + "kafkaproducer"
+            localDir = Router.dataDir + File.separator + "kafkaproducer"
         }
 
         if( KafkaProducerActor.localDirs.contains(localDir) ) {
@@ -206,7 +206,9 @@ class KafkaProducerClient(val router:Router,val cfgNode: Node, val actor:KafkaPr
         }
 
         KafkaProducerActor.localDirs.add(localDir)
-        val dataDir = router.rootDir + File.separator + localDir
+        var dataDir = ""
+        if (localDir.startsWith("/")) dataDir = localDir
+        else dataDir = router.rootDir + File.separator + localDir
         new File(dataDir).mkdirs()
         persistQueueManager = new PersistQueueManagerImpl()
         persistQueueManager.setDataDir(dataDir)
