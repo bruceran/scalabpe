@@ -544,10 +544,10 @@ class TlvCodec(val configFile: String) extends Logging {
                         }
 
                         if (t_keyToTypeMap.getOrElse(key, null) != null) {
-                            throw new CodecException("key duplicated, key=%s,serviceId=%d,msgId=%d".format(key, serviceId))
+                            throw new CodecException("key duplicated, key=%s,serviceId=%d".format(key, serviceId))
                         }
                         if (t_typeToKeyMap.getOrElse(typeName, null) != null) {
-                            throw new CodecException("type duplicated, type=%s,serviceId=%d,msgId=%d".format(typeName, serviceId))
+                            throw new CodecException("type duplicated, type=%s,serviceId=%d".format(typeName, serviceId))
                         }
 
                         t_keyToTypeMap.put(key, typeName)
@@ -1818,7 +1818,7 @@ class TlvCodec(val configFile: String) extends Logging {
 
             if (v != null) {
 
-                if (v != value) {
+                if (!(v eq value)) { // TODO
                     value = safeConvertValue(v, tlvType.cls)
                     dataMap.put(key, value)
                 }
@@ -1922,10 +1922,10 @@ class TlvCodec(val configFile: String) extends Logging {
     def setStructDefault(map: HashMapStringAny, tlvType: TlvType): Unit = {
         for (f <- tlvType.structDef.fields) {
             val fieldInfo = f.fieldInfo
-            if (fieldInfo != null) {
+            if (fieldInfo != null && fieldInfo.defaultValue != null) {
                 val key = f.name
                 val value = map.getOrElse(key, null)
-                if (value == null && fieldInfo.defaultValue != null) {
+                if (value == null ) {
                     map.put(key, safeConvertValue(fieldInfo.defaultValue, f.cls))
                 }
             }

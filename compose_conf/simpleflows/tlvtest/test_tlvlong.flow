@@ -1,0 +1,83 @@
+//$tlvtest.test_tlvlong.with(AssertFlow)
+
+import FlowHelper._
+import org.jboss.netty.buffer._
+
+//#receive
+
+    // 此流程测试超过64k 的 string, bytes, struct 里的 string, object 里的嵌套 string ,bytes, struct等
+    val chars = Array[Byte]('1','2','3','4','5','6','7','8','9','0')
+    val bytes = new Array[Byte](900000)
+    for(i <- 0 until bytes.length) {
+        bytes(i) = chars(i%10)
+    }
+    val s = new String(bytes)
+
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "s"-> s,
+            "bs1"-> bytes,
+            "stuc2"->HashMapStringAny("f11"->"1","f12"->s,"f2"->333),
+            "i"-> 111
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(221)
+        val (buff1,ec1) = tlvCodec.encodeRequest(3,m1,1)
+        val (m2,ec2) = tlvCodec.decodeRequest(3,buff1,1)
+        assertEquals(111,m2.v("i"))
+        assertEquals(s,m2.v("s"))
+        assertEquals(bytes.length,m2.v("bs1").asInstanceOf[Array[Byte]].length)
+        assertEquals("1",m2.nm("stuc2").v("f11"))
+        assertEquals(s,m2.nm("stuc2").v("f12"))
+        assertEquals(333,m2.nm("stuc2").v("f2"))
+    }
+    if( true ) {
+        val m1 = HashMapStringAny( 
+            "s"-> s,
+            "bs1"-> bytes,
+            "stuc2"->HashMapStringAny("f11"->"1","f12"->s,"f2"->333),
+            "i"-> 111
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(221)
+        val (buff1,ec1) = tlvCodec.encodeResponse(3,m1,1)
+        val (m2,ec2) = tlvCodec.decodeResponse(3,buff1,1)
+        assertEquals(s,m2.v("s"))
+        assertEquals(111,m2.v("i"))
+        assertEquals(bytes.length,m2.v("bs1").asInstanceOf[Array[Byte]].length)
+        assertEquals("1",m2.nm("stuc2").v("f11"))
+        assertEquals(s,m2.nm("stuc2").v("f12"))
+        assertEquals(333,m2.nm("stuc2").v("f2"))
+    }
+    if( true ) {
+        val struct = HashMapStringAny("f11"->"1","f12"->s,"f2"->33,"f3"->111,"f4"->1.1)
+        val m1 = HashMapStringAny( 
+            "s"-> s,
+            "bs1"-> bytes,
+            "stuc2"->struct,
+            "obj3"->HashMapStringAny("s"->s,"stuc2"->struct,"bs1"->bytes,"i"->111,"l"->123,"d"->1.1),
+            "i"-> 111
+            )
+        var tlvCodec = Router.main.codecs.findTlvCodec(222)
+        val (buff1,ec1) = tlvCodec.encodeRequest(3,m1,1)
+        val (m2,ec2) = tlvCodec.decodeRequest(3,buff1,1)
+        assertEquals(s,m2.v("s"))
+        assertEquals(bytes.length,m2.v("bs1").asInstanceOf[Array[Byte]].length)
+        assertEquals(111,m2.v("i"))
+        assertEquals("1",m2.nm("stuc2").v("f11"))
+        assertEquals(s,m2.nm("stuc2").v("f12"))
+        assertEquals(33,m2.nm("stuc2").v("f2"))
+        assertEquals(111,m2.nm("stuc2").v("f3"))
+        assertEquals(1.1,m2.nm("stuc2").v("f4"))
+        assertEquals(s,m2.nm("obj3").v("s"))
+        assertEquals(bytes.length,m2.nm("obj3").v("bs1").asInstanceOf[Array[Byte]].length)
+        assertEquals(111,m2.nm("obj3").v("i"))
+        assertEquals(123,m2.nm("obj3").v("l"))
+        assertEquals(1.1,m2.nm("obj3").v("d"))
+        assertEquals("1",m2.nm("obj3").nm("stuc2").v("f11"))
+        assertEquals(s,m2.nm("obj3").nm("stuc2").v("f12"))
+        assertEquals(33,m2.nm("obj3").nm("stuc2").v("f2"))
+        assertEquals(111,m2.nm("obj3").nm("stuc2").v("f3"))
+        assertEquals(1.1,m2.nm("obj3").nm("stuc2").v("f4"))
+    }
+
+    reply(assert_result_code)
+

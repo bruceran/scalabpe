@@ -7,7 +7,9 @@
     <CohPort>7210</CohPort>
     <DataDirRoot>/opt/data</DataDirRoot>
 
-    <Parameter name="serviceIdsAllowed">680</Parameter>>
+    <Parameter name="serviceIdsAllowed">680</Parameter>
+
+    <Parameter name="testparam">@configservice:x   @configservice:y</Parameter>
 
     <!--<InstallMock>testcase/t4.txt</InstallMock>-->
 
@@ -25,12 +27,12 @@
     -->
 
 <!-- 以下是常用插件的最简配置示例，更多配置参数参考配置指南 -->
-
 <!--
-    <EtcdRegistry interval="10">
-        <Hosts>192.168.28.25:2379</Hosts>
+    <EtcdRegistry interval="10" enableConfigService="1" configPath="scalabpe" defaultConfigPath="ops">
+        <Hosts>10.246.84.91:2379</Hosts>
     </EtcdRegistry>
-
+-->
+<!--
    <SosList discoverFor="userservice">
         <ServiceId>998</ServiceId>
         <ServerAddr>192.168.30.100:1111</ServerAddr>

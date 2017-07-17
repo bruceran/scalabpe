@@ -23,6 +23,11 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
     var ttl = 90
     var interval = 30
 
+    var configBasePath = "/v2/keys/configs"
+    var enableConfigService = false
+    var configPath = ""
+    var defaultConfigPath = ""
+
     var profile = "default"
     val timer = new Timer("etcdregtimer")
     var instanceId = ""
@@ -32,10 +37,6 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
     var unRegOnCloseMap = HashMap[String, Boolean]() // registerAs->unregisterOnClose  flag
     var etcdClient: EtcdHttpClient = _
     var waitForRouterTask: TimerTask = _
-
-    def isTrue(s: String): Boolean = {
-        s == "1" || s == "t" || s == "T" || s == "true" || s == "TRUE" || s == "y" || s == "Y" || s == "yes" || s == "YES"
-    }
 
     def uuid(): String = {
         return java.util.UUID.randomUUID().toString().replaceAll("-", "")
@@ -73,6 +74,17 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
         s = (cfgNode \ "@interval").text
         if (s != "") interval = s.toInt
 
+        s = (cfgNode \ "@enableConfigService").text
+        if (s != "") enableConfigService = TypeSafe.isTrue(s)
+
+        s = (cfgNode \ "@configPath").text
+        if (s != "") configPath = s
+        if( configPath == "" )
+            configPath = System.getProperty("application.name")
+
+        s = (cfgNode \ "@defaultConfigPath").text
+        if (s != "") defaultConfigPath = s
+
         etcdClient = new EtcdHttpClient(hosts, 15000, 1000)
     }
 
@@ -99,7 +111,12 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
 
     def updateXml(xml: String): String = {
 
-        val in = new StringReader(xml)
+        var newxml = xml
+        if(enableConfigService) {
+            newxml = updateFromConfigServer(newxml)
+        }
+
+        val in = new StringReader(newxml)
         val cfgXml = XML.load(in)
         in.close()
 
@@ -136,7 +153,7 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
             if (registerAs != "") {
                 regMap.put(registerAs, getHost() + ":" + getTcpPort(sapPort))
                 val s = (cfgXml \ "Server" \ "@unregisterOnClose").text
-                unRegOnCloseMap.put(registerAs, isTrue(s))
+                unRegOnCloseMap.put(registerAs, TypeSafe.isTrue(s))
             }
         }
         var httpservers = (cfgXml \ "HttpServerCfg")
@@ -146,7 +163,7 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
                 var port = (httpserver_node \ "@port").text
                 regMap.put(registerAs, getHost() + ":" + getHttpPort(port))
                 val s = (httpserver_node \ "@unregisterOnClose").text
-                unRegOnCloseMap.put(registerAs, isTrue(s))
+                unRegOnCloseMap.put(registerAs, TypeSafe.isTrue(s))
             }
         }
         log.info("etcd registry plugin, regMap=" + regMap.mkString(","))
@@ -161,7 +178,6 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
 
         log.info("etcdreg plugin inited")
 
-        var newxml = xml
         for ((serviceId, discoverFor) <- sosMap) {
             val addrs = addrsMap.getOrElse(serviceId, null)
             if (addrs != null)
@@ -361,6 +377,117 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
         */
 
         true
+    }
+
+    def updateFromConfigServer(xml: String): String = {
+        val names = parseConfigNames(xml)
+        if( names.size == 0 ) return xml
+
+        val (ok,configs) = getEtcdConfig(profile,defaultConfigPath)
+        val (ok2,configs2) = getEtcdConfig(profile,configPath)
+        if( ok || ok2 ) {
+            configs ++= configs2
+        } else {
+            val (ok3,configsStr) = loadConfigFromFile()
+            if(!ok3)
+                throw new RuntimeException("config server parameter cannot be loaded")
+            configs.clear()
+            configs ++= JsonCodec.parseObjectNotNull(configsStr)
+        }
+        var newxml = xml
+        for( name <- names ) {
+            val value = configs.ns(name)
+            if( value == "" ) 
+                throw new RuntimeException("config server parameter %s not found".format(name))
+            newxml = newxml.replaceAll("@configservice:"+name,value)
+        }
+        if( ok || ok2 ) {
+            saveConfigToFile(JsonCodec.mkString(configs)) 
+        }
+        newxml
+    }
+
+    def parseConfigNames(xml:String):ArrayBufferString = {
+        val buff = ArrayBufferString()
+
+        val lines = xml.split("\n")
+
+        val reg1 = """@configservice:[0-9a-zA-Z_]+[^0-9a-zA-Z_]|:[0-9a-zA-Z_]+$""".r
+        val reg2 = """@configservice:([0-9a-zA-Z_]+).*$""".r
+
+        for (i <- 0 until lines.size) {
+            val s = lines(i)
+            val matchlist = reg1.findAllMatchIn(s)
+            if (matchlist != null) {
+
+                val tags = matchlist.toList
+                for (tag <- tags) {
+
+                    tag.matched match {
+                        case reg2(key) =>
+                            buff += key
+                        case _ =>
+                    }
+                }
+            }
+        }
+
+        buff
+    }
+
+    def saveConfigToFile(configs:String) {
+        val dir = Router.dataDir + File.separator + "etcd"
+        if (!new File(dir).exists) new File(dir).mkdirs()
+        val file = dir + File.separator + "configs"
+        FileUtils.writeStringToFile(new File(file), configs)
+    }
+    def loadConfigFromFile(): Tuple2[Boolean, String] = {
+        val dir = Router.dataDir + File.separator + "etcd"
+        val file = dir + File.separator + "configs"
+        if (!new File(file).exists) return (false, "")
+        val configs = FileUtils.readFileToString(new File(file))
+        (true, configs)
+    }
+
+    def getEtcdConfig(profile: String, appName: String): Tuple2[Boolean, HashMapStringAny] = {
+        val path = configBasePath + "/" + profile + "/" + appName
+        val (errorCode, content) = etcdClient.sendWithReturn("get", path, "")
+        if (errorCode != 0 || log.isDebugEnabled()) {
+            log.info("etcd req: path=" + path + " res: errorCode=" + errorCode + ",content=" + content)
+        }
+
+        if (errorCode != 0) return (false, HashMapStringAny())
+        val m = JsonCodec.parseObjectNotNull(content)
+        if (m.size == 0) return (false, HashMapStringAny())
+        if (m.ns("errorCode") != "" || m.ns("action") != "get") return (false, HashMapStringAny())
+
+        val nodelist = m.nm("node").nlm("nodes")
+        val configs = HashMapStringAny()
+
+        for (m <- nodelist if m.ns("key") != "" && m.ns("value") != "") {
+            val key = m.ns("key") 
+            val p = key.lastIndexOf("/")
+            configs.put(key.substring(p+1),m.ns("value"))
+        }
+
+        /*
+
+            [root@rpf02 app]# curl http://10.246.84.91:2379/v2/keys/configs/dev/scalabpedev
+            {"action":"get","node":{"key":"/configs/dev/scalabpedev","dir":true,"nodes":[{"key":"/configs/dev/scalabpedev/x","value":"thisisx","modifiedIndex":303184,"createdIndex":303184}],"modifiedIndex":303184,"createdIndex":303184}}
+            [root@rpf02 app]# curl http://10.246.84.91:2379/v2/keys/configs/dev/scalabpedev/y  -XPUT -d value=thisisy
+            {"action":"set","node":{"key":"/configs/dev/scalabpedev/y","value":"thisisy","modifiedIndex":303187,"createdIndex":303187}}
+            [root@rpf02 app]# curl http://10.246.84.91:2379/v2/keys/configs/dev/scalabpedev
+            {"action":"get","node":{"key":"/configs/dev/scalabpedev","dir":true,"nodes":[{"key":"/configs/dev/scalabpedev/x","value":"thisisx","modifiedIndex":303184,"createdIndex":303184},{"key":"/configs/dev/scalabpedev/y","value":"thisisy","modifiedIndex":303187,"createdIndex":303187}],"modifiedIndex":303184,"createdIndex":303184}}
+            [root@rpf02 app]# curl http://10.246.84.91:2379/v2/keys/configs/dev/scalabpedev/y  -XDELETE
+            {"action":"delete","node":{"key":"/configs/dev/scalabpedev/y","modifiedIndex":303188,"createdIndex":303187},"prevNode":{"key":"/configs/dev/scalabpedev/y","value":"thisisy","modifiedIndex":303187,"createdIndex":303187}}
+            [root@rpf02 app]# curl http://10.246.84.91:2379/v2/keys/configs/dev/scalabpedev/x  -XDELETE
+            {"action":"delete","node":{"key":"/configs/dev/scalabpedev/x","modifiedIndex":303189,"createdIndex":303184},"prevNode":{"key":"/configs/dev/scalabpedev/x","value":"thisisx","modifiedIndex":303184,"createdIndex":303184}}
+            [root@rpf02 app]# curl http://10.246.84.91:2379/v2/keys/configs/dev/scalabpedev?dir=true  -XDELETE
+            {"action":"delete","node":{"key":"/configs/dev/scalabpedev","dir":true,"modifiedIndex":303190,"createdIndex":303184},"prevNode":{"key":"/configs/dev/scalabpedev","dir":true,"modifiedIndex":303184,"createdIndex":303184}}
+
+        */
+
+        (true, configs)
     }
 }
 

@@ -47,4 +47,20 @@
 		<responseParameter>
 		</responseParameter>
 	</message>
+
+	<message name="msg3" id="3">
+		<requestParameter>
+			<field name="s"/>
+			<field name="bs1"/>
+			<field name="stuc2"/>
+			<field name="i"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="s"/>
+			<field name="bs1"/>
+			<field name="stuc2"/>
+			<field name="i"/>
+		</responseParameter>
+	</message>
+	
 </service>

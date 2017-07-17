@@ -1,6 +1,6 @@
 
 pluginname=etcdregistry
-pluginversion=1.0.0
+pluginversion=1.0.1
 
 show_help()
 {

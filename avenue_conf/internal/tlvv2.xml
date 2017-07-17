@@ -41,6 +41,15 @@
 			<field name="obj1"/>
     </type>
 
+    <type name="obj3_type" class="object" code="11"> 
+			<field name="s"/>
+			<field name="stuc2"/>
+			<field name="bs1"/>
+			<field name="i"/>
+			<field name="l"/>
+			<field name="d"/>
+    </type>
+
 	<message name="msg1" id="1">
 		<requestParameter>
 			<field name="s"/>
@@ -71,4 +80,22 @@
 		<responseParameter>
 		</responseParameter>
 	</message>
+
+	<message name="msg3" id="3">
+		<requestParameter>
+			<field name="s"/>
+			<field name="bs1"/>
+			<field name="stuc2"/>
+			<field name="obj3"/>
+			<field name="i"/>
+		</requestParameter>
+		<responseParameter>
+			<field name="s"/>
+			<field name="bs1"/>
+			<field name="stuc2"/>
+			<field name="obj3"/>
+			<field name="i"/>
+		</responseParameter>
+	</message>
+
 </service>

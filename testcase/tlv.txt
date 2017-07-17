@@ -1,13 +1,14 @@
 
 testcase:  
-    assert:tlvtest.test_channelbuffer req: res: 
-    assert:tlvtest.test_xhead req: res: 
-    assert:tlvtest.test_codec req: res: 
-    assert:tlvtest.test_tlv1 req: res: 
-    assert:tlvtest.test_tlv2 req: res: 
+#    assert:tlvtest.test_channelbuffer req: res: 
+#    assert:tlvtest.test_xhead req: res: 
+#    assert:tlvtest.test_codec req: res: 
+#    assert:tlvtest.test_tlv1 req: res: 
+#    assert:tlvtest.test_tlv2 req: res: 
 
-	assert:tlvtest.test_tlv1_2 req: res:
-	assert:tlvtest.test_tlv2_2 req: res:
+#	assert:tlvtest.test_tlv1_2 req: res:
+#	assert:tlvtest.test_tlv2_2 req: res:
+	assert:tlvtest.test_tlvlong req: res:
 
    #    assert:sleep req: s=600 res: 
     

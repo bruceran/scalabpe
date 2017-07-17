@@ -55,5 +55,12 @@
 		<responseParameter>
 		</responseParameter>
 	</message>
+	<message name="test_tlvlong" id="53">
+		<requestParameter>
+			<field name="cmd"/>
+		</requestParameter>
+		<responseParameter>
+		</responseParameter>
+	</message>
 
 </service>
