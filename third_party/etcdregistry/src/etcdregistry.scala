@@ -26,7 +26,7 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
     var configBasePath = "/v2/keys/configs"
     var enableConfigService = false
     var configPath = ""
-    var defaultConfigPath = ""
+    var globalConfigPath = ""
 
     var profile = "default"
     val timer = new Timer("etcdregtimer")
@@ -82,8 +82,8 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
         if( configPath == "" )
             configPath = System.getProperty("application.name")
 
-        s = (cfgNode \ "@defaultConfigPath").text
-        if (s != "") defaultConfigPath = s
+        s = (cfgNode \ "@globalConfigPath").text
+        if (s != "") globalConfigPath = s
 
         etcdClient = new EtcdHttpClient(hosts, 15000, 1000)
     }
@@ -383,26 +383,28 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
         val names = parseConfigNames(xml)
         if( names.size == 0 ) return xml
 
-        val (ok,configs) = getEtcdConfig(profile,defaultConfigPath)
-        val (ok2,configs2) = getEtcdConfig(profile,configPath)
+        val (ok,configsGlobal) = getEtcdConfig(profile,globalConfigPath)
+        val (ok2,configsApp) = getEtcdConfig(profile,configPath)
         if( ok || ok2 ) {
-            configs ++= configs2
+            configsGlobal ++= configsApp
         } else {
             val (ok3,configsStr) = loadConfigFromFile()
             if(!ok3)
                 throw new RuntimeException("config server parameter cannot be loaded")
-            configs.clear()
-            configs ++= JsonCodec.parseObjectNotNull(configsStr)
+            configsGlobal.clear()
+            configsGlobal ++= JsonCodec.parseObjectNotNull(configsStr)
         }
         var newxml = xml
+        val savedConfigs = HashMapStringAny()
         for( name <- names ) {
-            val value = configs.ns(name)
+            val value = configsGlobal.ns(name)
             if( value == "" ) 
                 throw new RuntimeException("config server parameter %s not found".format(name))
             newxml = newxml.replaceAll("@configservice:"+name,value)
+            savedConfigs.put(name,value)
         }
         if( ok || ok2 ) {
-            saveConfigToFile(JsonCodec.mkString(configs)) 
+            saveConfigToFile(JsonCodec.mkString(savedConfigs)) 
         }
         newxml
     }

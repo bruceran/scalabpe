@@ -28,7 +28,7 @@
 
 <!-- 以下是常用插件的最简配置示例，更多配置参数参考配置指南 -->
 <!--
-    <EtcdRegistry interval="10" enableConfigService="1" configPath="scalabpe" defaultConfigPath="ops">
+    <EtcdRegistry interval="10" enableConfigService="1" configPath="scalabpe" globalConfigPath="ops">
         <Hosts>10.246.84.91:2379</Hosts>
     </EtcdRegistry>
 -->

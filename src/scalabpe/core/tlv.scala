@@ -1818,7 +1818,7 @@ class TlvCodec(val configFile: String) extends Logging {
 
             if (v != null) {
 
-                if (!(v eq value)) { // TODO
+                if (v != value) {
                     value = safeConvertValue(v, tlvType.cls)
                     dataMap.put(key, value)
                 }
