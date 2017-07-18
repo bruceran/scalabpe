@@ -135,7 +135,7 @@ class NettyServerHandler(val nettyServer: NettyServer, val sos: Sos4Netty)
 
     override def exceptionCaught(ctx: ChannelHandlerContext, e: ExceptionEvent): Unit = {
         val connId = ctx.getAttachment().asInstanceOf[String];
-        log.error("connection exception, id=%s,msg=%s".format(connId, e.toString),e)
+        log.error("connection exception, id=%s,msg=%s".format(connId, e.toString),e.getCause)
         e.getChannel.close()
     }
 

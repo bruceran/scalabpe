@@ -305,7 +305,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
             0,
             1,
             0,
-            EMPTY_BUFFER, EMPTY_BUFFER)
+            ChannelBuffers.dynamicBuffer(128), EMPTY_BUFFER)
 
         TlvCodec4Xhead.appendAddr(data.xhead, parseRemoteAddr(connId), isSps, version)
         val requestId = "SOS" + RequestIdGenerator.nextId()
