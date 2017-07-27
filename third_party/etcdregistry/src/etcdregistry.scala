@@ -115,7 +115,6 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
         if(enableConfigService) {
             newxml = updateFromConfigServer(newxml)
         }
-
         val in = new StringReader(newxml)
         val cfgXml = XML.load(in)
         in.close()
@@ -414,7 +413,7 @@ class EtcdRegPlugin(val router: Router, val cfgNode: Node)
 
         val lines = xml.split("\n")
 
-        val reg1 = """@configservice:[0-9a-zA-Z_]+[^0-9a-zA-Z_]|:[0-9a-zA-Z_]+$""".r
+        val reg1 = """@configservice:[0-9a-zA-Z_]+[^0-9a-zA-Z_]|@configservice:[0-9a-zA-Z_]+$""".r
         val reg2 = """@configservice:([0-9a-zA-Z_]+).*$""".r
 
         for (i <- 0 until lines.size) {
