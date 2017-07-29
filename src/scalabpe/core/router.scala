@@ -345,16 +345,16 @@ class Router(val rootDir: String, val startSos: Boolean = true, var mockMode: Bo
 
     def updateXml(xml: String): String = {
 
-        val in = new StringReader(xml)
-        val tXml = XML.load(in)
-        in.close()
-
         var outputXml = xml
 
         val pluginMap = readPluginsByType("regdishook")
         if (pluginMap.size > 0) {
             regdishooks = new ArrayBuffer[RegDisHook]()
             for ((clsName, typeNode) <- pluginMap) {
+
+                val in = new StringReader(outputXml)
+                val tXml = XML.load(in)
+                in.close()
 
                 val nodeList = (tXml \ typeNode).toList
 
@@ -380,7 +380,7 @@ class Router(val rootDir: String, val startSos: Boolean = true, var mockMode: Bo
 
         val str1 = prepareConfigFile()
         val str2 = updateXml(str1)
-        //println("final xml="+str2)        
+//println("----------------------------- final xml="+str2)        
         val in = new StringReader(str2)
         cfgXml = XML.load(in)
         in.close()
