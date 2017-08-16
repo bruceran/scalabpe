@@ -1278,11 +1278,14 @@ application/x-gzip gz
 
         val jsonpCallback = body.s(jsonpName, "")
 
+        val range = httpReq.getHeader(HttpHeaders.Names.RANGE) // 断点续传
+
         val httpxhead = HashMapStringAny(
             "clientIpPort" -> clientIpPort,
             "remoteIpPort" -> remoteIpPort,
             "serverIpPort" -> serverIpPort,
             "userAgent" -> userAgent,
+            "Range" -> range,
             "host" -> host,
             "method" -> httpReq.getMethod().toString,
             "keepAlive" -> HttpHeaders.isKeepAlive(httpReq).toString,
@@ -1741,11 +1744,21 @@ application/x-gzip gz
         val keepAlive = xhead.s("keepAlive", "true") == "true"
         val contentType = xhead.s("contentType", "")
 
-        val response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK)
+        val f = new File(staticFile)
+        val fileLength = f.length()
+        var range = xhead.ns("Range") // 断点续传
+        var range_tpl:Tuple2[Long,Long] = (-1,-1)
+        if( range != null && range != "" ) {
+            range_tpl = parseRange(range,fileLength)
+        }
+        val response = 
+            if( range_tpl._1 != -1 ) 
+                new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.PARTIAL_CONTENT)
+            else
+                new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK)
 
         response.setHeader(HttpHeaders.Names.SERVER, "scalabpe httpserver/1.1.0")
 
-        val f = new File(staticFile)
         val time = new GregorianCalendar();
         response.setHeader(HttpHeaders.Names.DATE, df_tl.get().format(time.getTime()));
         response.setHeader(HttpHeaders.Names.LAST_MODIFIED, df_tl.get.format(new Date(f.lastModified())));
@@ -1768,8 +1781,13 @@ application/x-gzip gz
 
         response.setHeader(HttpHeaders.Names.CONTENT_TYPE, contentType)
 
-        val fileLength = f.length()
-        response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(fileLength));
+        if( range_tpl._1 != -1 ) {
+            response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(range_tpl._2 - range_tpl._1 + 1));
+            val s = "bytes %d-%d/%d".format(range_tpl._1,range_tpl._2,fileLength)
+            response.setHeader(HttpHeaders.Names.CONTENT_RANGE, s);
+        } else {
+            response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(fileLength));
+        }
 
         if (method == "HEAD") {
             nettyHttpServer.write(connId, response, keepAlive)
@@ -1777,7 +1795,33 @@ application/x-gzip gz
             return
         }
 
-        nettyHttpServer.writeFileZeroCopy(connId, response, keepAlive, f, fileLength, reqResInfo)
+        nettyHttpServer.writeFileZeroCopy(connId, response, keepAlive, f, fileLength, range_tpl, reqResInfo)
+    }
+
+    def parseRange(s:String,fileLength:Long):Tuple2[Long,Long] = {
+        try {
+            val ss = s.trim.split("=")
+            if( ss.length != 2) return (-1,-1)
+            if( ss(0) != "bytes") return (-1,-1)
+            val p = ss(1).indexOf("-")
+            if( p == -1 ) return (-1,-1)
+            var min = ss(1).substring(0,p)
+            var max = ss(1).substring(p+1)
+            if( min == "" && max == "" ) return (-1,-1)
+            if( min == "" && max != "" ) { 
+                min = (fileLength - max.toLong - 1).toString
+                max = (fileLength - 1).toString
+            } else {
+                if( max == "" ) max = (fileLength - 1).toString
+            }
+            val min_l = min.toLong 
+            val max_l = max.toLong 
+            if( min_l > max_l ) return (-1,-1)
+            (min_l,max_l)
+        } catch {
+            case e:Throwable =>
+                return (-1,-1)
+        }
     }
 
     def writeStaticFile(httpReq: HttpRequest, connId: String, xhead: HashMapStringAny, requestId: String, uri: String, f: File) {
@@ -1786,7 +1830,26 @@ application/x-gzip gz
 
         if (write304(httpReq, connId, xhead, requestId, uri, f)) return
 
-        val response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK)
+        /*
+            Range头域可以请求实体的一个或者多个子范围。例如，
+            表示头500个字节：bytes=0-499
+            表示第二个500字节：bytes=500-999
+            表示500字节以后的范围：bytes=500-
+            表示最后500个字节：bytes=-500
+            第一个和最后一个字节：bytes=0-0,-1  不支持
+            同时指定几个范围：bytes=500-600,601-999 不支持
+        */
+        val fileLength = f.length()
+        var range = httpReq.getHeader(HttpHeaders.Names.RANGE) // 断点续传
+        var range_tpl:Tuple2[Long,Long] = (-1,-1)
+        if( range != null && range != "" ) {
+            range_tpl = parseRange(range,fileLength)
+        }
+        val response = 
+            if( range_tpl._1 != -1 ) 
+                new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.PARTIAL_CONTENT)
+            else
+                new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.OK)
 
         response.setHeader(HttpHeaders.Names.SERVER, "scalabpe httpserver/1.1.0")
         setDateHeaderAndCache(response, f)
@@ -1797,8 +1860,13 @@ application/x-gzip gz
         val contentType = mimeTypeMap.getOrElse(ext, MIMETYPE_DEFAULT)
         response.setHeader(HttpHeaders.Names.CONTENT_TYPE, contentType)
 
-        val fileLength = f.length()
-        response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(fileLength));
+        if( range_tpl._1 != -1 ) {
+            response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(range_tpl._2 - range_tpl._1 + 1));
+            val s = "bytes %d-%d/%d".format(range_tpl._1,range_tpl._2,fileLength)
+            response.setHeader(HttpHeaders.Names.CONTENT_RANGE, s);
+        } else {
+            response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(fileLength));
+        }
         /*
 
     If-Modified-Since   如果请求的部分在指定时间之后被修改则请求成功，未被修改则返回304代码 If-Modified-Since: Sat, 29 Oct 2010 19:43:31 GMT
@@ -1831,7 +1899,7 @@ application/x-gzip gz
             return
         }
 
-        if (cacheEnabled && fileLength <= cacheFileSize && cacheFilesSet.contains(ext)) {
+        if (cacheEnabled && fileLength <= cacheFileSize && cacheFilesSet.contains(ext) && range_tpl._1 != -1) {
             var data = cacheMap.get(f.getPath)
             if (data == null) {
                 data = FileUtils.readFileToByteArray(f)
@@ -1844,7 +1912,7 @@ application/x-gzip gz
             return
         }
 
-        nettyHttpServer.writeFile(connId, response, keepAlive, f, fileLength, reqResInfo)
+        nettyHttpServer.writeFile(connId, response, keepAlive, f, fileLength, range_tpl, reqResInfo)
     }
 
     def parseBody(isRpc: Boolean, requestId: String, serviceId: Int, msgId: Int, httpReq: HttpRequest, bodyParams: HashMapStringAny, host: String, clientIp: String): Tuple2[HashMapStringAny, Boolean] = {

@@ -1,0 +1,13 @@
+//$service999.download3
+
+import java.io._
+
+//#receive
+
+    val filename = "F:\\workspace\\scalabpedev\\webapp\\static\\a.txt"
+
+    reply(0,
+        "filename"->filename
+        )
+
+

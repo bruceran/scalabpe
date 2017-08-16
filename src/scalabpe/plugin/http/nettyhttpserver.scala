@@ -97,7 +97,7 @@ class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer, val sos: Http
         return false
     }
 
-    def writeFile(connId: String, response: HttpResponse, keepAlive: Boolean, f: File, fileLength: Long, reqResInfo: HttpSosRequestResponseInfo = null): Boolean = {
+    def writeFile(connId: String, response: HttpResponse, keepAlive: Boolean, f: File, fileLength: Long, range_tpl:Tuple2[Long,Long], reqResInfo: HttpSosRequestResponseInfo = null): Boolean = {
 
         val ch = conns.get(connId)
         if (ch == null) {
@@ -107,7 +107,15 @@ class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer, val sos: Http
 
         if (ch.isOpen) {
             ch.write(response)
-            val future = ch.write(new ChunkedFile(f))
+            val future = 
+                if( range_tpl._1 != -1 ) { 
+                    val len = range_tpl._2 - range_tpl._1 + 1
+                    val chunksize = 1000000 // todo
+                    val raf = new RandomAccessFile(f,"r")
+                    ch.write(new ChunkedFile(raf,range_tpl._1,len,chunksize))
+                } else { 
+                    ch.write(new ChunkedFile(f))
+                }
             if (!keepAlive)
                 future.addListener(ChannelFutureListener.CLOSE)
             if (reqResInfo != null) {
@@ -123,7 +131,7 @@ class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer, val sos: Http
 
         return false
     }
-    def writeFileZeroCopy(connId: String, response: HttpResponse, keepAlive: Boolean, f: File, fileLength: Long, reqResInfo: HttpSosRequestResponseInfo = null): Boolean = {
+    def writeFileZeroCopy(connId: String, response: HttpResponse, keepAlive: Boolean, f: File, fileLength: Long,  range_tpl:Tuple2[Long,Long], reqResInfo: HttpSosRequestResponseInfo = null): Boolean = {
 
         val ch = conns.get(connId)
         if (ch == null) {
@@ -142,7 +150,14 @@ class NettyHttpServerHandler(val nettyHttpServer: NettyHttpServer, val sos: Http
 
         if (ch.isOpen) {
             ch.write(response)
-            val region = new DefaultFileRegion(raf.getChannel(), 0, fileLength);
+            val region = 
+                if( range_tpl._1 != -1 ) { 
+                    val len = range_tpl._2 - range_tpl._1 + 1
+                    new DefaultFileRegion(raf.getChannel(), range_tpl._1, len, true );
+                } else {
+                    new DefaultFileRegion(raf.getChannel(), 0, fileLength);
+                }
+
             val future = ch.write(region);
             future.addListener(new ChannelFutureProgressListener() {
                 def operationComplete(future: ChannelFuture) {
@@ -331,12 +346,12 @@ class NettyHttpServer(val sos: HttpServer4Netty,
         nettyHttpServerHandler.write(connId, response, keepAlive, reqResInfo)
     }
 
-    def writeFile(connId: String, response: HttpResponse, keepAlive: Boolean, f: File, fileLength: Long, reqResInfo: HttpSosRequestResponseInfo = null): Boolean = {
-        nettyHttpServerHandler.writeFile(connId, response, keepAlive, f, fileLength, reqResInfo)
+    def writeFile(connId: String, response: HttpResponse, keepAlive: Boolean, f: File, fileLength: Long, range_tpl:Tuple2[Long,Long], reqResInfo: HttpSosRequestResponseInfo = null): Boolean = {
+        nettyHttpServerHandler.writeFile(connId, response, keepAlive, f, fileLength, range_tpl, reqResInfo)
     }
 
-    def writeFileZeroCopy(connId: String, response: HttpResponse, keepAlive: Boolean, f: File, fileLength: Long, reqResInfo: HttpSosRequestResponseInfo = null): Boolean = {
-        nettyHttpServerHandler.writeFileZeroCopy(connId, response, keepAlive, f, fileLength, reqResInfo)
+    def writeFileZeroCopy(connId: String, response: HttpResponse, keepAlive: Boolean, f: File, fileLength: Long,  range_tpl:Tuple2[Long,Long], reqResInfo: HttpSosRequestResponseInfo = null): Boolean = {
+        nettyHttpServerHandler.writeFileZeroCopy(connId, response, keepAlive, f, fileLength, range_tpl, reqResInfo)
     }
 
     def closeReadChannel() {

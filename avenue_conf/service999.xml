@@ -70,6 +70,16 @@
 		</responseParameter>
 	</message>
 
+    <message name="download3" id="5">
+		<requestParameter>
+		</requestParameter>
+		<responseParameter>
+			<field name="filename" type="filename_type"/>
+			<field name="attachment" type="attachment_type" default="1"/>
+			<field name="expire" type="expire_type" default="0"/>
+		</responseParameter>
+	</message>
+
 	<message name="jobtest1" id="101">
 		<requestParameter>
 		</requestParameter>

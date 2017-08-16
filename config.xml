@@ -45,6 +45,7 @@
 
 <!-- http server 配置 -->
 <!-- 
+-->
     <HttpServerCfg  registerAs="demoservicehttp" port="8088" devMode="1">
 
         <UrlMapping>
@@ -52,12 +53,12 @@
             <Item>test/updateUserInfo,999,2</Item>
             <Item plugin="download">downloadtest1,999,3</Item>
             <Item plugin="download">downloadtest2,999,4</Item>
+            <Item plugin="static_file" responseContentType="application/octet-stream">/downloadtest3,999,5</Item>
         </UrlMapping>
         <MimeTypes>
             <Item>application/vnd.ms-excel xls xlsx</Item>
         </MimeTypes>
     </HttpServerCfg>
--->
 
 <!-- 定时任务配置 -->
 <!-- 
