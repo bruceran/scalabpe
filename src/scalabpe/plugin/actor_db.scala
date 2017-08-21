@@ -821,6 +821,7 @@ class DbClient(
 
                         var fromValue = map.getOrElse("res-" + f + "-from", null)
                         var ignoreCheck = map.getOrElse("res-" + f + "-ignoreCheck", "0") == "1"
+                        var selectFields = map.getOrElse("res-" + f + "-selectFields", "")
 
                         if (fromValue == null) {
 
@@ -923,9 +924,15 @@ class DbClient(
                                     if (tlvType.cls != TlvType.CLS_STRUCT) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s, the tlv type must struct".format(serviceId, msgId, f))
                                     }
-                                    val names = parseStructNames(tlvType.structDef.fields, sqls(0))
-                                    val resdef = new ResultDefine(f, MsgDefine.RESULTTYPE_ROW, row.toInt, 0, names)
-                                    resdefs += resdef
+                                    if (selectFields != "") {
+                                        val names = selectFields.split(",").toList
+                                        val resdef = new ResultDefine(f, MsgDefine.RESULTTYPE_ROW, row.toInt, 0, names)
+                                        resdefs += resdef
+                                    } else {
+                                        val names = parseStructNames(tlvType.structDef.fields, sqls(0))
+                                        val resdef = new ResultDefine(f, MsgDefine.RESULTTYPE_ROW, row.toInt, 0, names)
+                                        resdefs += resdef
+                                    }
                                 case reg4() =>
                                     val tlvTypeName = codec.msgKeyToTypeMapForRes.getOrElse(msgId, EMPTY_STRINGMAP).getOrElse(f, null)
                                     if (tlvTypeName == null) {
@@ -938,9 +945,15 @@ class DbClient(
                                     if (tlvType.cls != TlvType.CLS_STRUCTARRAY) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s, the tlv type must struct".format(serviceId, msgId, f))
                                     }
-                                    val names = parseStructNames(tlvType.structDef.fields, sqls(0))
-                                    val resdef = new ResultDefine(f, MsgDefine.RESULTTYPE_ALL, 0, 0, names)
-                                    resdefs += resdef
+                                    if (selectFields != "") {
+                                        val names = selectFields.split(",").toList
+                                        val resdef = new ResultDefine(f, MsgDefine.RESULTTYPE_ALL, 0, 0, names)
+                                        resdefs += resdef
+                                    } else {
+                                        val names = parseStructNames(tlvType.structDef.fields, sqls(0))
+                                        val resdef = new ResultDefine(f, MsgDefine.RESULTTYPE_ALL, 0, 0, names)
+                                        resdefs += resdef
+                                    }
                                 case _ =>
                                     throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,from=%s".format(serviceId, msgId, fromValue))
 

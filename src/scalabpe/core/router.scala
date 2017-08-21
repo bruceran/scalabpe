@@ -42,7 +42,7 @@ class Router(val rootDir: String, val startSos: Boolean = true, var mockMode: Bo
     val pluginConfFile = "scalabpe.plugins.conf"
     val EMPTY_BUFFER = ChannelBuffers.buffer(0)
 
-    val pReg = """@[0-9a-zA-Z_-]+[ <\]"]""".r // allowed: @xxx< @xxx]]> @xxx[SPACE]
+    val pReg = """@[0-9a-zA-Z_-]+[ /<\]"]""".r // allowed: @xxx< @xxx]]> @xxx[SPACE]
     val pReg2 = """@[0-9a-zA-Z_-]+$""".r // allowed: @xxx
     val pRegName = """^(@[0-9a-zA-Z_-]+).*$""".r
 
