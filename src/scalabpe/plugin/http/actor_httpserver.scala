@@ -1618,11 +1618,11 @@ application/x-gzip gz
         response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, "0")
 
         if (cookies != null && cookies.size > 0) {
-            val encoder = new CookieEncoder(true)
             for ((dummy, c) <- cookies) {
+                val encoder = new CookieEncoder(true)
                 encoder.addCookie(c)
+                response.addHeader(HttpHeaders.Names.SET_COOKIE, encoder.encode())
             }
-            response.setHeader(HttpHeaders.Names.SET_COOKIE, encoder.encode())
         }
 
         nettyHttpServer.write(connId, response, keepAlive)
@@ -1650,11 +1650,11 @@ application/x-gzip gz
         response.setHeader(HttpHeaders.Names.CONTENT_LENGTH, String.valueOf(buff.readableBytes()))
 
         if (cookies != null && cookies.size > 0) {
-            val encoder = new CookieEncoder(true)
             for ((dummy, c) <- cookies) {
+                val encoder = new CookieEncoder(true)
                 encoder.addCookie(c)
+                response.addHeader(HttpHeaders.Names.SET_COOKIE, encoder.encode())
             }
-            response.setHeader(HttpHeaders.Names.SET_COOKIE, encoder.encode())
         }
 
         if (headers != null) {
@@ -1766,11 +1766,11 @@ application/x-gzip gz
         if (!keepAlive) response.setHeader(HttpHeaders.Names.CONNECTION, "close")
 
         if (cookies != null && cookies.size > 0) {
-            val encoder = new CookieEncoder(true)
             for ((dummy, c) <- cookies) {
+                val encoder = new CookieEncoder(true)
                 encoder.addCookie(c)
+                response.addHeader(HttpHeaders.Names.SET_COOKIE, encoder.encode())
             }
-            response.setHeader(HttpHeaders.Names.SET_COOKIE, encoder.encode())
         }
 
         if (headers != null) {

@@ -975,7 +975,7 @@ class HttpClientImpl(
         val status = httpRes.getStatus
         body.put("httpCode", status.getCode())
 
-        if (status.getCode() != 200) {
+        if (status.getCode() != 200 && status.getCode() != 201) {
 
             if (log.isDebugEnabled()) {
                 log.debug("status code={}", status.getCode())
