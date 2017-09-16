@@ -1956,11 +1956,19 @@ application/x-gzip gz
                 }
 
                 val x_upload_processed = httpReq.getHeader("X_UPLOAD_PROCESSED")
+                val x_upload_processed_2 = httpReq.getHeader("X_UPLOAD_PROCESSED_2")
                 if (x_upload_processed != null && x_upload_processed != "") {
+                    val t1 = System.currentTimeMillis()
                     val in = new BufferedInputStream(new FileInputStream(x_upload_processed), 5000000)
                     parseFileUploadContent(charset, in, map)
                     in.close()
                     new File(x_upload_processed).delete()
+                    val t2 = System.currentTimeMillis()
+                    if( t2 - t1 > 1000 ) {
+                        log.warn("parse file upload content ts="+(t2-t1)+", file="+x_upload_processed)
+                    }
+                } else if (x_upload_processed_2 != null && x_upload_processed_2 != "") {
+                    parseFileUploadContent2(charset, x_upload_processed_2, map)
                 } else {
                     // upload file 
                     // upload file to temp dir and put filename to body
@@ -2691,6 +2699,41 @@ application/x-gzip gz
             buff.append(entry.getKey).append("=").append(entry.getValue)
         }
         buff.toString
+    }
+
+    def convertCharset(v:String,charset:String):String = {
+        val bs = v.getBytes("ISO-8859-1")
+        new String(bs,charset)
+    }
+
+    def parseFileUploadContent2(charset: String,data:String, map: HashMapStringAny) {
+
+        val files = ArrayBufferMap()
+        val params = JsonCodec.parseArrayObjectNotNull(data)
+        for (m <- params) {
+            if (m.contains("filename")) {
+                if (m.contains("file")) {
+                    val file = m.ns("file")
+                    val f = new File(file)
+                    if( f.exists() && f.length > 0 ) {
+                        val filename = convertCharset( m.ns("filename"), charset )
+                        m.put("filename",filename)
+                        val p = filename.lastIndexOf(".")
+                        if (p > 0) m.put("ext", filename.substring(p).toLowerCase)
+                        else m.put("ext", "")
+                        m.put("size", f.length)
+                        files += m
+                    }
+                }
+            } else {
+                val name = m.ns("name") 
+                val value = convertCharset( m.ns("value"), charset )
+                if (name != "") {
+                    map.put(name, value)
+                }
+            }
+        }
+        map.put("files", files)
     }
 
     def parseFileUploadContent(charset: String, in: InputStream, map: HashMapStringAny) {

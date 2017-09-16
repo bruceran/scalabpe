@@ -22,6 +22,17 @@
     <type name="content_type" class="string" code="15" isbytes="1"/>
     <type name="expire_type" class="string" code="16"/>
 
+    <type name="uploadfile_type"             class="struct"  code="500">
+        <field name="filename"               type="systemstring" desc="文件名"/>
+        <field name="file"                   type="systemstring" desc="已保存的临时文件,包括路径和文件名"/>
+        <field name="size"                   type="systemstring" desc="大小"/>
+        <field name="ext"                    type="systemstring" desc="扩展名"/>
+    </type>
+    <type name="uploadfile_array_type"       class="array"   itemType="uploadfile_type"/>
+ 	<type name="a_type" class="string" code="100"/>
+ 	<type name="b_type" class="string" code="101"/>
+ 	<type name="c_type" class="string" code="102"/>
+
 	<message name="queryUserInfo" id="1">
 		<requestParameter>
 			<field name="userId" type="userId_type"/>
@@ -77,6 +88,17 @@
 			<field name="filename" type="filename_type"/>
 			<field name="attachment" type="attachment_type" default="1"/>
 			<field name="expire" type="expire_type" default="0"/>
+		</responseParameter>
+	</message>
+
+    <message name="upload1" id="6">
+		<requestParameter>
+            <field name="a"/>
+            <field name="b"/>
+            <field name="c"/>
+            <field name="files"              type="uploadfile_array_type"/>
+		</requestParameter>
+		<responseParameter>
 		</responseParameter>
 	</message>
 

@@ -6,6 +6,7 @@
     <SapPort>6210</SapPort>
     <CohPort>7210</CohPort>
     <DataDirRoot>/opt/data</DataDirRoot>
+    <AsyncLogArray>10</AsyncLogArray>
 
     <Parameter name="serviceIdsAllowed">680</Parameter>
 
@@ -46,7 +47,10 @@
 <!-- http server 配置 -->
 <!-- 
 -->
-    <HttpServerCfg  registerAs="demoservicehttp" port="8088" devMode="1">
+    <HttpServerCfg  
+               maxUploadLength="2000000000"
+ 
+        registerAs="demoservicehttp" port="8088" devMode="1">
 
         <UrlMapping>
             <Item>test/queryUserInfo,999,1</Item>
@@ -54,6 +58,7 @@
             <Item plugin="download">downloadtest1,999,3</Item>
             <Item plugin="download">downloadtest2,999,4</Item>
             <Item plugin="static_file" responseContentType="application/octet-stream">/downloadtest3,999,5</Item>
+            <Item >upload1,999,6</Item>
         </UrlMapping>
         <MimeTypes>
             <Item>application/vnd.ms-excel xls xlsx</Item>

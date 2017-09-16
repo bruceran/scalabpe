@@ -391,7 +391,8 @@ class NettyHttpServer(val sos: HttpServer4Netty,
             val pipeline = Channels.pipeline()
             pipeline.addLast("timeout", new IdleStateHandler(timer, 0, 0, idleTimeoutMillis / 1000))
             pipeline.addLast("decoder", new HttpRequestDecoder(maxInitialLineLength, maxHeaderSize, maxChunkSize))
-            pipeline.addLast("uploader", new HttpFileUploadAggregator(uploadDir, maxUploadLength)) // 对上传文件做特殊处理，写到一个文件中
+            //pipeline.addLast("uploader", new HttpFileUploadAggregator(uploadDir, maxUploadLength)) // 对上传文件做特殊处理，写到一个文件中
+            pipeline.addLast("uploader2", new HttpFileUploadAggregator2(uploadDir, maxUploadLength)) // 对上传文件做特殊处理，写到一个文件中, 一次完成解析
             pipeline.addLast("aggregator", new HttpChunkAggregator(maxContentLength)) // 将chunked message合并成一个message
             pipeline.addLast("encoder", new HttpResponseEncoder())
             pipeline.addLast("chunkedWriter", new ChunkedWriteHandler())
