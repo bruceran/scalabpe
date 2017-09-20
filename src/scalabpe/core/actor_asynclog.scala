@@ -687,10 +687,10 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
                     buff.append(info.req.parentServiceId).append(splitter).append(info.req.parentMsgId).append(splitter)
                     buff.append(info.req.serviceId).append(splitter).append(info.req.msgId).append(splitter)
                     buff.append(info.res.remoteAddr).append(splitter)
+                    buff.append(info.req.xhead.ns("uniqueId"))
                     buff.append(splitter).append(splitter)
 
                     val codec = codecs.findTlvCodec(info.req.serviceId)
-
                     val serviceNameMsgName = codec.serviceName + "." + codec.msgIdToNameMap.getOrElse(info.req.msgId, "unknown")
                     buff.append(serviceNameMsgName).append(splitter)
 
@@ -740,6 +740,11 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
                         buff.append(logId)
                     }
                     buff.append(splitter)
+                    if(true) {
+                        val codec = codecs.findTlvCodec(info.req.serviceId)
+                        val serviceNameMsgName = codec.serviceName + "." + codec.msgIdToNameMap.getOrElse(info.req.msgId, "unknown")
+                        buff.append(serviceNameMsgName)
+                    }
                     buff.append(splitter)
 
                     appendIndex(buff, info.req.serviceId, info.req.msgId, info.req.body, info.res.body, info.logVars)
@@ -812,6 +817,11 @@ class AsyncLogActor(val router: Router) extends Actor with Logging with Closable
                     buff.append(logId)
                 }
                 buff.append(splitter)
+                if(true) {
+                    val codec = codecs.findTlvCodec(req.serviceId)
+                    val serviceNameMsgName = codec.serviceName + "." + codec.msgIdToNameMap.getOrElse(req.msgId, "unknown")
+                    buff.append(serviceNameMsgName)
+                }
                 buff.append(splitter)
 
                 appendIndex(buff, req.serviceId, req.msgId, req.body, res.body, null)

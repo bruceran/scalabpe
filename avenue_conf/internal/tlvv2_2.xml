@@ -21,7 +21,7 @@
     </type>
     <type name="stuc2_type" class="struct" code="8"> 
 			<field name="f11"/>
-			<field name="f12" type="string"/>
+			<field name="f12" type="vstring"/>
 			<field name="f2" type="int"/>
 			<field name="f3" type="long"/>
 			<field name="f4" type="double"/>

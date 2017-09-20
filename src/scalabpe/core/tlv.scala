@@ -62,6 +62,7 @@ object TlvType {
 
     val CLS_BYTES = 21
     val CLS_SYSTEMSTRING = 22 // used only in struct for avenue version 1
+    val CLS_VSTRING = 23 
 
     val UNKNOWN = new TlvType("unknown", CLS_UNKNOWN, -1, null)
     val EMPTY_STRUCTDEF = new StructDef()
@@ -90,6 +91,7 @@ object TlvType {
             case "object"       => CLS_OBJECT
             case "array"        => CLS_ARRAY
             case "systemstring" => CLS_SYSTEMSTRING
+            case "vstring"      => CLS_VSTRING
             case _              => CLS_UNKNOWN
         }
     }
@@ -105,34 +107,31 @@ object TlvType {
             case CLS_OBJECT       => "object"
             case CLS_ARRAY        => "array"
             case CLS_SYSTEMSTRING => "systemstring"
+            case CLS_VSTRING      => "vstring"
             case _                => "unknown cls"
         }
     }
 
-    def checkTypeCls(version: Int, tp: Int): Boolean = {
-        (version, tp) match {
-            case (1, CLS_INT)    => true
-            case (1, CLS_STRING) => true
-            case (1, CLS_BYTES)  => true
-            case (2, CLS_INT)    => true
-            case (2, CLS_LONG)   => true
-            case (2, CLS_DOUBLE) => true
-            case (2, CLS_STRING) => true
-            case (2, CLS_BYTES)  => true
-            case _               => false
+    def checkTypeCls(tp: Int): Boolean = {
+        tp match {
+            case CLS_INT    => true
+            case CLS_LONG   => true
+            case CLS_DOUBLE => true
+            case CLS_STRING => true
+            case CLS_BYTES  => true
+            case _          => false
         }
     }
 
-    def checkStructFieldCls(version: Int, fieldType: Int): Boolean = {
-        (version, fieldType) match {
-            case (1, CLS_INT)          => true
-            case (1, CLS_STRING)       => true
-            case (1, CLS_SYSTEMSTRING) => true
-            case (2, CLS_INT)          => true
-            case (2, CLS_LONG)         => true
-            case (2, CLS_DOUBLE)       => true
-            case (2, CLS_STRING)       => true
-            case _                     => false
+    def checkStructFieldCls(fieldType: Int): Boolean = {
+        fieldType match {
+            case CLS_INT          => true
+            case CLS_LONG         => true
+            case CLS_DOUBLE       => true
+            case CLS_STRING       => true
+            case CLS_SYSTEMSTRING => true
+            case CLS_VSTRING      => true
+            case _                => false
         }
     }
 }
@@ -363,8 +362,7 @@ class TlvCodec(val configFile: String) extends Logging {
     def getStructType(t: Node): String = {
         val s = (t \ "@type").toString
         if (s != "") return s
-        if (version == 1) return "systemstring"
-        else return "string"
+        return "systemstring"
     }
 
     def getStructLen(t: Node, fieldType: Int): Int = {
@@ -374,8 +372,8 @@ class TlvCodec(val configFile: String) extends Logging {
             case CLS_LONG                   => return 8
             case CLS_DOUBLE                 => return 8
             case CLS_SYSTEMSTRING           => return 0
-            case CLS_STRING if version == 2 => return 0
-            case CLS_STRING if version == 1 =>
+            case CLS_VSTRING                => return 0
+            case CLS_STRING =>
                 val s = (t \ "@len").toString
                 if (s == "") return -1
                 else return s.toInt
@@ -425,7 +423,7 @@ class TlvCodec(val configFile: String) extends Logging {
 
             val name = (t \ "@name").toString.toLowerCase
             val cls = clsToInt((t \ "@class").toString, (t \ "@isbytes").toString)
-            if (cls == CLS_UNKNOWN || cls == CLS_SYSTEMSTRING)
+            if (cls == CLS_UNKNOWN || cls == CLS_SYSTEMSTRING || cls == CLS_VSTRING)
                 throw new CodecException("class not valid, class=%s".format((t \ "@class").toString))
             val code = if (cls != CLS_ARRAY) (t \ "@code").toString.toInt else 0
 
@@ -479,7 +477,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         val fieldName = (f \ "@name").toString
                         val fieldTypeName = getStructType(f)
                         val fieldType = clsToInt(fieldTypeName)
-                        if (!checkStructFieldCls(version, fieldType)) {
+                        if (!checkStructFieldCls(fieldType)) {
                             throw new CodecException("not supported field type,name=%s,type=%s".format(name, clsToName(fieldType)))
                         }
 
@@ -520,10 +518,6 @@ class TlvCodec(val configFile: String) extends Logging {
                     typeNameToCodeMap.put(tlvType.name, tlvType);
 
                 case CLS_OBJECT =>
-
-                    if (version != 2) {
-                        throw new CodecException("object not supported in version 1")
-                    }
 
                     val t_keyToTypeMap = new HashMapStringString()
                     val t_typeToKeyMap = new HashMapStringString()
@@ -591,7 +585,7 @@ class TlvCodec(val configFile: String) extends Logging {
 
                 case _ =>
 
-                    if (!checkTypeCls(version, cls)) {
+                    if (!checkTypeCls(cls)) {
                         throw new CodecException("not supported type,name=%s,type=%s".format(name, clsToName(cls)))
                     }
 
@@ -1062,11 +1056,11 @@ class TlvCodec(val configFile: String) extends Logging {
                     val value = buff.readDouble
                     map.put(key, value)
                 }
-                case CLS_STRING if version == 1 => {
+                case CLS_STRING => {
                     val value = readString(buff, len, AvenueCodec.toEncoding(encoding)).trim()
                     map.put(key, value)
                 }
-                case CLS_SYSTEMSTRING if version == 1 => {
+                case CLS_SYSTEMSTRING => {
                     len = buff.readInt // length for system string
                     totalLen += 4
                     totalLen += aligned(len)
@@ -1076,7 +1070,7 @@ class TlvCodec(val configFile: String) extends Logging {
                     val value = readString(buff, len, AvenueCodec.toEncoding(encoding)).trim()
                     map.put(key, value)
                 }
-                case CLS_STRING if version == 2 => {
+                case CLS_VSTRING => {
 
                     var t = buff.readShort & 0xffff
                     if (t == 0xffff) {
@@ -1296,7 +1290,7 @@ class TlvCodec(val configFile: String) extends Logging {
                     buff.writeLong(TypeSafe.anyToLong(v))
                 case CLS_DOUBLE => 
                     buff.writeDouble(TypeSafe.anyToDouble(v))
-                case CLS_STRING if version == 1 => {
+                case CLS_STRING => {
 
                     if (v == null) v = ""
                     val s = TypeSafe.anyToString(v).getBytes(AvenueCodec.toEncoding(encoding))
@@ -1315,7 +1309,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         buff.writeBytes(new Array[Byte](alignedLen - len))
                     }
                 }
-                case CLS_SYSTEMSTRING if version == 1 => {
+                case CLS_SYSTEMSTRING => {
 
                     if (v == null) v = ""
                     val s = TypeSafe.anyToString(v).getBytes(AvenueCodec.toEncoding(encoding))
@@ -1328,7 +1322,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         buff.writeBytes(new Array[Byte](alignedLen - s.length))
                     }
                 }
-                case CLS_STRING if version == 2 => {
+                case CLS_VSTRING => {
 
                     if (v == null) v = ""
                     val s = TypeSafe.anyToString(v).getBytes(AvenueCodec.toEncoding(encoding))
@@ -1678,10 +1672,11 @@ class TlvCodec(val configFile: String) extends Logging {
 
     def fastConvertStruct(tlvType: TlvType, datamap: HashMapStringAny, addConvertFlag: Boolean) {
 
-        if (datamap.contains(CONVERTED_FLAG)) {
-            datamap.remove(CONVERTED_FLAG)
-            return
-        }
+        // 有副作用，去掉
+        //if (datamap.contains(CONVERTED_FLAG)) {
+            //datamap.remove(CONVERTED_FLAG)
+            //return
+        //}
 
         // 删除多余key
         var to_be_removed: ArrayBufferString = null
@@ -1708,7 +1703,7 @@ class TlvCodec(val configFile: String) extends Logging {
             var v = datamap.getOrElse(key, null)
             if (v == null) {
                 f.cls match {
-                    case CLS_STRING | CLS_SYSTEMSTRING =>
+                    case CLS_STRING | CLS_SYSTEMSTRING | CLS_VSTRING =>
                         datamap.put(key, "")
                     case CLS_INT =>
                         datamap.put(key, 0)
@@ -1719,7 +1714,7 @@ class TlvCodec(val configFile: String) extends Logging {
                 }
             } else {
                 f.cls match {
-                    case CLS_STRING | CLS_SYSTEMSTRING =>
+                    case CLS_STRING | CLS_SYSTEMSTRING | CLS_VSTRING =>
                         if (!v.isInstanceOf[String])
                             datamap.put(key, TypeSafe.anyToString(v))
                     case CLS_INT =>
@@ -1736,9 +1731,9 @@ class TlvCodec(val configFile: String) extends Logging {
 
         }
 
-        if (addConvertFlag) {
-            datamap.put(CONVERTED_FLAG, "1")
-        }
+        //if (addConvertFlag) {
+            //datamap.put(CONVERTED_FLAG, "1")
+        //}
 
     }
 

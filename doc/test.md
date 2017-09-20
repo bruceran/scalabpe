@@ -282,7 +282,7 @@
         RECEIVE_TIME 收到请求的的时间
         ELAPSE_TIME, 耗时，等于 TIMESTAMP - RECEIVE_TIME
         DUMMY 无意义 XHEAD_LOG_ID 
-        DUMMY 无意义
+        DUMMY 无意义 1.2.6版本开始为：服务名.消息名
         IDX1  索引字段1
         IDX2  索引字段2
         IDX3  索引字段3

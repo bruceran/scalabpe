@@ -615,7 +615,7 @@ options:
                         " type=\"%s\"".format(tp) + extra+"/>" 
                 buff += xml
             case "struct" =>
-                tp = if(version == 1) "systemstring" else "string"
+                tp = "systemstring" 
                 val p = name.indexOf("#")
                 if( p > 0 ) {
                     tp = name.substring(p+1)
@@ -773,12 +773,7 @@ options:
                             attrs.remove("desc")
                             if( context == "struct" ) {
                                 var s = indent2+name
-                                version match {
-                                    case 1 =>
-                                        if( tp != "systemstring" ) s +="#"+tp 
-                                    case 2 =>
-                                        if( tp != "string" ) s +="#"+tp 
-                                }
+                                if( tp != "systemstring" ) s +="#"+tp 
                                 s = StringUtils.rightPad(s,40,' ')
                                 for( (k,v) <- attrs ) s += indent+k+":"+escape0(v.toString)
                                 if( desc != null ) 
