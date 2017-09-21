@@ -181,7 +181,7 @@ object TlvCodec {
 
     val EMPTY_STRINGMAP = new HashMapStringString()
     val EMPTY_BUFFER = ChannelBuffers.buffer(0)
-    val CONVERTED_FLAG = "__converted__"
+    //val CONVERTED_FLAG = "__converted__"
 
     def hexDump(buff: ChannelBuffer): String = {
         val s = ChannelBuffers.hexDump(buff, 0, buff.writerIndex)
@@ -362,7 +362,7 @@ class TlvCodec(val configFile: String) extends Logging {
     def getStructType(t: Node): String = {
         val s = (t \ "@type").toString
         if (s != "") return s
-        return "systemstring"
+        return "unknown" // 不设默认值
     }
 
     def getStructLen(t: Node, fieldType: Int): Int = {
