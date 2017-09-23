@@ -241,7 +241,6 @@ class HttpServerActor(val router: Router, val cfgNode: Node) extends Actor
     val webappDirExisted = new File(webappDir).exists()
     val webappStaticDir = webappDir + File.separator + "static"
     val webappStaticDirExisted = new File(webappStaticDir).exists()
-    val webappUploadDir = webappDir + File.separator + "upload"
 
     var defaultMimeTypes =
         """
@@ -2788,11 +2787,11 @@ application/x-gzip gz
 
     def readMultiPartFile(charset: String, in: InputStream, db: Array[Byte]): Tuple2[String, Boolean] = {
 
-        val webappUploadDirExisted = new File(webappUploadDir).exists()
+        val webappUploadDirExisted = new File(uploadDir).exists()
         if (!webappUploadDirExisted) {
-            new File(webappUploadDir).mkdirs()
+            new File(uploadDir).mkdirs()
         }
-        val filename = webappUploadDir + File.separator + uuid() + ".tmp"
+        val filename = uploadDir + File.separator + uuid() + ".tmp"
 
         var writed = 0
         val out = new BufferedOutputStream(new FileOutputStream(filename), 5000000);

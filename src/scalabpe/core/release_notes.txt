@@ -1,7 +1,8 @@
 1.2.6 (20170920)
 ================
 
-* (0720)avenue 2.0协议调整：新增的long,double,object,vstring可用在1.0/2.0, 老的类型全部兼容，协议版本调整只针对avenue包头
+* (0920)request日志里增加服务名消息名, csos日志里增加uniqueId
+* (0920)avenue 2.0协议调整：新增的long,double,object,vstring可用在1.0/2.0, 老的类型全部兼容，协议版本调整只针对avenue包头
 
 1.2.5 (20170907)
 ================
