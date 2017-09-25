@@ -727,8 +727,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
   
   了解底层通讯协议有助于更好地理解ScalaBPE框架
 
-## 请求格式
-
+## 请求格式  version=1
     
     0........ 8........16........24........32
     1  |--0xA1---|headLen-|--version-|----M---| //协议标记,头长,版本号,路由数
@@ -743,9 +742,9 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     10 |-------------signature----------------|
     11 |-------------signature----------------| //16字节签名
     
-    headLen 填44 + 扩展包头长度
+    headLen 填44 + 扩展包头长度, 包头最多可以支持到256个字节
     
-    version 固定填1, 
+    version 填1, 
     M 固定填0x0F
     packageLen 填实际包长
     
@@ -769,7 +768,7 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     
     body: 格式和编码取决于format和encoding
 
-## 响应格式
+## 响应格式 version=1
         
     使用标准的Avenue协议包头, 无扩展包头: 
 
@@ -788,9 +787,9 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     
     其中：
     
-    headLen 填44 + 扩展包头长度
+    headLen 填44 + 扩展包头长度, 包头最多可以支持到256个字节
     
-    version 固定填1
+    version 填1
     reserve 固定填0
     packetLen 填实际包长; 对心跳包和ack包，固定式44
     
@@ -817,6 +816,42 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
     signature 全部填 0
     
     body: 格式和编码取决于format和encoding
+
+## 请求格式  version=2 从1.2.6版本开始支持version=2
+    
+    0........ 8........16........24........32
+    1  |--0xA1---|headLen-|--version-|----M---| //协议标记,头长,版本号,路由数
+    2  |---------------packetLen--------------| //包长 
+    3  |---------------serviceId--------------| //服务id
+    4  |----------------msgId-----------------| //请求id
+    5  |---------------sequence---------------| //序列号
+    6  |---------------optional---------------| //可选标记位
+    7  |---------------priority---------------| //优先级
+    
+    headLen ( 填28 + 扩展包头长度按4字节对齐 ) / 4 (相比version=1,实际包头长度需*4, 包头最多可以支持到1024个字节)
+    version 填2
+    去掉version=1里的签名
+    其它属性同version=1
+
+## 响应格式 version=2 从1.2.6版本开始支持version=2
+        
+    使用标准的Avenue协议包头, 无扩展包头: 
+
+    0........ 8........16........24........32
+    1  |--0xA2---|headLen-|--version-|reserve-| //协议标记，头长，版本号，保留位
+    2  |---------------packetLen--------------| //包长 
+    3  |---------------serviceId--------------| //服务id
+    4  |----------------msgId-----------------| //请求id
+    5  |---------------sequence---------------| //序列号
+    6  |---------------optional---------------| //可选标记位
+    7  |-----------------code-----------------| //响应码
+    
+    其中：
+    
+    headLen ( 填28 + 扩展包头长度按4字节对齐 ) / 4 (相比version=1,实际包头长度需*4, 包头最多可以支持到1024个字节)
+    version 填2
+    去掉version=1里的签名
+    其它属性同version=1
 
 [返回](#toc)
 
@@ -846,25 +881,36 @@ __flow文件的命名建议用 消息名_消息号.flow 的格式__
 
         1) Int类型， 这时Length固定为8
 
-        2) String类型，这时Length为String的实际长度+4, 需对齐, Length不包括填充的字节数
+        2) Long类型， 这时Length固定为16, 从1.2.6版本开始支持
 
-        3) Struct类型，这时Length为Struct的实际长度+4, Length不包括填充的字节数
+        3) Double类型， 这时Length固定为16, 从1.2.6版本开始支持
+
+        4) String类型，这时Length为String的实际长度+4, 需对齐, Length不包括填充的字节数
+
+        5) Struct类型，这时Length为Struct的实际长度+4, Length不包括填充的字节数
 
             Struct类型由多个Field组成，Field的类型有3种：
 
                 Int类型，其长度固定为4
-                SystemString类型，可变长度String, 每个SystemString由4字节的长度前缀和实际内容组成, 需对齐
+                Long类型，其长度固定为8
+                Double类型，其长度固定为8
                 String类型，用Len属性指定实际长度，需对齐, Len不包括填充的字节数, Len建议用4的倍数
+                SystemString类型，可变长度String, 每个SystemString由4字节的长度前缀和实际内容组成, 需对齐
+                VString类型，可变长度String, 每个VString由2字节(特别长6字节)的长度前缀和实际内容组成, 需对齐
 
                 多个Field按顺序连续编码
 
-        4) Array类型, 包括Int Array, String Array, Struct Array
+        6) Object类型，这时Length为Object的实际长度+4, Length不包括填充的字节数, 从1.2.6版本开始支持
+
+            Object类型由多个Field组成，每个Field引用一个已存在的类型，可以嵌套
+
+        7) Array类型, 包括Int Array, Long Array, Double Array, String Array, Struct Array, Object Array
 
             Avenue协议只需按顺序对数组中每个元素单独编码即可
 
     对齐和填充:
 
-        在Avenue协议中，String/SystemString类型的数据都需要对齐到4字节，不足4字节用'\0'填充
+        在Avenue协议中，String/SystemString/VString类型的数据都需要对齐到4字节，不足4字节用'\0'填充
 
     T0LV扩展编码方案:
 

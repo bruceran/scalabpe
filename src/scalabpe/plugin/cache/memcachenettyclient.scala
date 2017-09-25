@@ -129,9 +129,9 @@ class MemCacheNettyClient(
         bootstrap.setOption("connectTimeoutMillis", connectTimeout);
 
         if (reuseAddress)
-            bootstrap.setOption("reuserAddress", true);
+            bootstrap.setOption("reuseAddress", true);
         else
-            bootstrap.setOption("reuserAddress", false);
+            bootstrap.setOption("reuseAddress", false);
 
         for (hostidx <- 0 until addrs.size) {
 

@@ -288,9 +288,9 @@ class NettyClient(
         bootstrap.setOption("connectTimeoutMillis", connectTimeout);
 
         if (reuseAddress)
-            bootstrap.setOption("reuserAddress", true);
+            bootstrap.setOption("reuseAddress", true);
         else
-            bootstrap.setOption("reuserAddress", false);
+            bootstrap.setOption("reuseAddress", false);
 
         for (connidx <- 0 until connSizePerAddr)
             guids(connidx) = java.util.UUID.randomUUID().toString().replaceAll("-", "").toUpperCase

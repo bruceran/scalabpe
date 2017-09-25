@@ -8,6 +8,8 @@
 
 [管理端口](#cohport)
 
+[Data目录配置](#datadir)
+
 [异步流程引擎线程数](#threadnum)
 
 [同步线程池配置](#syncedflowcfg)
@@ -17,8 +19,6 @@
 [KEY/VALUE配置参数](#keyvalue)
 
 [对外开放或关闭服务](#open)
-
-[runtest目标地址](#runtest)
 
 [安装Mock](#installmock)
 
@@ -49,6 +49,8 @@
 [HTTP Server插件配置](#httpserver)
 
 [注册与发现插件](#etcdplugin)
+
+[配置服务插件](#configservice)
 
 [Kafka消息队列producer配置](#kafkaproducer)
 
@@ -160,6 +162,12 @@
     http://host:port/NotifyChanged.do 刷新进程内缓存
     http://host:port/Dump.do Dump进程内资源（线程数，连接数等）信息到all.log日志中用于分析
 
+# <a name="datadir">Data目录配置</a>
+
+    <DataDirRoot>/opt/data</DataDirRoot>
+
+    data目录默认在工程的当前目录的data子目录下，可通过此配置项调整位置
+
 # <a name="threadnum">异步流程引擎线程数</a>
 
     <ThreadNum>4</ThreadNum>
@@ -187,7 +195,7 @@
 
 ## 日志输出
 
-    <AsyncLogThreadNum>2</AsyncLogThreadNum >
+    <AsyncLogThreadNum>2</AsyncLogThreadNum>
 
     AsyncLogThreadNum为异步日志使用的线程数，默认为1, 一般不用设置
 
@@ -260,12 +268,6 @@
 
     可配置该服务号下从哪个msgId开始不允许外部调用, 只允许本机调用，
     用在服务描述文件中的一些不对外的子接口
-
-# <a name="runtest">runtest目标地址</a>
-
-    <TestServerAddr>host:port</TestServerAddr>
-
-    此配置仅用于runtest测试工具，用来将请求发给远程服务而不是本地服务
 
 # <a name="installmock">安装mock</a>
 
@@ -676,6 +678,24 @@
         lrange
         llen
         lindex
+        zadd
+        zaddmulti
+        zincrby
+        zrem
+        zremmulti
+        zremrangebyrank
+        zremrangebyscore
+        zcard
+        zcount
+        zscore
+        zrank
+        zrevrank
+        zlexcount
+        zrange
+        zrangebyscore
+        zrevrange
+        zrevrangebyscore
+        zrangebylex
 
 [返回](#toc)
 
@@ -759,13 +779,14 @@
 
       <message name="QueryTimes" id="1">
         <sql><![CDATA[
-                    SELECT outtimes,intimes,begintime,endtime FROM TBSNDAIDBILLINGTIMESSET
-                    WHERE sndaid=:1 and appid=:2 and areaid=:3 and rownum < 2
-            ]]></sql>
+            SELECT outtimes,intimes,begintime,endtime FROM TBSNDAIDBILLINGTIMESSET
+            WHERE sndaid=:1 and appid=:2 and areaid=:3 $where 
+        ]]></sql>
         <requestParameter>
           <field name="sndaId" type="sndaId_type" to=":1" default="xxx" columnType="xxx"/>
           <field name="appId" type="appId_type" to=":2" />
           <field name="areaId" type="areaId_type" to=":3" />
+          <field name="where" type="where_type"/>
         </requestParameter>
         <responseParameter>
           <field name="rowcount" type="rowcount_type" from="$ROWCOUNT"/>
@@ -777,31 +798,77 @@
         </responseParameter>
       </message>
 
+    scalabpe支持按名称自动匹配，上述配置一般可简写如下：
+
+      <message name="QueryTimes" id="1">
+        <sql><![CDATA[
+            SELECT outtimes,intimes,begintime,endtime FROM TBSNDAIDBILLINGTIMESSET
+            WHERE sndaid=:sndaid and appid=:appid and areaid=:areaid $where
+        ]]></sql>
+        <requestParameter>
+          <field name="sndaId"/>
+          <field name="appId"/>
+          <field name="areaId"/>
+          <field name="where"/>
+        </requestParameter>
+        <responseParameter>
+          <field name="rowcount"/>
+          <field name="outtimes"/>
+          <field name="intimes"/>
+          <field name="begintime"/>
+          <field name="endtime"/>
+          <field name="sqlcode"/>
+        </responseParameter>
+      </message>
+
       sql 为该消息对应的一个或多个SQL语句；
-      sql节点内可放置多个sql语句，每个语句可跨越多行； 
+      sql 节点内可放置多个sql语句，每个语句可跨越多行； 
+      根据行首是否是sql语句的关键字来断行； scalabpe中允许的sql语句(以起始字符串判断): 
+      select,insert,update,merge,create,alter,drop,replace
+
       配置在一个sql节点内的sql保证在同一个事务中完成;空行或行前后的空格会自动去除;
-      要求每个sql的所有占位符都能找到对应入参，反过来不需要所有入参都需要映射到每个SQL语句;
+
+      要求每个sql的所有占位符都能找到对应入参;
+
       一次执行多条SQL特别适合有大量相同参数需要同时插入或更新到几个表的时候。
       内部所有的SQL都转换为prepareStatement执行;
 
-      to 用来指定占位符 :1 为 占位符，用于和SQL对应; scalabpe里可以随意使用字母数字，
-         不要求是从1开始的数值， 另外如果占位符和入参的name相同(不区分大小写)，可不写to映射
+      SQL语句中 :xxx 和 $xxx 语法的区别： 
+        :xxx被解析为占位符,内部被转换为preparedStatement, 不存在sql注入问题;
+        $xxx则是sql语句替换,存在sql注入问题;
+
+        SQL扩展，如果sql语句无法用:xxx这种的标记来表示，可改为使用$xxx标记，使用$xxx标记传入的字符串用来替换SQL, 
+        如是字符串则传入前需带单引号; 用于动态的查询条件，排序条件等，$xxx这样的标记不限制数量；
+
+      目前db插件支持以下几种操作数据库的方式：
+
+        1) 查询数据库, 只允许单条sql语句
+        2) 更新数据库，每次执行一条sql语句, 入参中不使用数组
+
+        3) 批量更新数据库，每次执行一条sql语句, 入参中使用数组(按列传入数组或按行传入数组)
+            按列传入数组：
+                个别参数可以是单值，则每次执行sql都用相同值执行; 
+                非单值则要求数组的大小必须相同;
+            按行传入数组：
+                传入ArrayBufferMap, 每个Map对应一条记录
+            注意：batch update的时候目前的rowcount由于底层jdbc driver不支持返回的不一定准确，不应以此为判断依据，
+            只应根据code来判断。
+
+        4) 一次执行多条不同的sql语句, 语句中不能带select语句, 入参中不允许使用数组
+        5) 调用存储过程查询,返回结果集, 语法：?=call(:xxx,:yyy,...)
+        6) 调用存储过程更新,不返回数据, 语法：call(:xxx,:yyy,...)
+
+      详细说明：
+
+      to 语法用来指定占位符 :1 为 占位符，用于和SQL对应; scalabpe里可以随意使用字母数字，
+         不要求是从1开始的数值，另外如果占位符和入参的name相同(不区分大小写)，可不写to映射
 
       default 可为每个入参指定default，当没有传值则用该默认值;
 
       columnType 对数据库里为日期类型的入参，如oracle里的date类型，应设置columnType="date" (截除时分秒) 
                  或 columnType="datetime", int,string不用指定, 默认为string
 
-      入参的tlv类型只能是string, int
-
-      如果sql是单条的insert/update/delete, 入参也可以是int array,或string array 或 struct array 这种方式的后台处理是进行
-      struct array不能和 int/string array混用
-      batch update, 对array里每条数据执行一次该sql, 所有执行都在一个事务里;
-
-      batch update的时候，个别参数可以是单值，则每次执行sql都用相同值执行; 非单值则要求数组的大小必须相同;
-      
-      注意：batch update的时候目前的rowcount由于底层jdbc driver不支持返回的不一定准确，不应以此为判断依据，
-      只应根据code来判断。
+      输出参数名是insert_id或insert_ids, 会返回自增值
 
       $ROWCOUNT映射为返回查询结果记录数，对于更新操作，则是更新影响的行数(多条SQL则是总行数)；
       scalabpe里只要name是rowcount或row_count(不区分大小写),可不写from
@@ -809,32 +876,6 @@
       $result[n][m]表示映射为结果集的第n行m列，一般单值都是映射到0行的数据; 
       scalabpe里只要name和select语句中的字段匹配(不区分大小写和顺序),则匹配为0行的对应值，可不写from, 
       如要匹配非0行数据，还是需要from
-
-      简化后的配置语法：
-
-      <message name="QueryTimes" id="1">
-        <sql><![CDATA[
-                    SELECT outtimes,intimes,begintime,endtime FROM TBSNDAIDBILLINGTIMESSET
-                    WHERE sndaid=:sndaid and appid=:appid and areaid=:areaid and rownum < 2
-            ]]></sql>
-        <requestParameter>
-          <field name="sndaId" type="sndaId_type" />
-          <field name="appId" type="appId_type"  />
-          <field name="areaId" type="areaId_type" />
-        </requestParameter>
-        <responseParameter>
-          <field name="rowcount" type="rowcount_type" />
-          <field name="outtimes" type="outtimes_type"  />
-          <field name="intimes" type="intimes_type"  />
-          <field name="begintime" type="begintime_type"  />
-          <field name="endtime" type="endtime_type"  />
-          <field name="sqlcode" type="sqlcode_type"  />
-        </responseParameter>
-      </message>
-
-      更多映射方式：
-
-      输出参数名是insert_id或insert_ids, 会返回自增值
 
       $SQLCODE为sql error code映射,scalabpe里只要name是sqlcode(不区分大小写),可不写from
 
@@ -852,10 +893,7 @@
                     如果入参是一个string或int类型的array且未写from, 则按名字匹配：只要 select字段的名称 
                     或加后缀（s, array, list, _array, _list）和入参匹配，则认为是要将该列匹配为一个数组类型的string或int
 
-      SQL扩展，如果sql语句无法用:xxx这种的标记来表示，可改为使用$xxx标记，使用$xxx标记传入的字符串用来替换SQL, 
-      如是值需带单引号; 用于动态的查询条件，排序条件等，$xxx这样的标记不限制数量；
-
-    scalabpe中允许的sql语句(以起始字符串判断): select,insert,update,merge,create,alter,drop,replace
+      对于输出参数为struct或struct array且调用的是返回查询结果集的存储过程的时候，可配置selectFields属性申明存储过程返回的字段
 
 ## 配置参数
 
@@ -1172,11 +1210,13 @@
         sessionFieldName="jsessionId"
         sessionCookieName="JSESSIONID"
         sessionMode="1"
+        sessionMaxAge="-1"
         logUserAgent="false"
         maxContentLength="5000000"
         jsonRpcUrl="/jsonrpc"
         accessControlAllowOrigin=""
         removeReturnMessageInBody="false"
+        jsonStyle=""
 
         cacheEnabled="true"
         cacheFileSize="25000"
@@ -1226,6 +1266,7 @@
     returnMessageFieldNames 从body中提取哪些field作为输出json串顶层的return message, 
           默认值为return_message,resultMessage,result_message,failReason,fail_reason
     removeReturnMessageInBody 是否移除body中的错误描述，避免和顶层的错误描述重复
+    jsonStyle 为空为默认风格，为codeMessageNoData则为不嵌套风格，key为code,message,body里的数据，无嵌套data节点
 
     sessionFieldName 服务描述文件中哪一项对应的是HTTP会话ID，默认是jsessionId
     sessionCookieName HTTP会话ID对应的cookie名，默认是JSESSIONID
@@ -1235,8 +1276,11 @@
         手工模式 request中若无sessionId,不会自动创建，由业务流程自己创建，要输出sessionId到cookie中,
                  必须在服务描述文件输出中进行定义
     sessionIpBind sessionId是否和客户端ip绑定
+    sessionMaxAge session过期时间，默认为-1，表示浏览器关闭就失效, 单位秒
     logUserAgent 是否在日志中输出UserAgent, 默认为0
-    maxContentLength http请求post最大允许长度
+    maxContentLength http请求post最大允许长度, 不包括上传文件大小
+    maxUploadLength 最大上传文件大小
+    uploadDir 上传目录,默认为 webapp/upload
     cacheEnabled 对静态文件，是否启用cache功能，默认为启用
     cacheFileSize 对静态文件，低于此size的文件启用cache功能, 默认为25000字节
     cacheFiles 对静态文件，哪些后缀会启用cache功能，用空格分隔多个后缀，默认为 html htm css js
@@ -1457,6 +1501,8 @@
 
 ## 注册与发现插件
 
+    此插件需要lib下放入一个单独的etcd插件的jar包：scalabpe-plugin-etcdregistry-1.0.x.jar
+
     在config.xml中可将tcp服务标记要注册的名称,如下：
     <Server registerAs="configservice" unregisterOnClose="false"/>
     registerAs为服务名
@@ -1482,6 +1528,38 @@
     ttl 注册的key的有效时间，单位秒
     interval 多长时间去重新注册和发现，单位秒
     Hosts etcd服务的ip和端口，多个用逗号隔开
+
+[返回](#toc)
+
+# <a name="configservice">配置服务插件</a>
+
+    此插件需要lib下放入一个单独的etcd插件的jar包：scalabpe-plugin-etcdregistry-1.0.x.jar
+    配置服务插件只是在注册与服务插件EtcdRegistry上增加了新的属性
+
+    <EtcdRegistry ttl="90" interval="30" enableConfigService="1" configPath="gops-routeservice" globalConfigPath="gops">
+        <Hosts>10.128.112.80:2379,...</Hosts>
+    </EtcdRegistry> 
+
+    enableConfigService 是否在注册与发现插件中启动配置服务 
+    globalConfigPath 该模块访问的全局配置节点
+    configPath 该模块自己的配置节点
+
+    每个模块中的配置参数都必须在globalConfigPath 或 configPath 中能找到，否则报错
+    如果globalConfigPath 和 configPath 同时配置了相同的key, 则configPath 有效
+
+    在配置文件中申明需要放在配置服务的参数：
+            <assign><![CDATA[@xxx=@configservice:xxx_in_etcd]]></assign>
+    上述的@configservice:为固定前缀，后面的串xxx_in_etcd为配置服务中的key名
+
+    如何查看etcd配置：
+        curl http://192.168.112.4:2379/v2/keys/configs/{profile}/{system}/
+
+    如何修改etcd配置：
+        curl http://192.168.112.4:2379/v2/keys/configs/{profile}/{system}/{key}  -XPUT -d value={value} value需要先url编码
+
+    示例：
+        curl http://192.168.112.4:2379/v2/keys/configs/prd/xxx
+        curl http://192.168.112.4:2379/v2/keys/configs/prd/xxx/sso_url -XPUT -d value=http%3A%2F%2Fsso.xxxx.com.cn%3A23333
 
 [返回](#toc)
 

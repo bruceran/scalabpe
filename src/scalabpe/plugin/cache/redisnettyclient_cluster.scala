@@ -124,9 +124,9 @@ class RedisNettyClient4Cluster(
         bootstrap.setOption("connectTimeoutMillis", connectTimeout);
 
         if (reuseAddress)
-            bootstrap.setOption("reuserAddress", true);
+            bootstrap.setOption("reuseAddress", true);
         else
-            bootstrap.setOption("reuserAddress", false);
+            bootstrap.setOption("reuseAddress", false);
 
         val addrs = addrstr.split(",")
         for (i <- 0 until addrs.size) {

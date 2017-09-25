@@ -23,6 +23,11 @@
 
 		trait HttpPlugin {}
 
+        // adjust request body
+        trait HttpPreRequestPlugin {
+            def adjustRequestBody(msg: HttpMsgDefine, body: HashMapStringAny): Unit
+        }
+
 		// generate request string from body, including signature
 		trait HttpRequestPlugin {
 		  def generateRequestBody(msg:HttpMsgDefine,body:HashMapStringAny):String
@@ -47,6 +52,8 @@
     插件类必须提供无参数的构造函数
 
     HttpPlugin 标记接口
+
+    HttpPreRequestPlugin, 在解析要调用的url之前调用,以便做一些特殊处理
 
     HttpRequestPlugin 请求转换接口, 对文本类的请求，用户可自定义转换方法，
                       入参是body,返回值是http请求的实际内容

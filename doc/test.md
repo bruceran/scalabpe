@@ -275,13 +275,13 @@
         AREAID  扩展包头的AREAID
         SOCID  客户端标识
         REQUESTID 请求ID
-        XHEAD_UNIQUE_ID 扩展包头的uniqueId, 若没有值则记录1
+        XHEAD_UNIQUE_ID 扩展包头里的uniqueId, 若没有值则记录1
         SERVICEID  服务号
         MSGID  消息号
         SERVER_IP 服务端IP
         RECEIVE_TIME 收到请求的的时间
         ELAPSE_TIME, 耗时，等于 TIMESTAMP - RECEIVE_TIME
-        DUMMY 无意义 XHEAD_LOG_ID 
+        DUMMY 无意义
         DUMMY 无意义 1.2.6版本开始为：服务名.消息名
         IDX1  索引字段1
         IDX2  索引字段2
@@ -319,7 +319,7 @@
         INMSGID 内部消息号
         SOS_ADDR 被调用服务的地址
         DUMMY 无意义
-        DUMMY 无意义
+        DUMMY 无意义 1.2.6版本开始为：扩展包头里的uniqueId
         SERVICE_NAME 服务名.消息名
         REQUEST_BODY 请求参数，参数之间分割符为 ^_^
         RESPONSE_BODY 响应参数，参数之间分割符为 ^_^
