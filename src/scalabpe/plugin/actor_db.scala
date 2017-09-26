@@ -754,22 +754,24 @@ class DbClient(
                             tlvType.cls != TlvType.CLS_LONGARRAY &&
                             tlvType.cls != TlvType.CLS_DOUBLE &&
                             tlvType.cls != TlvType.CLS_DOUBLEARRAY &&
-                            tlvType.cls != TlvType.CLS_STRUCTARRAY)
+                            tlvType.cls != TlvType.CLS_STRUCTARRAY && 
+                            tlvType.cls != TlvType.CLS_OBJECTARRAY )
                             throw new RuntimeException("type not supported in request parameter, serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
 
                         if (tlvType.cls == TlvType.CLS_STRINGARRAY ||
                             tlvType.cls == TlvType.CLS_INTARRAY ||
                             tlvType.cls == TlvType.CLS_LONGARRAY ||
                             tlvType.cls == TlvType.CLS_DOUBLEARRAY ||
-                            tlvType.cls == TlvType.CLS_STRUCTARRAY)
+                            tlvType.cls == TlvType.CLS_STRUCTARRAY || 
+                            tlvType.cls == TlvType.CLS_OBJECTARRAY)
                             hasArrayReqFields = true
 
-                        if (tlvType.cls == TlvType.CLS_STRUCTARRAY) {
+                        if (tlvType.cls == TlvType.CLS_STRUCTARRAY || tlvType.cls == TlvType.CLS_OBJECTARRAY) {
                             if (hasArrayReqFieldsByCol || hasArrayReqFieldsByRow) {
                                 throw new RuntimeException("msg define error in request parameter, serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
                             }
                             hasArrayReqFieldsByRow = true
-                        } else if (tlvType.cls == TlvType.CLS_STRINGARRAY || tlvType.cls == TlvType.CLS_INTARRAY) {
+                        } else if (tlvType.cls == TlvType.CLS_STRINGARRAY || tlvType.cls == TlvType.CLS_INTARRAY || tlvType.cls == TlvType.CLS_LONGARRAY || tlvType.cls == TlvType.CLS_DOUBLEARRAY ) {
                             if (hasArrayReqFieldsByRow) {
                                 throw new RuntimeException("msg define error in request parameter, serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
                             }
@@ -806,7 +808,7 @@ class DbClient(
                             }
                         } else {
                             val reqdef = new RequestDefineOriginal(f, f, defaultValue, columnType)
-                            if (tlvType.cls == TlvType.CLS_STRUCTARRAY) {
+                            if (tlvType.cls == TlvType.CLS_STRUCTARRAY || tlvType.cls == TlvType.CLS_OBJECTARRAY ) {
                                 reqdef.structTlvType = tlvType
                             }
                             reqMapOrigBuff += reqdef
@@ -862,7 +864,7 @@ class DbClient(
 
                                     tlvType.cls match {
 
-                                        case TlvType.CLS_STRING | TlvType.CLS_INT | TlvType.CLS_LONG | TlvType.CLS_DOUBLE=>
+                                        case TlvType.CLS_STRING | TlvType.CLS_INT | TlvType.CLS_LONG | TlvType.CLS_DOUBLE =>
 
                                             val col = findIndexInSelect(sqls(0), sqlType, f)
                                             if (col == -1)
@@ -870,7 +872,7 @@ class DbClient(
 
                                             fromValue = "$result[0][%d]".format(col)
 
-                                        case TlvType.CLS_STRUCT =>
+                                        case TlvType.CLS_STRUCT | TlvType.CLS_OBJECT =>
 
                                             fromValue = "$result[0]"
 
@@ -882,7 +884,7 @@ class DbClient(
 
                                             fromValue = "$result[*][%d]".format(col)
 
-                                        case TlvType.CLS_STRUCTARRAY =>
+                                        case TlvType.CLS_STRUCTARRAY | TlvType.CLS_OBJECTARRAY =>
                                             fromValue = "$result"
                                     }
 
@@ -921,8 +923,8 @@ class DbClient(
                                     if (tlvType == null) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
                                     }
-                                    if (tlvType.cls != TlvType.CLS_STRUCT) {
-                                        throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s, the tlv type must struct".format(serviceId, msgId, f))
+                                    if (tlvType.cls != TlvType.CLS_STRUCT && tlvType.cls != TlvType.CLS_OBJECT ) {
+                                        throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s, the tlv type must be struct/object".format(serviceId, msgId, f))
                                     }
                                     if (selectFields != "") {
                                         val names = selectFields.split(",").toList
@@ -942,8 +944,8 @@ class DbClient(
                                     if (tlvType == null) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s".format(serviceId, msgId, f))
                                     }
-                                    if (tlvType.cls != TlvType.CLS_STRUCTARRAY) {
-                                        throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s, the tlv type must struct".format(serviceId, msgId, f))
+                                    if (tlvType.cls != TlvType.CLS_STRUCTARRAY && tlvType.cls != TlvType.CLS_OBJECTARRAY) {
+                                        throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s, the tlv type must be struct/object".format(serviceId, msgId, f))
                                     }
                                     if (selectFields != "") {
                                         val names = selectFields.split(",").toList
@@ -1292,12 +1294,24 @@ class DbClient(
                             if (ss.size != 1)
                                 throw new RuntimeException("msg define error, sql=" + sql + ",tag=" + tag)
                             val tlvType = ss(0).structTlvType
-                            for (kk <- 0 until tlvType.structDef.fields.length) {
-                                if (tlvType.structDef.fields(kk).name.toLowerCase == loweredIdx) {
-                                    keyInMap = tlvType.structDef.fields(kk).name
-                                    columnTypeInMap = codec.codecAttributes.getOrElse("type-" + tlvType.itemType.name + "-" + keyInMap + "-columnType", "")
-                                    val tlvinfo = tlvType.structDef.fields(kk).fieldInfo
-                                    if (tlvinfo != null && tlvinfo.defaultValue != null) defaultValueInMap = tlvinfo.defaultValue
+                            if( tlvType.cls == TlvType.CLS_STRUCTARRAY ) {
+                                for (kk <- 0 until tlvType.structDef.fields.length) {
+                                    if (tlvType.structDef.fields(kk).name.toLowerCase == loweredIdx) {
+                                        keyInMap = tlvType.structDef.fields(kk).name
+                                        columnTypeInMap = codec.codecAttributes.getOrElse("type-" + tlvType.itemType.name + "-" + keyInMap + "-columnType", "")
+                                        val tlvinfo = tlvType.structDef.fields(kk).fieldInfo
+                                        if (tlvinfo != null && tlvinfo.defaultValue != null) defaultValueInMap = tlvinfo.defaultValue
+                                    }
+                                }
+                            }
+                            if( tlvType.cls == TlvType.CLS_OBJECTARRAY ) {
+                                for (kk <- 0 until tlvType.objectDef.fields.length) {
+                                    if (tlvType.objectDef.fields(kk).name.toLowerCase == loweredIdx) {
+                                        keyInMap = tlvType.objectDef.fields(kk).name
+                                        columnTypeInMap = codec.codecAttributes.getOrElse("type-" + tlvType.itemType.name + "-" + keyInMap + "-columnType", "")
+                                        val tlvinfo = tlvType.objectDef.keyToFieldMap.getOrElse(keyInMap,null)
+                                        if (tlvinfo != null && tlvinfo.defaultValue != null) defaultValueInMap = tlvinfo.defaultValue
+                                    }
                                 }
                             }
                             if (keyInMap == null) {

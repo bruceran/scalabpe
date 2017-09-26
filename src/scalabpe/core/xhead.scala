@@ -13,6 +13,8 @@ object Xhead {
 
     val KEY_SOC_ID = "socId"
     val KEY_ADDRS = "addrs"
+    val KEY_APP_ID = "appId"
+    val KEY_AREA_ID = "areaId"
     val KEY_UNIQUE_ID = "uniqueId"
     val KEY_SPS_ID = "spsId"
     val KEY_HTTP_TYPE = "httpType"
@@ -35,8 +37,8 @@ object Xhead {
         add(0, "signature", "bytes") // 签名，目前并没有使用到, 要用的时候再加
         add(CODE_SOC_ID, KEY_SOC_ID, "string") // 1 客户端连接标识，serviceId=3时需特殊处理
         add(CODE_ADDRS, KEY_ADDRS, "addr") // 2 每个节点的IP和端口，格式特殊
-        add(3, "appId", "int")
-        add(4, "areaId", "int")
+        add(3, KEY_APP_ID, "int")
+        add(4, KEY_AREA_ID, "int")
         add(5, "groupId", "int")
         add(6, "hostId", "int")
         add(7, "spId", "int")

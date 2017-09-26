@@ -155,9 +155,10 @@ trait CacheLike {
                     val v = valueArray(i)
                     var nv: Any = v
                     tp match {
-                        case TlvType.CLS_STRUCT =>
+                        case TlvType.CLS_STRUCT | TlvType.CLS_OBJECT =>
                             nv = JsonCodec.parseObject(v)
-                        case TlvType.CLS_STRINGARRAY | TlvType.CLS_INTARRAY | TlvType.CLS_LONGARRAY | TlvType.CLS_DOUBLEARRAY| TlvType.CLS_STRUCTARRAY =>
+                        case TlvType.CLS_STRINGARRAY | TlvType.CLS_INTARRAY | TlvType.CLS_LONGARRAY | TlvType.CLS_DOUBLEARRAY | 
+                             TlvType.CLS_STRUCTARRAY | TlvType.CLS_OBJECTARRAY  =>
                             nv = JsonCodec.parseArray(v)
                         case _ =>
                     }

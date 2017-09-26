@@ -1125,6 +1125,23 @@ class HttpClientImpl(
             }
             return map
         }
+        
+        if (tlvType.cls == TlvType.CLS_OBJECT) {
+            if (!next.isInstanceOf[ObjectNode]) return null
+            val objNode = next.asInstanceOf[ObjectNode]
+            val map = new HashMapStringAny()
+            for (f <- tlvType.objectDef.fields) {
+                val key = f.name
+                val node = objNode.get(key)
+                if (node == null) {
+                    map.put(key, null)
+                } else {
+                    val s = parseJsonNodeToString(node)
+                    map.put(key, s)
+                }
+            }
+            return map
+        }
 
         if (tlvType.cls == TlvType.CLS_STRINGARRAY || tlvType.cls == TlvType.CLS_INTARRAY || tlvType.cls == TlvType.CLS_LONGARRAY || tlvType.cls == TlvType.CLS_DOUBLEARRAY) {
             if (!next.isInstanceOf[ArrayNode]) return null
@@ -1165,6 +1182,33 @@ class HttpClientImpl(
             return buff
         }
 
+        if (tlvType.cls == TlvType.CLS_OBJECTARRAY) {
+            if (!next.isInstanceOf[ArrayNode]) return null
+            val arrayNode = next.asInstanceOf[ArrayNode]
+            val buff = new ArrayBufferMap()
+            val it = arrayNode.elements()
+            while (it.hasNext()) {
+                val tt = it.next()
+
+                if (!tt.isInstanceOf[ObjectNode]) return null
+                val objNode = tt.asInstanceOf[ObjectNode]
+                val map = new HashMapStringAny()
+                for (f <- tlvType.objectDef.fields) {
+                    val key = f.name
+                    val node = objNode.get(key)
+                    if (node == null) {
+                        map.put(key, null)
+                    } else {
+                        val s = parseJsonNodeToString(node)
+                        map.put(key, s)
+                    }
+                }
+
+                buff += map
+            }
+            return buff
+        }
+        
         return null
     }
 

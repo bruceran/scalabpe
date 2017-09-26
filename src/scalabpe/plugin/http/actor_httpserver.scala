@@ -126,39 +126,8 @@ class OsapMerchantCfg(val merchantName: String, val appId: Int, val areaId: Int,
                       val ipSet: HashSet[String] = HashSet[String](),
                       val privilegeSet: HashSet[String] = HashSet[String]())
 
-class OsapRefreshData {
-    var merchants: InvokeResult = _
-    var keys: InvokeResult = _
-    var ips: InvokeResult = _
-    var privileges: InvokeResult = _
-
-    def allReplied() = merchants != null && keys != null && ips != null && privileges != null
-}
-
-class RpcInfo(val requestId: String, val id: String, val uri: String, val bodyParams: HashMapStringAny,
-              var reqRes: HttpSosRequestResponseInfo = null,
-              var cookies: HashMap[String, Cookie] = null,
-              var headers: HashMap[String, String] = null)
-
-class RpcCall(val buff: ArrayBuffer[RpcInfo]) {
-
-    def updateResult(tpl: Tuple3[HttpSosRequestResponseInfo, HashMap[String, Cookie], HashMap[String, String]]): Unit = {
-        val (reqRes, cookies, headers) = tpl
-        for (info <- buff if info.requestId == reqRes.req.requestId) {
-            info.reqRes = reqRes
-            info.cookies = cookies
-            info.headers = headers
-        }
-    }
-
-    def finished(): Boolean = {
-        !buff.exists(_.reqRes == null)
-    }
-
-}
-
 class HttpServerActor(val router: Router, val cfgNode: Node) extends Actor
-        with BeforeClose with Refreshable with AfterInit with HttpServer4Netty with Logging with Dumpable with Closable {
+        with BeforeClose  with AfterInit with HttpServer4Netty with Logging with Dumpable with Closable { // with Refreshable
 
     type ArrayBufferPattern = ArrayBuffer[Tuple2[Int, String]];
 
@@ -176,7 +145,6 @@ class HttpServerActor(val router: Router, val cfgNode: Node) extends Actor
 
     val errorFormat = """{"return_code":%d,"return_message":"%s","data":{}}"""
     val errorFormatCodeMessageNoData = """{"code":%d,"message":"%s"}"""
-    val rpcFormat = """{"jsonrpc":"2.0","id":"%s","result":%s}"""
 
     val HTTP_DATE_FORMAT = "EEE, dd MMM yyyy HH:mm:ss zzz";
     val HTTP_DATE_GMT_TIMEZONE = "GMT";
@@ -197,12 +165,12 @@ class HttpServerActor(val router: Router, val cfgNode: Node) extends Actor
     var timeout = 30000
     var idleTimeout = 45000
     var timerInterval: Int = 50
+    
     var removeReturnMessageInBody = false
     var jsonStyle = ""
     var returnMessageFieldNames = ArrayBufferString("return_message", "resultMsg", "failReason", "resultMessage", "result_msg", "fail_reason", "result_message")
+    
     var defaultVerify = "false"
-    var osapDb = false
-    var osapDbServiceId = 62100
     var sessionFieldName = "jsessionId"
     var sessionCookieName = "JSESSIONID"
     var sessionMode = 1 // 1=auto 2=manual
@@ -210,7 +178,6 @@ class HttpServerActor(val router: Router, val cfgNode: Node) extends Actor
     var sessionHttpOnly = true
     var sessionMaxAge = -1
     var sessionPath = ""
-    var jsonRpcUrl = "/jsonrpc"
     var jsonpName = "jsonp"
     var logUserAgent = false
     var redirect302FieldName = "redirectUrl302"
@@ -279,15 +246,12 @@ application/x-gzip gz
     var pool: ThreadPoolExecutor = _
     var qte: QuickTimerEngine = null
 
-    val merchantMap = new AtomicReference[HashMap[String, OsapMerchantCfg]]()
-    var osapRefreshData = new AtomicReference[OsapRefreshData]()
+    val merchantMap = new AtomicReference[HashMap[String, OsapMerchantCfg]]() // 可由外部系统来初始化此数据来增加权限功能, 插件本身不提供权限加载机制(功能比较鸡肋，已删除)
 
     var nettyHttpServer: NettyHttpServer = _
 
     val sequence = new AtomicInteger(1)
-    val listened = new AtomicBoolean(false)
     val dataMap = new ConcurrentHashMap[String, HttpServerCacheData]()
-    val rpcMap = new ConcurrentHashMap[String, RpcCall]()
 
     var timer: Timer = _
 
@@ -318,12 +282,6 @@ application/x-gzip gz
 
         s = (cfgNode \ "@defaultVerify").text
         if (s != "") defaultVerify = s
-
-        s = (cfgNode \ "@osapDb").text
-        if (s != "") osapDb = TypeSafe.isTrue(s)
-
-        s = (cfgNode \ "@osapDbServiceId").text
-        if (s != "") osapDbServiceId = s.toInt
 
         s = (cfgNode \ "@returnMessageFieldNames").text
         if (s != "") {
@@ -362,9 +320,6 @@ application/x-gzip gz
 
         s = (cfgNode \ "@sessionEncKey").text
         if (s != "") sessionEncKey = CryptHelper.toHexString(s.getBytes());
-
-        s = (cfgNode \ "@jsonRpcUrl").text
-        if (s != "") jsonRpcUrl = s
 
         s = (cfgNode \ "@maxContentLength").text
         if (s != "") maxContentLength = s.toInt
@@ -585,6 +540,20 @@ application/x-gzip gz
                             if (classex2 != null) map.put(key + "-" + n, classex2)
                         }
                     }
+                    if (tlvType.cls == TlvType.CLS_OBJECT) {
+                        for (f <- tlvType.objectDef.fields) {
+                            val n = f.name
+                            val classex2 = tlvCodec.codecAttributes.getOrElse("classex-" + tlvType.name + "-" + n, null)
+                            if (classex2 != null) map.put(key + "-" + n, classex2)
+                        }
+                    }
+                    if (tlvType.cls == TlvType.CLS_OBJECTARRAY) {
+                        for (f <- tlvType.objectDef.fields) {
+                            val n = f.name
+                            val classex2 = tlvCodec.codecAttributes.getOrElse("classex-" + tlvType.itemType.name + "-" + n, null)
+                            if (classex2 != null) map.put(key + "-" + n, classex2)
+                        }
+                    }
                 }
                 classexMap.put(serviceId + "-" + msgId, map)
             }
@@ -694,14 +663,7 @@ application/x-gzip gz
 
         if (Router.testMode) return
 
-        if (osapDb) {
-            timer = new Timer("httpserverrefreshtimer")
-            doRefresh()
-            return
-        }
-
         nettyHttpServer.start()
-        listened.set(true)
         log.info("netty httpserver started port(" + port + ")")
     }
 
@@ -725,222 +687,12 @@ application/x-gzip gz
         buff.append("pool.getQueue.size=").append(pool.getQueue.size).append(",")
         buff.append("merchantMap.size=").append(merchantMap.get.size).append(",")
         buff.append("dataMap.size=").append(dataMap.size).append(",")
-        buff.append("rpcMap.size=").append(rpcMap.size).append(",")
 
         log.info(buff.toString)
 
         nettyHttpServer.dump
 
         qte.dump()
-    }
-
-    def refresh() {
-
-        if (timer == null) return
-
-        log.info("httpserver osap config data refreshing ...")
-
-        if (timer != null) {
-            timer.cancel()
-            timer = new Timer("httpserverrefreshtimer")
-        }
-
-        timer.schedule(new TimerTask() {
-            def run() {
-                doRefresh()
-            }
-        }, 500)
-
-    }
-
-    def doRefresh() {
-
-        val connId = "httpserverrefresh:0"
-
-        val dummy = HashMapStringAny()
-        osapRefreshData.set(new OsapRefreshData())
-        for (msgId <- 1 to 4) {
-
-            val requestId = uuid()
-
-            val httpSosReq = new HttpSosRequest(requestId, connId,
-                osapDbServiceId, msgId,
-                HashMapStringAny(), "")
-
-            val t = qte.newTimer(10000, requestId)
-            val data = new HttpServerCacheData(httpSosReq, t)
-            dataMap.put(requestId, data)
-
-            val req = new Request(
-                requestId,
-                connId,
-                sequence.getAndIncrement(),
-                1,
-                osapDbServiceId,
-                msgId,
-                dummy,
-                dummy,
-                this)
-
-            router.send(req)
-        }
-
-        if (dataMap.size >= 1000)
-            log.warn("dataMap size is too large, dataMap.size=" + dataMap.size)
-        if (rpcMap.size >= 1000)
-            log.warn("rpcMap size is too large, rpcMap.size=" + rpcMap.size)
-
-    }
-
-    def refreshTimeout(requestId: String, msgId: Int) {
-        val d = osapRefreshData.get()
-        if (d == null) return
-
-        msgId match {
-            case 1 => d.merchants = InvokeResult.timeout(requestId)
-            case 2 => d.keys = InvokeResult.timeout(requestId)
-            case 3 => d.ips = InvokeResult.timeout(requestId)
-            case 4 => d.privileges = InvokeResult.timeout(requestId)
-            case _ =>
-        }
-
-        if (d.allReplied) refreshData(d)
-    }
-
-    def refreshResultReceived(requestId: String, msgId: Int, result: InvokeResult) {
-        val d = osapRefreshData.get()
-        if (d == null) return
-
-        msgId match {
-            case 1 => d.merchants = result
-            case 2 => d.keys = result
-            case 3 => d.ips = result
-            case 4 => d.privileges = result
-            case _ =>
-        }
-
-        if (d.allReplied) refreshData(d)
-    }
-
-    def refreshData(d: OsapRefreshData) {
-
-        osapRefreshData.set(null)
-
-        val interval = if (listened.get()) 600000 else 30000
-
-        if (d.merchants.code != 0 ||
-            d.keys.code != 0 ||
-            d.ips.code != 0 ||
-            d.privileges.code != 0) {
-
-            timer.schedule(new TimerTask() {
-                def run() {
-                    doRefresh()
-                }
-            }, interval)
-
-            log.error("httpserver osap config data refresh failed, will retry after " + (interval / 1000) + " seconds")
-            return
-        }
-
-        val map = new HashMap[String, OsapMerchantCfg]()
-
-        var merchantnames = d.merchants.ls("merchantname_array")
-        val appids = d.merchants.li("appid_array")
-        val areaids = d.merchants.li("areaid_array")
-
-        if (merchantnames != null) {
-
-            for (i <- 0 until merchantnames.size) {
-                val merchantname = merchantnames(i)
-                val appid = appids(i)
-                val areaid = areaids(i)
-                map.put(merchantname, new OsapMerchantCfg(merchantname, appid, areaid))
-            }
-
-        }
-
-        merchantnames = d.keys.ls("merchantname_array")
-        val key1s = d.keys.ls("key1_array")
-        val key1starttimes = d.keys.ls("key1starttime_array")
-        val key1endtimes = d.keys.ls("key1endtime_array")
-        val key2s = d.keys.ls("key2_array")
-        val key2starttimes = d.keys.ls("key2starttime_array")
-        val key2endtimes = d.keys.ls("key2endtime_array")
-
-        if (merchantnames != null) {
-
-            for (i <- 0 until merchantnames.size) {
-                val merchantname = merchantnames(i)
-                val key1 = key1s(i)
-                val key1starttime = key1starttimes(i)
-                val key1endtime = key1endtimes(i)
-                val key2 = key2s(i)
-                val key2starttime = key2starttimes(i)
-                val key2endtime = key2endtimes(i)
-
-                val cfg = map.getOrElse(merchantname, null)
-                if (cfg != null) {
-                    if (key1 != null && key1 != "")
-                        cfg.md5Key += new OsapKeyData(key1, strToDate(key1starttime, 0), strToDate(key1endtime, Long.MaxValue))
-                    if (key2 != null && key2 != "")
-                        cfg.md5Key += new OsapKeyData(key2, strToDate(key2starttime, 0), strToDate(key2endtime, Long.MaxValue))
-                }
-            }
-
-        }
-
-        merchantnames = d.ips.ls("merchantname_array")
-        val ipaddrs = d.ips.ls("ipaddr_array")
-
-        if (merchantnames != null) {
-
-            for (i <- 0 until merchantnames.size) {
-                val merchantname = merchantnames(i)
-                val ipaddr = ipaddrs(i)
-
-                val cfg = map.getOrElse(merchantname, null)
-                if (cfg != null) {
-                    if (ipaddr != null && ipaddr != "")
-                        cfg.ipSet.add(ipaddr)
-                }
-            }
-        }
-
-        merchantnames = d.privileges.ls("merchantname_array")
-        val serviceids = d.privileges.li("serviceid_array")
-        val msgids = d.privileges.li("msgid_array")
-
-        if (merchantnames != null) {
-
-            for (i <- 0 until merchantnames.size) {
-                val merchantname = merchantnames(i)
-                val serviceid = serviceids(i)
-                val msgid = msgids(i)
-
-                val cfg = map.getOrElse(merchantname, null)
-                if (cfg != null) {
-                    cfg.privilegeSet.add(serviceid + "-" + msgid)
-                }
-            }
-        }
-
-        merchantMap.set(map)
-
-        log.info("httpserver osap config data refreshed")
-
-        if (!listened.get()) {
-            nettyHttpServer.start()
-            listened.set(true)
-            log.info("httpserver started port(" + port + ")")
-        }
-
-        timer.schedule(new TimerTask() {
-            def run() {
-                doRefresh()
-            }
-        }, 600000)
-
     }
 
     def receive(req: HttpRequest, connId: String) {
@@ -991,13 +743,7 @@ application/x-gzip gz
                 if (data == null) {
                     return
                 }
-                if (data.req.serviceId == osapDbServiceId) {
-                    refreshTimeout(data.req.requestId, data.req.msgId)
-                    return
-                }
-
-                val tpl = reply(data.req, ResultCodes.SERVICE_TIMEOUT, HashMapStringAny())
-                updateRpcCall(tpl)
+                reply(data.req, ResultCodes.SERVICE_TIMEOUT, HashMapStringAny())
 
             case res: InvokeResult =>
 
@@ -1007,14 +753,7 @@ application/x-gzip gz
                     return
                 }
                 data.timer.cancel()
-
-                if (data.req.serviceId == osapDbServiceId) {
-                    refreshResultReceived(data.req.requestId, data.req.msgId, res)
-                    return
-                }
-
-                val tpl = reply(data.req, res.code, res.res)
-                updateRpcCall(tpl)
+                reply(data.req, res.code, res.res)
 
             case _ =>
 
@@ -1035,127 +774,27 @@ application/x-gzip gz
         val xhead = parseXhead(httpReq, connId, requestId)
 
         var uri = httpReq.getUri()
-        if (uri == jsonRpcUrl || uri.startsWith(jsonRpcUrl + "?")) {
-            processRequestJsonRpc(httpReq, connId, xhead, requestId)
-            return
-        }
-
-        processRequest(httpReq, connId, xhead, requestId, uri) // not jsonrpc
+        processRequest(httpReq, connId, xhead, requestId, uri)
     }
-
-    def processRequestJsonRpc(httpReq: HttpRequest, connId: String, xhead: HashMapStringAny, requestId: String) {
-
-        val rpcRequestId = "rpc" + requestId
-
-        val method = httpReq.getMethod()
-
-        var jsonString = ""
-        if (method == HttpMethod.POST) {
-            val content = httpReq.getContent()
-            jsonString = content.toString(Charset.forName("UTF-8"))
-        }
-        if (method == HttpMethod.GET || method == HttpMethod.HEAD) {
-            val uri = httpReq.getUri()
-            if (uri.indexOf("?") >= 0) {
-                val s = uri.substring(uri.indexOf("?") + 1)
-                val map = HashMapStringAny()
-                parseFormContent("UTF-8", s, map)
-                jsonString = map.s("data", "").toString
-            }
-        }
-
-        if (jsonString == "") {
-            replyError(httpReq, connId, requestId, ResultCodes.TLV_DECODE_ERROR)
-            return
-        }
-
-        val reqs = JsonCodec.parseArray(jsonString)
-        if (reqs == null || reqs.size == 0) {
-            replyError(httpReq, connId, requestId, ResultCodes.TLV_DECODE_ERROR)
-            return
-        }
-
-        val idSet = HashSet[String]()
-        val rpcBuff = new ArrayBuffer[RpcInfo]()
-        for (req <- reqs) {
-
-            if (!req.isInstanceOf[HashMapStringAny]) {
-                replyError(httpReq, connId, requestId, ResultCodes.TLV_DECODE_ERROR)
-                return
-            }
-
-            val map = req.asInstanceOf[HashMapStringAny]
-            val version = map.s("jsonrpc", "")
-            if (version != "2.0") {
-                replyError(httpReq, connId, requestId, ResultCodes.TLV_DECODE_ERROR)
-                return
-            }
-
-            val id = map.s("id", "")
-            if (id == "" || idSet.contains(id)) {
-                replyError(httpReq, connId, requestId, ResultCodes.TLV_DECODE_ERROR)
-                return
-            }
-
-            idSet.add(id)
-
-            val uri = map.s("method", "")
-            if (uri == null || uri == "") {
-                replyError(httpReq, connId, requestId, ResultCodes.TLV_DECODE_ERROR)
-                return
-            }
-
-            val params = map.getOrElse("params", "")
-            var bodyParams: HashMapStringAny = null
-
-            if (params.isInstanceOf[String]) {
-                bodyParams = HashMapStringAny()
-                parseFormContent("UTF-8", params.asInstanceOf[String], bodyParams)
-            }
-            if (params.isInstanceOf[HashMapStringAny])
-                bodyParams = params.asInstanceOf[HashMapStringAny]
-
-            if (bodyParams == null) {
-                replyError(httpReq, connId, requestId, ResultCodes.TLV_DECODE_ERROR)
-                return
-            }
-
-            rpcBuff += new RpcInfo(rpcRequestId + "-" + id, id, uri, bodyParams)
-        }
-
-        val rpcCall = new RpcCall(rpcBuff)
-        rpcMap.put(rpcRequestId, rpcCall)
-        for (rpc <- rpcBuff) {
-            val tpl = processRequest(httpReq, connId, xhead, rpc.requestId, rpc.uri, rpc.bodyParams)
-            updateRpcCall(tpl)
-        }
-    }
-
-    def processRequest(httpReq: HttpRequest, connId: String, xhead: HashMapStringAny, requestId: String, uri: String, bodyParams: HashMapStringAny = null): Tuple3[HttpSosRequestResponseInfo, HashMap[String, Cookie], HashMap[String, String]] = {
-
-        val isRpc = requestId.startsWith("rpc")
+    
+    def processRequest(httpReq: HttpRequest, connId: String, xhead: HashMapStringAny, requestId: String, uri: String) {
 
         val (serviceId, msgId, mappingUri, patterns) = mappingUrl(uri)
         if (serviceId == 0) { // wrong
 
-            if (!isRpc) { // rpc 请求中不可以访问静态文件
-
-                val file = mappingStaticUrl(uri)
-                if (file != "") {
-                    writeStaticFile(httpReq, connId, xhead, requestId, uri, new File(file))
-                    return null
-                }
-
-                if (webappStaticDirExisted) {
-                    write404(httpReq, connId, xhead, requestId, uri)
-                    return null
-                }
-
+            val file = mappingStaticUrl(uri)
+            if (file != "") {
+                writeStaticFile(httpReq, connId, xhead, requestId, uri, new File(file))
+                return
             }
 
-            val params = if (isRpc) uri + "?" + bodyToParams(bodyParams) else uri
-            val tpl = replyError(httpReq, connId, requestId, ResultCodes.SERVICE_NOT_FOUND, params)
-            return tpl
+            if (webappStaticDirExisted) {
+                write404(httpReq, connId, xhead, requestId, uri)
+                return
+            }
+
+            replyError(httpReq, connId, requestId, ResultCodes.SERVICE_NOT_FOUND, uri)
+            return
         }
 
         val pluginObj = msgPlugins.getOrElse(serviceId + "-" + msgId, null)
@@ -1166,7 +805,7 @@ application/x-gzip gz
         var host = httpReq.getHeader("Host")
         if (host == null || host == "") host = "unknown_host"
 
-        val (body, sessionIdChanged) = parseBody(isRpc, requestId, serviceId, msgId, httpReq, bodyParams, host, clientIp)
+        val (body, sessionIdChanged) = parseBody(requestId, serviceId, msgId, httpReq, host, clientIp)
 
         if (patterns != null && patterns.size > 0) { // parse restful parameters
             val p = uri.indexOf("?")
@@ -1184,9 +823,8 @@ application/x-gzip gz
         if (whiteIps != null && whiteIps.size > 0) {
             if (!whiteIps.contains(clientIp)) {
                 log.error("verify failed, not in white ips, uri=" + uri)
-                val params = if (isRpc) uri + "?" + bodyToParams(bodyParams) else uri
-                val tpl = replyError(httpReq, connId, requestId, -10250016, params, serviceId, msgId)
-                return tpl
+                replyError(httpReq, connId, requestId, -10250016, uri, serviceId, msgId)
+                return
             }
         }
 
@@ -1196,31 +834,27 @@ application/x-gzip gz
             if (pluginObj != null && pluginObj.isInstanceOf[HttpServerVerifyPlugin]) {
                 val verifyOk = pluginObj.asInstanceOf[HttpServerVerifyPlugin].verify(serviceId, msgId, xhead, body, httpReq)
                 if (!verifyOk) {
-                    val params = if (isRpc) uri + "?" + bodyToParams(bodyParams) else uri
-                    val tpl = replyError(httpReq, connId, requestId, -10250016, params, serviceId, msgId)
-                    return tpl
+                    replyError(httpReq, connId, requestId, -10250016, uri, serviceId, msgId)
+                    return
                 }
             } else {
                 val (ok, merchantName) = getMerchantInfo(body)
                 if (!ok) {
                     log.error("verify failed, merchant name parameter not found, uri=" + uri)
-                    val params = if (isRpc) uri + "?" + bodyToParams(bodyParams) else uri
-                    val tpl = replyError(httpReq, connId, requestId, -10250016, params, serviceId, msgId)
-                    return tpl
+                    replyError(httpReq, connId, requestId, -10250016, uri, serviceId, msgId)
+                    return
                 }
                 val cfg = merchantMap.get().getOrElse(merchantName, null)
                 if (cfg == null) {
                     log.error("verify failed, merchant cfg not found, uri=" + uri)
-                    val params = if (isRpc) uri + "?" + bodyToParams(bodyParams) else uri
-                    val tpl = replyError(httpReq, connId, requestId, -10250016, params, serviceId, msgId)
-                    return tpl
+                    replyError(httpReq, connId, requestId, -10250016,  uri, serviceId, msgId)
+                    return
                 }
 
                 val verifyOk = standardVerify(serviceId, msgId, xhead, body, cfg, uri)
                 if (!verifyOk) {
-                    val params = if (isRpc) uri + "?" + bodyToParams(bodyParams) else uri
-                    val tpl = replyError(httpReq, connId, requestId, -10250016, params, serviceId, msgId)
-                    return tpl
+                    replyError(httpReq, connId, requestId, -10250016,  uri, serviceId, msgId)
+                    return
                 }
 
             }
@@ -1233,14 +867,11 @@ application/x-gzip gz
         val bodyIncase = if (caseInsensitive) convertBodyCaseInsensitive(serviceId, msgId, body) else body
 
         val encodeRequestFlag = TypeSafe.isTrue(msgAttrs.getOrElse(serviceId + "-" + msgId + "-encodeRequest", "1"))
-        //println("bodyIncase="+bodyIncase.mkString(","))
         val (bodyReal, ec) = if (encodeRequestFlag) router.encodeRequest(serviceId, msgId, bodyIncase) else (bodyIncase, 0)
-        //println("bodyReal="+bodyReal.mkString(","))
 
         if (ec != 0) {
-            val params = if (isRpc) uri + "?" + bodyToParams(bodyParams) else uri
-            val tpl = replyError(httpReq, connId, requestId, ec, params, serviceId, msgId)
-            return tpl
+            replyError(httpReq, connId, requestId, ec, uri, serviceId, msgId)
+            return
         }
 
         val req = new Request(
@@ -1258,18 +889,15 @@ application/x-gzip gz
 
         var params = "/" + mappingUri + "?" + bodyToParams(body)
 
-        /*if( isRpc ) {
-            params = mappingUri + "?" + bodyToParams(body)
-        } else {
-            val method = httpReq.getMethod()
-            if( method != HttpMethod.GET && method != HttpMethod.HEAD ) {
-                val p = mappingUri.indexOf("?")
-                if( p >= 0) {
-                    params = mappingUri.substring(0,p) + "?" + bodyToParams(body)
-                } else {
-                    params = mappingUri + "?" + bodyToParams(body)
-                }
-            }*/
+        val method = httpReq.getMethod()
+        if( method != HttpMethod.GET && method != HttpMethod.HEAD ) {
+            val p = mappingUri.indexOf("?")
+            if( p >= 0) {
+                params = mappingUri.substring(0,p) + "?" + bodyToParams(body)
+            } else {
+                params = mappingUri + "?" + bodyToParams(body)
+            }
+        }
 
         var userAgent = httpReq.getHeader("User-Agent")
         if (userAgent == null || userAgent == "") userAgent = "-"
@@ -1302,17 +930,14 @@ application/x-gzip gz
         dataMap.put(requestId, data)
 
         val ret = router.send(req)
-        if (ret == null) return null
+        if (ret == null) return
 
         dataMap.remove(requestId)
         t.cancel()
-        val tpl = reply(httpSosReq, ret.code, ret.res)
-        tpl
+        reply(httpSosReq, ret.code, ret.res)
     }
 
-    def replyError(httpReq: HttpRequest, connId: String, requestId: String, errorCode: Int, uri: String = "", serviceId: Int = 0, msgId: Int = 0): Tuple3[HttpSosRequestResponseInfo, HashMap[String, Cookie], HashMap[String, String]] = {
-
-        val isRpc = requestId.startsWith("rpc")
+    def replyError(httpReq: HttpRequest, connId: String, requestId: String, errorCode: Int, uri: String = "", serviceId: Int = 0, msgId: Int = 0) {
 
         var f = if (jsonStyle == "codeMessageNoData") errorFormatCodeMessageNoData else errorFormat
         var content = f.format(errorCode, convertErrorMessage(errorCode))
@@ -1358,19 +983,11 @@ application/x-gzip gz
         val res = new HttpSosResponse(requestId, errorCode, content)
         val reqResInfo = new HttpSosRequestResponseInfo(req, res)
 
-        if (!isRpc) {
-            write(connId, content, httpxhead, null, null)
-            asynclog(reqResInfo)
-            null
-        } else {
-            (reqResInfo, null, null)
-        }
-
+        write(connId, content, httpxhead, null, null)
+        asynclog(reqResInfo)
     }
 
-    def reply(req: HttpSosRequest, errorCode: Int, a_body: HashMapStringAny): Tuple3[HttpSosRequestResponseInfo, HashMap[String, Cookie], HashMap[String, String]] = {
-
-        val isRpc = req.requestId.startsWith("rpc")
+    def reply(req: HttpSosRequest, errorCode: Int, a_body: HashMapStringAny) {
 
         var body = a_body
         val serviceId = req.serviceId
@@ -1464,8 +1081,7 @@ application/x-gzip gz
             req.xhead.put("charset", "UTF-8")
             req.xhead.put("httpCode", "302")
             asynclog(reqResInfo)
-            return null
-
+            return
         }
 
         var rawContent: Array[Byte] = null
@@ -1489,7 +1105,7 @@ application/x-gzip gz
             }
             if (rawContent == null) {
                 write404InReply(req, errorCode)
-                return null
+                return
             }
 
         } else if (pluginObj != null && pluginObj.isInstanceOf[HttpServerStaticFilePlugin]) {
@@ -1510,7 +1126,7 @@ application/x-gzip gz
             }
             if (staticFile == null) {
                 write404InReply(req, errorCode)
-                return null
+                return
             }
 
         } else if (pluginObj != null && pluginObj.isInstanceOf[HttpServerOutputPlugin]) {
@@ -1557,57 +1173,18 @@ application/x-gzip gz
         req.xhead.put("contentType", contentType)
         req.xhead.put("charset", charset)
 
-        if (!isRpc) {
-            if (staticFile != null) {
-                writeStaticFileInReply(connId, staticFile, req.xhead, cookies, headers, reqResInfo)
-                return null
-            }
-
-            if (rawContent != null)
-                writeRaw(connId, rawContent, req.xhead, cookies, headers)
-            else
-                write(connId, content, req.xhead, cookies, headers)
-            asynclog(reqResInfo)
-            null
-        } else {
-            (reqResInfo, cookies, headers)
+        if (staticFile != null) {
+            writeStaticFileInReply(connId, staticFile, req.xhead, cookies, headers, reqResInfo)
+            return
         }
+
+        if (rawContent != null)
+            writeRaw(connId, rawContent, req.xhead, cookies, headers)
+        else
+            write(connId, content, req.xhead, cookies, headers)
+        asynclog(reqResInfo)
     }
-
-    def replyRpcCall(rpcRequestId: String, rpcCall: RpcCall) {
-
-        rpcMap.remove(rpcRequestId)
-
-        val firstReq = rpcCall.buff(0)
-        var connId = firstReq.reqRes.req.connId
-
-        var cookies = HashMap[String, Cookie]()
-        var headers = HashMap[String, String]()
-
-        val s = new StringBuilder()
-        s.append("[")
-        var first = true
-        for (rpcInfo <- rpcCall.buff) {
-
-            if (!first) s.append(",") else first = false
-            val json = rpcFormat.format(rpcInfo.id, rpcInfo.reqRes.res.content)
-            s.append(json)
-
-            if (rpcInfo.cookies != null && rpcInfo.cookies.size > 0) cookies ++= rpcInfo.cookies
-            if (rpcInfo.headers != null && rpcInfo.headers.size > 0) headers ++= rpcInfo.headers
-        }
-        s.append("]")
-
-        val xhead = firstReq.reqRes.req.xhead
-        xhead.put("contentType", MIMETYPE_JSON)
-        xhead.put("charset", "UTF-8")
-        write(connId, s.toString, xhead, cookies, headers)
-
-        for (rpcInfo <- rpcCall.buff) {
-            asynclog(rpcInfo.reqRes)
-        }
-    }
-
+    
     def write302(connId: String, xhead: HashMapStringAny, url: String, cookies: HashMap[String, Cookie]) {
         val keepAlive = xhead.s("keepAlive", "true") == "true"
         val response = new DefaultHttpResponse(HttpVersion.HTTP_1_1, HttpResponseStatus.FOUND)
@@ -1914,7 +1491,7 @@ application/x-gzip gz
         nettyHttpServer.writeFile(connId, response, keepAlive, f, fileLength, range_tpl, reqResInfo)
     }
 
-    def parseBody(isRpc: Boolean, requestId: String, serviceId: Int, msgId: Int, httpReq: HttpRequest, bodyParams: HashMapStringAny, host: String, clientIp: String): Tuple2[HashMapStringAny, Boolean] = {
+    def parseBody(requestId: String, serviceId: Int, msgId: Int, httpReq: HttpRequest, host: String, clientIp: String): Tuple2[HashMapStringAny, Boolean] = {
 
         var contentType = msgAttrs.getOrElse(serviceId + "-" + msgId + "-requestContentType", "")
         if (contentType == "") {
@@ -1935,61 +1512,53 @@ application/x-gzip gz
         val map = HashMapStringAny()
         var sessionIdChanged = false
 
-        if (isRpc) {
+        val uri = httpReq.getUri()
+        if (uri.indexOf("?") >= 0) {
+            val s = uri.substring(uri.indexOf("?") + 1)
+            parseFormContent(charset, s, map)
+        }
 
-            map ++= bodyParams
+        val pluginObj = msgPlugins.getOrElse(serviceId + "-" + msgId, null)
+        if (method == HttpMethod.POST && contentType == MIMETYPE_MULTIPART) {
 
-        } else {
-
-            val uri = httpReq.getUri()
-            if (uri.indexOf("?") >= 0) {
-                val s = uri.substring(uri.indexOf("?") + 1)
-                parseFormContent(charset, s, map)
+            if (log.isDebugEnabled) {
+                log.debug("http file upload, headers: " + toHeaders(httpReq))
             }
 
-            val pluginObj = msgPlugins.getOrElse(serviceId + "-" + msgId, null)
-            if (method == HttpMethod.POST && contentType == MIMETYPE_MULTIPART) {
-
-                if (log.isDebugEnabled) {
-                    log.debug("http file upload, headers: " + toHeaders(httpReq))
+            val x_upload_processed = httpReq.getHeader("X_UPLOAD_PROCESSED")
+            val x_upload_processed_2 = httpReq.getHeader("X_UPLOAD_PROCESSED_2")
+            if (x_upload_processed != null && x_upload_processed != "") {
+                val t1 = System.currentTimeMillis()
+                val in = new BufferedInputStream(new FileInputStream(x_upload_processed), 5000000)
+                parseFileUploadContent(charset, in, map)
+                in.close()
+                new File(x_upload_processed).delete()
+                val t2 = System.currentTimeMillis()
+                if( t2 - t1 > 1000 ) {
+                    log.warn("parse file upload content ts="+(t2-t1)+", file="+x_upload_processed)
                 }
-
-                val x_upload_processed = httpReq.getHeader("X_UPLOAD_PROCESSED")
-                val x_upload_processed_2 = httpReq.getHeader("X_UPLOAD_PROCESSED_2")
-                if (x_upload_processed != null && x_upload_processed != "") {
-                    val t1 = System.currentTimeMillis()
-                    val in = new BufferedInputStream(new FileInputStream(x_upload_processed), 5000000)
-                    parseFileUploadContent(charset, in, map)
-                    in.close()
-                    new File(x_upload_processed).delete()
-                    val t2 = System.currentTimeMillis()
-                    if( t2 - t1 > 1000 ) {
-                        log.warn("parse file upload content ts="+(t2-t1)+", file="+x_upload_processed)
-                    }
-                } else if (x_upload_processed_2 != null && x_upload_processed_2 != "") {
-                    parseFileUploadContent2(charset, x_upload_processed_2, map)
-                } else {
-                    // upload file 
-                    // upload file to temp dir and put filename to body
-                    val content = httpReq.getContent()
-                    val in = new ChannelBufferInputStream(content)
-                    parseFileUploadContent(charset, in, map)
-                }
-
-            } else if (method == HttpMethod.POST) {
+            } else if (x_upload_processed_2 != null && x_upload_processed_2 != "") {
+                parseFileUploadContent2(charset, x_upload_processed_2, map)
+            } else {
+                // upload file 
+                // upload file to temp dir and put filename to body
                 val content = httpReq.getContent()
-                val contentStr = content.toString(Charset.forName(charset))
-                if (log.isDebugEnabled) {
-                    log.debug("http post content: " + contentStr + ", headers: " + toHeaders(httpReq))
-                }
-                if (contentType == MIMETYPE_FORM) {
-                    parseFormContent(charset, contentStr, map)
-                } else {
-                    if (pluginObj != null && pluginObj.isInstanceOf[HttpServerRequestParsePlugin])
-                        pluginObj.asInstanceOf[HttpServerRequestParsePlugin].parseContent(serviceId, msgId, charset, contentType, contentStr, map)
-                }
+                val in = new ChannelBufferInputStream(content)
+                parseFileUploadContent(charset, in, map)
             }
 
+        } else if (method == HttpMethod.POST) {
+            val content = httpReq.getContent()
+            val contentStr = content.toString(Charset.forName(charset))
+            if (log.isDebugEnabled) {
+                log.debug("http post content: " + contentStr + ", headers: " + toHeaders(httpReq))
+            }
+            if (contentType == MIMETYPE_FORM) {
+                parseFormContent(charset, contentStr, map)
+            } else {
+                if (pluginObj != null && pluginObj.isInstanceOf[HttpServerRequestParsePlugin])
+                    pluginObj.asInstanceOf[HttpServerRequestParsePlugin].parseContent(serviceId, msgId, charset, contentType, contentStr, map)
+            }
         }
 
         val headerBuff = headerMap.getOrElse(serviceId + "-" + msgId + "-req", null)
@@ -2053,7 +1622,13 @@ application/x-gzip gz
 
         val requestUriSupport = msgAttrs.getOrElse(serviceId + "-" + msgId + "-" + requestUriFieldName, "0")
         if (requestUriSupport == "1") {
-            map.put(requestUriFieldName, httpReq.getUri())
+            val uri = httpReq.getUri()
+            if (uri.indexOf("?") >= 0) {
+                val s = uri.substring(0,uri.indexOf("?"))
+                map.put(requestUriFieldName, s)
+            } else {
+                map.put(requestUriFieldName, uri)
+            }
         }
 
         val domainNameSupport = msgAttrs.getOrElse(serviceId + "-" + msgId + "-" + domainNameFieldName, "1")
@@ -2103,18 +1678,13 @@ application/x-gzip gz
     }
 
     def genSessionId(requestId: String, host: String, clientIp: String): String = {
-        val t =
-            if (requestId.startsWith("rpc")) {
-                val p = requestId.indexOf("-")
-                requestId.substring(3, p)
-            } else {
-                requestId
-            }
+        val t = requestId
         if (!sessionIpBind) return t
         val data = t + "#" + clientIp
         val s = CryptHelper.encryptHex(CryptHelper.ALGORITHM__DES, sessionEncKey, data)
         s
     }
+    
     def validateSessionId(sessionId: String, host: String, clientIp: String): Boolean = {
         if (!sessionIpBind) return true
         try {
@@ -2127,18 +1697,6 @@ application/x-gzip gz
         } catch {
             case _: Throwable => false
         }
-    }
-
-    def updateRpcCall(tpl: Tuple3[HttpSosRequestResponseInfo, HashMap[String, Cookie], HashMap[String, String]]) {
-        if (tpl == null) return
-        val requestId = tpl._1.req.requestId
-        val p = requestId.indexOf("-")
-        if (p < 0) return
-        val rpcRequestId = requestId.substring(0, p)
-        val rpcCall = rpcMap.get(rpcRequestId)
-        if (rpcCall == null) return
-        rpcCall.updateResult(tpl)
-        if (rpcCall.finished) replyRpcCall(rpcRequestId, rpcCall)
     }
 
     def getMerchantInfo(body: HashMapStringAny): Tuple2[Boolean, String] = {
@@ -2200,8 +1758,8 @@ application/x-gzip gz
         }
 
         xhead.put(Xhead.KEY_SOC_ID, cfg.merchantName)
-        //xhead.put(Xhead.KEY_APP_ID, cfg.appId) // TODO
-        //xhead.put(Xhead.KEY_AREA_ID, cfg.areaId) // TODO
+        xhead.put(Xhead.KEY_APP_ID, cfg.appId)
+        xhead.put(Xhead.KEY_AREA_ID, cfg.areaId)
 
         true
     }

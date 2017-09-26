@@ -496,19 +496,28 @@ class DbClient(
                             throw new RuntimeException("key not found error for serviceId=%d,msgId=%d,key=%s".format(serviceId,msgId,f))
                         }
                         if( tlvType.cls != TlvType.CLS_STRING &&
-                            tlvType.cls != TlvType.CLS_STRINGARRAY &&
                             tlvType.cls != TlvType.CLS_INT &&
-                            tlvType.cls != TlvType.CLS_INTARRAY )
+                            tlvType.cls != TlvType.CLS_LONG &&
+                            tlvType.cls != TlvType.CLS_DOUBLE &&
+                            tlvType.cls != TlvType.CLS_STRINGARRAY &&
+                            tlvType.cls != TlvType.CLS_INTARRAY &&
+                            tlvType.cls != TlvType.CLS_LONGARRAY &&
+                            tlvType.cls != TlvType.CLS_DOUBLEARRAY )
                         throw new RuntimeException("type not supported in request parameter, serviceId=%d,msgId=%d,key=%s".format(serviceId,msgId,f))
 
                         if( tlvType.cls == TlvType.CLS_STRINGARRAY ||
-                            tlvType.cls == TlvType.CLS_INTARRAY )
+                            tlvType.cls == TlvType.CLS_INTARRAY ||
+                            tlvType.cls == TlvType.CLS_LONGARRAY ||
+                            tlvType.cls == TlvType.CLS_DOUBLEARRAY )
                             hasArrayReqFields = true
 
                         val defaultValue = map.getOrElse("req-"+f+"-default",null)
                         var columnType = map.getOrElse("req-"+f+"-columnType","string")
                         if( columnType == "string" ) {
-                            if( tlvType.cls == TlvType.CLS_INT || tlvType.cls == TlvType.CLS_INTARRAY )
+                            if( tlvType.cls == TlvType.CLS_INT || tlvType.cls == TlvType.CLS_INTARRAY || 
+                                tlvType.cls == TlvType.CLS_LONG || tlvType.cls == TlvType.CLS_LONGARRAY ||
+                                tlvType.cls == TlvType.CLS_DOUBLE || tlvType.cls == TlvType.CLS_DOUBLEARRAY 
+                                )
                                 columnType = "number"
                         }
                         val toValue = map.getOrElse("req-"+f+"-to",null)
@@ -581,7 +590,7 @@ class DbClient(
 
                                             fromValue = "$result[0][%d]".format(col)
 
-                                        case TlvType.CLS_INT=>
+                                        case TlvType.CLS_INT | TlvType.CLS_LONG | TlvType.CLS_DOUBLE =>
 
                                             val col = findIndexInSelect(sqls(0),sqlType,f)
                                             if( col == -1 )
@@ -589,7 +598,7 @@ class DbClient(
 
                                             fromValue = "$result[0][%d]".format(col)
 
-                                        case TlvType.CLS_STRUCT =>
+                                        case TlvType.CLS_STRUCT | TlvType.CLS_OBJECT =>
 
                                             fromValue = "$result[0]"
 
@@ -601,7 +610,7 @@ class DbClient(
 
                                             fromValue = "$result[*][%d]".format(col)
 
-                                        case TlvType.CLS_INTARRAY =>
+                                        case TlvType.CLS_INTARRAY | TlvType.CLS_LONGARRAY | TlvType.CLS_DOUBLEARRAY =>
 
                                             val col = findIndexInSelectForList(sqls(0),sqlType,f)
                                             if( col == -1 )
@@ -609,7 +618,7 @@ class DbClient(
 
                                             fromValue = "$result[*][%d]".format(col)
 
-                                        case TlvType.CLS_STRUCTARRAY =>
+                                        case TlvType.CLS_STRUCTARRAY | TlvType.CLS_OBJECTARRAY =>
                                             fromValue = "$result"
                                     }
 
@@ -642,7 +651,7 @@ class DbClient(
                                     if( tlvType == null ) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s".format(serviceId,msgId,f))
                                     }
-                                    if( tlvType.cls != TlvType.CLS_STRUCT) {
+                                    if( tlvType.cls != TlvType.CLS_STRUCT &&  tlvType.cls != TlvType.CLS_OBJECT ) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s, the tlv type must struct".format(serviceId,msgId,f))
                                     }
                                     val names = parseStructNames(tlvType.structDef.fields,sqls(0))
@@ -657,7 +666,7 @@ class DbClient(
                                     if( tlvType == null ) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s".format(serviceId,msgId,f))
                                     }
-                                    if( tlvType.cls != TlvType.CLS_STRUCTARRAY) {
+                                    if( tlvType.cls != TlvType.CLS_STRUCTARRAY && tlvType.cls != TlvType.CLS_OBJECTARRAY) {
                                         throw new RuntimeException("from defination error for serviceId=%d,msgId=%d,key=%s, the tlv type must struct".format(serviceId,msgId,f))
                                     }
                                     val names = parseStructNames(tlvType.structDef.fields,sqls(0))

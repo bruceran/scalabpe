@@ -181,7 +181,6 @@ object TlvCodec {
 
     val EMPTY_STRINGMAP = new HashMapStringString()
     val EMPTY_BUFFER = ChannelBuffers.buffer(0)
-    //val CONVERTED_FLAG = "__converted__"
 
     def hexDump(buff: ChannelBuffer): String = {
         val s = ChannelBuffers.hexDump(buff, 0, buff.writerIndex)
@@ -1019,7 +1018,7 @@ class TlvCodec(val configFile: String) extends Logging {
             }
         }
 
-        val ec = validate(keyMap, fieldMap, map, needEncode, addConvertFlag = false)
+        val ec = validate(keyMap, fieldMap, map, needEncode)
         if (ec != 0 && errorCode == 0) errorCode = ec
         (map, errorCode)
     }
@@ -1139,7 +1138,7 @@ class TlvCodec(val configFile: String) extends Logging {
                needEncode: Boolean): Int = {
 
         var errorCode = 0
-        val ec = validate(keyMap, fieldMap, dataMap, needEncode, addConvertFlag = false)
+        val ec = validate(keyMap, fieldMap, dataMap, needEncode)
         if (ec != 0 && errorCode == 0) errorCode = ec
 
         for ((key, value) <- dataMap if value != null) {
@@ -1505,7 +1504,7 @@ class TlvCodec(val configFile: String) extends Logging {
 
         var errorCode = 0
 
-        val ec = validate(keyMap, fieldMap, dataMap, needEncode, addConvertFlag = true)
+        val ec = validate(keyMap, fieldMap, dataMap, needEncode)
         if (ec != 0 && errorCode == 0) errorCode = ec
 
         val retmap = new HashMapStringAny();
@@ -1526,7 +1525,7 @@ class TlvCodec(val configFile: String) extends Logging {
                     case CLS_STRING =>
                         retmap.put(key, TypeSafe.anyToString(value))
                     case CLS_STRUCT =>
-                        retmap.put(key, anyToStruct(tlvType, value, false))
+                        retmap.put(key, anyToStruct(tlvType, value))
                     case CLS_OBJECT =>
                         val (m, ec) = anyToObject(tlvType, value, needEncode)
                         retmap.put(key, m)
@@ -1540,7 +1539,7 @@ class TlvCodec(val configFile: String) extends Logging {
                     case CLS_STRINGARRAY =>
                         retmap.put(key, anyToStringArray(value))
                     case CLS_STRUCTARRAY =>
-                        retmap.put(key, anyToStructArray(tlvType, value, false))
+                        retmap.put(key, anyToStructArray(tlvType, value))
                     case CLS_OBJECTARRAY =>
                         val (a, ec) = anyToObjectArray(tlvType, value, needEncode)
                         retmap.put(key, a)
@@ -1557,14 +1556,14 @@ class TlvCodec(val configFile: String) extends Logging {
         (retmap, errorCode)
     }
 
-    def anyToStruct(tlvType: TlvType, v: Any, addConvertFlag: Boolean): HashMapStringAny = {
+    def anyToStruct(tlvType: TlvType, v: Any): HashMapStringAny = {
 
         if (!v.isInstanceOf[HashMapStringAny]) {
             throw new CodecException("not supported type in anyToStruct, type=%s".format(v.getClass.getName));
         }
 
         val datamap = v.asInstanceOf[HashMapStringAny]
-        fastConvertStruct(tlvType, datamap, addConvertFlag)
+        fastConvertStruct(tlvType, datamap)
         datamap
     }
 
@@ -1651,32 +1650,26 @@ class TlvCodec(val configFile: String) extends Logging {
         }
     }
 
-    def anyToStructArray(tlvType: TlvType, v: Any, addConvertFlag: Boolean): ArrayBufferMap = {
+    def anyToStructArray(tlvType: TlvType, v: Any): ArrayBufferMap = {
 
         v match {
             case list: ArrayBufferMap =>
-                list.foreach(fastConvertStruct(tlvType, _, addConvertFlag)) // 相比anyToStruct，不生成对象，直接在内部转换; 查询的时候这种类型特别多
+                list.foreach(fastConvertStruct(tlvType, _)) // 相比anyToStruct，不生成对象，直接在内部转换; 查询的时候这种类型特别多
                 return list
             case list: ArrayBuffer[_] =>
                 val arr = new ArrayBufferMap()
-                list.foreach(arr += anyToStruct(tlvType, _, addConvertFlag))
+                list.foreach(arr += anyToStruct(tlvType, _))
                 arr
             case list: Array[_] =>
                 val arr = new ArrayBufferMap()
-                list.foreach(arr += anyToStruct(tlvType, _, addConvertFlag))
+                list.foreach(arr += anyToStruct(tlvType, _))
                 arr
             case _ =>
                 throw new CodecException("not supported type in anyToStructArray, type=%s".format(v.getClass.getName));
         }
     }
 
-    def fastConvertStruct(tlvType: TlvType, datamap: HashMapStringAny, addConvertFlag: Boolean) {
-
-        // 有副作用，去掉
-        //if (datamap.contains(CONVERTED_FLAG)) {
-            //datamap.remove(CONVERTED_FLAG)
-            //return
-        //}
+    def fastConvertStruct(tlvType: TlvType, datamap: HashMapStringAny) {
 
         // 删除多余key
         var to_be_removed: ArrayBufferString = null
@@ -1731,10 +1724,6 @@ class TlvCodec(val configFile: String) extends Logging {
 
         }
 
-        //if (addConvertFlag) {
-            //datamap.put(CONVERTED_FLAG, "1")
-        //}
-
     }
 
     def anyToObjectArray(tlvType: TlvType, value: Any, needEncode: Boolean): Tuple2[ArrayBufferMap, Int] = {
@@ -1775,7 +1764,7 @@ class TlvCodec(val configFile: String) extends Logging {
     // 编码，解码，内存中过滤都会调用此函数
     // 此函数 实现  1) 默认值设置  2) 校验  3) 编码转换功能
     def validate(keyMap: HashMapStringString, fieldMap: HashMap[String, FieldInfo],
-                 dataMap: HashMap[String, Any], needEncode: Boolean, addConvertFlag: Boolean): Int = {
+                 dataMap: HashMap[String, Any], needEncode: Boolean): Int = {
 
         if (fieldMap == null || fieldMap.size == 0) return 0
 
@@ -1859,12 +1848,12 @@ class TlvCodec(val configFile: String) extends Logging {
                         }
                         dataMap.put(key, l)
                     case CLS_STRUCT =>
-                        val m = anyToStruct(tlvType, value, addConvertFlag)
+                        val m = anyToStruct(tlvType, value)
                         val ec = validateStruct(m, tlvType, needEncode)
                         if (ec != 0 && errorCode == 0) errorCode = ec
                         dataMap.put(key, m)
                     case CLS_STRUCTARRAY =>
-                        val l = anyToStructArray(tlvType, value, addConvertFlag)
+                        val l = anyToStructArray(tlvType, value)
                         for (i <- 0 until l.size) {
                             val ec = validateStruct(l(i), tlvType.itemType, needEncode)
                             if (ec != 0 && errorCode == 0) errorCode = ec
