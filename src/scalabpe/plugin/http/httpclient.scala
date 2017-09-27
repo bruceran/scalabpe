@@ -1131,7 +1131,8 @@ class HttpClientImpl(
             val objNode = next.asInstanceOf[ObjectNode]
             val map = new HashMapStringAny()
             for (f <- tlvType.objectDef.fields) {
-                val key = f.name
+                val type_name = f.name
+                val key = tlvType.objectDef.typeToKeyMap.getOrElse(type_name,null)
                 val node = objNode.get(key)
                 if (node == null) {
                     map.put(key, null)
@@ -1194,7 +1195,8 @@ class HttpClientImpl(
                 val objNode = tt.asInstanceOf[ObjectNode]
                 val map = new HashMapStringAny()
                 for (f <- tlvType.objectDef.fields) {
-                    val key = f.name
+                    val type_name = f.name
+                    val key = tlvType.objectDef.typeToKeyMap.getOrElse(type_name,null)
                     val node = objNode.get(key)
                     if (node == null) {
                         map.put(key, null)

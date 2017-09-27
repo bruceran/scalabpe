@@ -22,7 +22,7 @@ object Tools {
     val sep4 = 10004.toChar  // escape blank
     val sep5 = 10005.toChar  // escape :
 
-    val r1 = """ ([a-zA-Z0-9]+) *= *"([^"]*)"""".r
+    val r1 = """ ([a-zA-Z0-9_]+) *= *"([^"]*)"""".r
 
     def main(args:Array[String]) {
         println(

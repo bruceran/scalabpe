@@ -1306,8 +1306,10 @@ class DbClient(
                             }
                             if( tlvType.cls == TlvType.CLS_OBJECTARRAY ) {
                                 for (kk <- 0 until tlvType.objectDef.fields.length) {
-                                    if (tlvType.objectDef.fields(kk).name.toLowerCase == loweredIdx) {
-                                        keyInMap = tlvType.objectDef.fields(kk).name
+                                    val type_name = tlvType.objectDef.fields(kk).name
+                                    val name = tlvType.objectDef.typeToKeyMap.getOrElse(type_name,"")
+                                    if ( name.toLowerCase == loweredIdx) {
+                                        keyInMap = name
                                         columnTypeInMap = codec.codecAttributes.getOrElse("type-" + tlvType.itemType.name + "-" + keyInMap + "-columnType", "")
                                         val tlvinfo = tlvType.objectDef.keyToFieldMap.getOrElse(keyInMap,null)
                                         if (tlvinfo != null && tlvinfo.defaultValue != null) defaultValueInMap = tlvinfo.defaultValue

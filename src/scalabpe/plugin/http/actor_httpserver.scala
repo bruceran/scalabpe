@@ -542,14 +542,16 @@ application/x-gzip gz
                     }
                     if (tlvType.cls == TlvType.CLS_OBJECT) {
                         for (f <- tlvType.objectDef.fields) {
-                            val n = f.name
+                            val type_name = f.name
+                            val n = tlvType.objectDef.typeToKeyMap.getOrElse(type_name,null)
                             val classex2 = tlvCodec.codecAttributes.getOrElse("classex-" + tlvType.name + "-" + n, null)
                             if (classex2 != null) map.put(key + "-" + n, classex2)
                         }
                     }
                     if (tlvType.cls == TlvType.CLS_OBJECTARRAY) {
                         for (f <- tlvType.objectDef.fields) {
-                            val n = f.name
+                            val type_name = f.name
+                            val n = tlvType.objectDef.typeToKeyMap.getOrElse(type_name,null)
                             val classex2 = tlvCodec.codecAttributes.getOrElse("classex-" + tlvType.itemType.name + "-" + n, null)
                             if (classex2 != null) map.put(key + "-" + n, classex2)
                         }

@@ -43,6 +43,7 @@ options:
     -d|--delete           转换完毕后删除原始文件
     -c|--console          转换完毕后输出结果到控制台
     -o|--output filename  生成到指定文件中
+       --no_default_type  不输出符合默认规则的type定义
 """)
    }
 
@@ -62,6 +63,9 @@ options:
                     i += 1
                 case "--reset" => 
                     map.put("reset","1")
+                    i += 1
+                case "--no_default_type" => 
+                    map.put("no_default_type","1")
                     i += 1
                 case "-r" | "--repair" => 
                     map.put("repair","1")
@@ -117,12 +121,14 @@ options:
         if( p0.endsWith(".xml") ) {
             var p2 = p0.replace(".xml",".txt")
             if( params.ns("output") != "" ) p2 = params.ns("output")
-            val ok = convertXmlToTxt(p0,p2,params)
+            val tmp_p2 = p2 + ".tmp"
+            val ok = convertXmlToTxt(p0,tmp_p2,params)
             if( ok && params.ns("format") == "1" ) {
-                convertTxtToXml(p2,p0,params)
-                new File(p2).delete()
+                convertTxtToXml(tmp_p2,p0,params)
+                new File(tmp_p2).delete()
                 return
             }
+            compareAndRename(p2,tmp_p2)
             if( ok && params.ns("delete") == "1" ) {
                 new File(p0).delete()
             }
@@ -132,12 +138,16 @@ options:
         if( p0.endsWith(".txt") ) {
             var p2 = p0.replace(".txt",".xml")
             if( params.ns("output") != "" ) p2 = basepath + params.ns("output")
-            val ok = convertTxtToXml(p0,p2,params)
+            val tmp_p2 = p2 + ".tmp"
+            val ok = convertTxtToXml(p0,tmp_p2,params)
             if( ok && params.ns("format") == "1" ) {
-                convertXmlToTxt(p2,p0,params)
-                new File(p2).delete()
+                convertXmlToTxt(tmp_p2,p0,params)
+                new File(tmp_p2).delete()
                 return
             }
+
+            compareAndRename(p2,tmp_p2)
+
             if( ok && params.ns("delete") == "1" ) {
                 new File(p0).delete()
             }
@@ -147,11 +157,30 @@ options:
         println("not a valid file, file="+p0)
     }
 
+    def compareAndRename(p2:String,tmp_p2:String) {
+        val f2 = new File(p2)
+        if( f2.exists ) {
+            if( md5file(p2) == md5file(tmp_p2) ) {
+                new File(tmp_p2).delete()
+                return
+            }
+            new File(p2).delete()
+        }
+        new File(tmp_p2).renameTo(new File(p2))
+    }
+
+    def md5file(file:String):String = {
+        val s = FileUtils.readFileToString(new File(file),"UTF-8")
+        CryptHelper.md5(s)
+    }
+
     def convertTxtToXml(srcFile:String,targetFile:String,params:HashMapStringAny):Boolean = {
         val lines0 = readAllLines(srcFile)
         var lines = prepareTxtLines(lines0)
         lines = repairTxtTypes(lines,params.ns("repair") == "1")
         val typeDescMap = parseTypeDesc(lines)
+        
+        val no_default_type = params.ns("no_default_type") == "1"
 
         val buff = ArrayBufferString()
         buff += """<?xml version="1.0" encoding="UTF-8"?>"""
@@ -182,7 +211,7 @@ options:
                     case l if l == "" =>
                         buff += ""
                     case _ =>
-                        convertField(buff,s,ctx,typeDescMap)
+                        convertField(buff,s,ctx,typeDescMap,no_default_type)
                 }
             } catch {
                 case e:Throwable =>
@@ -262,7 +291,7 @@ options:
 
         var context = ""
         for( l <- lines ) {
-            if( context != "" && l != "" && !l.startsWith("#")  && !l.startsWith("req:") && !l.startsWith("res:") && !l.startsWith("res_end:")   ) {
+            if( context != "" && l != "" && !l.startsWith("#")  && !l.startsWith("req:") && !l.startsWith("res:") && !l.startsWith("res_end:")  && !l.startsWith("type_end:")   ) {
                 val name = parseFieldName(l)
                 val m = parseMap(l)
                 var tp = m.ns("type",name+"_type")
@@ -275,6 +304,18 @@ options:
                 notusedtypes.put(tp.toLowerCase,"1")
             }
 
+            if( l.startsWith("type:") ) {
+                val m = parseMap(l)
+                var name = m.ns("type")
+                val p = name.indexOf("#")
+                var cls = "string"
+                if( p > 0 ) {
+                    cls = name.substring(p+1)
+                }
+                if( cls == "object") {
+                    context = "object"
+                }
+            }
             if( l.startsWith("req:") ) {
                 context = "req"
             }
@@ -282,6 +323,9 @@ options:
                 context = "res"
             }
             if( l.startsWith("res_end:") ) {
+                context = ""
+            }
+            if( l.startsWith("type_end:") ) {
                 context = ""
             }
         }
@@ -338,6 +382,13 @@ options:
             val s = lines(i)
             buff += s
             if( s.startsWith("type:") && s.indexOf("#struct") > 0 ) {
+                val j = findEnd(lines,i+1)
+                for( k <- i+1 until j ) {
+                    buff += lines(k)
+                }
+                buff += "type_end:"
+                i = j - 1
+            } else if( s.startsWith("type:") && s.indexOf("#object") > 0 ) {
                 val j = findEnd(lines,i+1)
                 for( k <- i+1 until j ) {
                     buff += lines(k)
@@ -471,6 +522,7 @@ options:
         }
         var closetag = "/"
         if( cls == "struct" ) { ctx.lastNode = "struct" ; closetag = "" } 
+        if( cls == "object" ) { ctx.lastNode = "object" ; closetag = "" } 
 
         var xml = indent + StringUtils.rightPad("<type name=\"%s\"".format(name),40,' ') + 
                 StringUtils.rightPad(" class=\"%s\"".format(cls),16,' ') + 
@@ -478,7 +530,7 @@ options:
 
         if( array != "" ) {
             val arrayName = nameToArrayName(name,array)
-            if( cls == "struct") {
+            if( cls == "struct" || cls == "object" ) {
                 ctx.arrayName = arrayName
                 ctx.itemName = name
             } else {
@@ -572,6 +624,7 @@ options:
 
         val ind = ctx.lastNode match {
             case "struct" => indent2
+            case "object" => indent2
             case "message" => indent2
             case "req" => indent3
             case "res" => indent3
@@ -588,7 +641,7 @@ options:
         }
     }
 
-    def convertField(buff:ArrayBufferString,l:String,ctx:Context,typeDescMap:HashMapStringAny) {
+    def convertField(buff:ArrayBufferString,l:String,ctx:Context,typeDescMap:HashMapStringAny,no_default_type:Boolean) {
 
         var name = parseFieldName(l)
         var p = l.indexOf(" ") 
@@ -598,10 +651,8 @@ options:
         var tp = map.ns("type")
         map.remove("type")
 
-
         ctx.lastNode match {
             case "req" | "res" =>
-                if( tp == "" ) tp = name + "_type"
                 val desc = map.ns("desc")
                 val desc2 = typeDescMap.ns(tp.toLowerCase)
                 if( desc2 == desc ) map.remove("desc")
@@ -611,8 +662,14 @@ options:
                     extra += " " + k + "=\"" +escapeXml(v.toString)+ "\""
                 }
 
-                var xml = indent3 + StringUtils.rightPad("<field name=\"%s\"".format(name),32,' ') +
-                        " type=\"%s\"".format(tp) + extra+"/>" 
+                var xml = ""
+                if( tp == "" && no_default_type ) {
+                    xml = indent3 + "<field name=\"%s\"".format(name) + extra+"/>" 
+                } else {
+                    if( tp == "" ) tp = name + "_type"
+                    xml = indent3 + StringUtils.rightPad("<field name=\"%s\"".format(name),32,' ') +
+                            " type=\"%s\"".format(tp) + extra+"/>" 
+                }
                 buff += xml
             case "struct" =>
                 tp = "systemstring" 
@@ -629,6 +686,22 @@ options:
 
                 var xml = indent2 + StringUtils.rightPad("<field name=\"%s\"".format(name),36,' ') +
                         " type=\"%s\"".format(tp) + extra+"/>" 
+                buff += xml
+            case "object" =>
+
+                var extra = ""
+                for( (k,v) <- map ) {
+                    extra += " " + k + "=\"" +escapeXml(v.toString)+ "\""
+                }
+
+                var xml = ""
+                if( tp == "" && no_default_type ) {
+                    xml = indent2 + "<field name=\"%s\"".format(name) + extra+"/>" 
+                } else {
+                    if( tp == "" ) tp = name + "_type"
+                    xml = indent2 + StringUtils.rightPad("<field name=\"%s\"".format(name),36,' ') +
+                            " type=\"%s\"".format(tp) + extra+"/>" 
+                }
                 buff += xml
             case _ =>
                 throw new Exception("unknown line:"+l)
@@ -761,6 +834,10 @@ options:
                                     context = "struct"
                                     comment_indent = indent2
                                 }
+                                if( cls  == "object" ) {
+                                    context = "object"
+                                    comment_indent = indent2
+                                }
                                 buff += s 
                             }
                         case l if l.startsWith("<field") =>
@@ -775,6 +852,15 @@ options:
                                 var s = indent2+name
                                 if( tp != "systemstring" ) s +="#"+tp 
                                 s = StringUtils.rightPad(s,40,' ')
+                                for( (k,v) <- attrs ) s += indent+k+":"+escape0(v.toString)
+                                if( desc != null ) 
+                                    s += indent + "desc:"+desc
+                                buff += s
+                            }
+                            if( context == "object" ) {
+                                var s = indent2+name
+                                s = StringUtils.rightPad(s,40,' ')
+                                if( tp.toLowerCase != (name+"_type").toLowerCase ) s += indent + "type:"+tp 
                                 for( (k,v) <- attrs ) s += indent+k+":"+escape0(v.toString)
                                 if( desc != null ) 
                                     s += indent + "desc:"+desc
