@@ -41,14 +41,9 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
     var hasReverseServiceIds = false
     var spsDisconnectNotifyTo = "55605:111"
     var reverseIps: HashSet[String] = null
+
     var pushToIpPort: Boolean = false
     val connsAddrMap = new HashMap[String, String]()
-    var pushToIp: Boolean = false
-    val connsIpMap = new HashMap[String, ArrayBufferString]()
-    val connsIpIdxMap = new HashMap[String, Int]()
-    var pushToAny: Boolean = false
-    val allConns = new ArrayBufferString()
-    var allConnsIdx = 0
     val connsLock = new ReentrantLock(false)
 
     var isSps = false
@@ -112,12 +107,6 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
             s = (cfgNode \ "@pushToIpPort").text
             if (s != "") pushToIpPort = TypeSafe.isTrue(s)
 
-            s = (cfgNode \ "@pushToIp").text
-            if (s != "") pushToIp = TypeSafe.isTrue(s)
-
-            s = (cfgNode \ "@pushToAny").text
-            if (s != "") pushToAny = TypeSafe.isTrue(s)
-
             s = (cfgNode \ "@isSps").text
             if (s != "") {
                 isSps = TypeSafe.isTrue(s)
@@ -128,8 +117,6 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
                 isEncrypted = false
             } else {
                 pushToIpPort = true
-                pushToIp = false
-                pushToAny = false
             }
 
             val reverseIpList = (cfgNode \ "ReverseIp").map(_.text).toList
@@ -193,9 +180,6 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
         buff.append("pool.size=").append(pool.getPoolSize).append(",")
         buff.append("pool.getQueue.size=").append(pool.getQueue.size).append(",")
         buff.append("connsAddrMap.size=").append(connsAddrMap.size).append(",")
-        buff.append("connsIpMap.size=").append(connsIpMap.size).append(",")
-        buff.append("connsIpIdxMap.size=").append(connsIpIdxMap.size).append(",")
-        buff.append("allConns.size=").append(allConns.size).append(",")
 
         log.info(buff.toString)
 
@@ -208,7 +192,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         if (!hasReverseServiceIds) return
 
-        if (!pushToIpPort && !pushToIp && !pushToAny) return
+        if (!pushToIpPort ) return
 
         val remoteIp = parseRemoteIp(connId)
         if (reverseIps != null) {
@@ -220,21 +204,6 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
             if (pushToIpPort) {
                 connsAddrMap.put(parseRemoteAddr(connId), connId)
-            }
-
-            if (pushToAny) {
-                if (!allConns.contains(connId)) allConns += connId
-            }
-
-            if (pushToIp) {
-                var buff = connsIpMap.getOrElse(remoteIp, null)
-                if (buff == null) {
-                    buff = new ArrayBufferString()
-                    connsIpMap.put(remoteIp, buff)
-                    connsIpIdxMap.put(remoteIp, 0)
-                }
-
-                if (!buff.contains(connId)) buff += connId
             }
 
         } finally {
@@ -254,7 +223,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
         if (!hasReverseServiceIds) return
 
-        if (!pushToIpPort && !pushToIp && !pushToAny) return
+        if (!pushToIpPort ) return
 
         val remoteIp = parseRemoteIp(connId)
         if (reverseIps != null) {
@@ -266,23 +235,6 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
 
             if (pushToIpPort) {
                 connsAddrMap.remove(parseRemoteAddr(connId))
-            }
-
-            if (pushToAny) {
-                if (allConns.contains(connId)) allConns -= connId
-            }
-
-            if (pushToIp) {
-                var buff = connsIpMap.getOrElse(remoteIp, null)
-                if (buff != null) {
-                    if (buff.contains(connId)) {
-                        buff -= connId
-                        if (buff.size == 0) {
-                            connsIpMap.remove(remoteIp)
-                            connsIpIdxMap.remove(remoteIp)
-                        }
-                    }
-                }
             }
 
         } finally {
@@ -321,27 +273,7 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
         }
 
         if (toAddr == null || toAddr == "" || toAddr == "*") {
-
-            if (!pushToAny) {
-                return null
-            }
-
-            connsLock.lock()
-            try {
-
-                if (allConns.size == 0) return null
-
-                if (allConnsIdx < 0 || allConnsIdx >= allConns.size) allConnsIdx = 0
-                val connId = allConns(allConnsIdx)
-
-                allConnsIdx += 1
-
-                return connId
-
-            } finally {
-                connsLock.unlock()
-            }
-
+            return null
         }
 
         val toAddrTokenArray = toAddr.split(":")
@@ -358,37 +290,8 @@ class Sos(val router: Router, val port: Int) extends Actor with RawRequestActor 
                 connsLock.unlock()
             }
         }
-
-        if (toAddrTokenArray.length == 1 && pushToIp) {
-            val remoteIp = toAddr
-            connsLock.lock()
-            try {
-
-                var buff = connsIpMap.getOrElse(remoteIp, null)
-                if (buff == null) {
-                    return null
-                }
-                var idx = connsIpIdxMap.getOrElse(remoteIp, -1)
-                if (idx == -1) {
-                    return null
-                }
-
-                if (buff.size == 0) return null
-
-                if (idx < 0 || idx >= buff.size) idx = 0
-                val connId = buff(idx)
-
-                idx += 1
-                connsIpIdxMap.put(remoteIp, idx)
-
-                return connId
-
-            } finally {
-                connsLock.unlock()
-            }
-        }
-
-        null
+        
+        return null
     }
 
     override def receive(v: Any) {
