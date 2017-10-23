@@ -92,6 +92,13 @@ object IpUtils extends Logging {
         ip0
     }
 
+    def publicIp(): String = {
+        if (netips.size > 0) {
+            return netips(0)
+        }
+        localIp()
+    }
+
     def serverId(): String = {
         val s = localIp();
         val ss = s.split("\\.");

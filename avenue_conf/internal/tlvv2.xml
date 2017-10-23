@@ -12,13 +12,13 @@
     <type name="bs2_type" class="bytes" code="6"/> 
 
     <type name="stuc1_type" class="struct" code="7" array="stuc1_array_type"> 
-			<field name="f1"/>
-			<field name="f2" type="string" len="3"/>
+			<field name="f1" type="systemstring"/>
+			<field name="f2" type="systemstring" len="3"/>
 			<field name="f3" type="int"/>
-			<field name="f4" type="string"/>
+			<field name="f4" type="systemstring"/>
     </type>
     <type name="stuc2_type" class="struct" code="8"> 
-			<field name="f11"/>
+			<field name="f11" type="systemstring"/>
 			<field name="f12" type="vstring"/>
 			<field name="f2" type="int"/>
 			<field name="f3" type="long"/>

@@ -11,7 +11,7 @@
 	
 	<message name="queryUser" id="1">
 		<sql><![CDATA[
-			select id, name, nickname, createtime, updatetime from tb_user where id = :userid
+            /**mycat:db_type=master*/ select id, name, nickname, createtime, updatetime from tb_user where id = :userid
 		]]></sql>
 		<requestParameter>
 			<field name="useSlave" type="useSlave_type"/>

@@ -7,13 +7,13 @@
     <type name="i2_type" class="int" code="114" default="61"  array="i2_array_type"/> 
 
     <type name="stuc1_type" class="struct" code="7" array="stuc1_array_type"> 
-			<field name="f1" default="100"/>
-			<field name="f2" default="101" type="string" len="3"/>
+			<field name="f1" type="systemstring" default="100"/>
+			<field name="f2" type="systemstring" default="101" len="3"/>
 			<field name="f3" default="102" type="int"/>
-			<field name="f4" type="string"/>
+			<field name="f4" type="systemstring"/>
     </type>
     <type name="stuc2_type" class="struct" code="8"> 
-			<field name="f11" default="m70"/>
+			<field name="f11" type="systemstring" default="m70"/>
 			<field name="f12" type="systemstring"/>
 			<field name="f13" default="72" type="int"/>
     </type>

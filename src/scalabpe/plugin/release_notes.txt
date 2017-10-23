@@ -1,6 +1,7 @@
-1.2.6 (20170926)
+1.2.6 (20171010)
 ================
 
+* (1010)sql语句中支持前置的/* */ hint
 * (0926)删除httpserver插件里无用的osap配置加载功能和json rpc功能; requestUri参数去掉?后的参数
 * (0925)修改netty client里的拼写错误，reuserAddress 改成 reuseAddress
 * (0922)httpserver插件修改上传文件读取上传临时目录配置参数的一个bug

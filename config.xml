@@ -46,7 +46,6 @@
 
 <!-- http server 配置 -->
 <!-- 
--->
     <HttpServerCfg  
                maxUploadLength="2000000000"
  
@@ -64,6 +63,7 @@
             <Item>application/vnd.ms-excel xls xlsx</Item>
         </MimeTypes>
     </HttpServerCfg>
+-->
 
 <!-- 定时任务配置 -->
 <!-- 
@@ -116,13 +116,13 @@
 -->
 
 <!-- 数据库配置 -->
-<!-- 
     <DbSosList threadNum="8">
         <ServiceId>995,62100</ServiceId>
         <MasterDb conns="8">
             <DefaultConn>service=jdbc:oracle:thin:@192.168.30.104:1521/user user=test password=test</DefaultConn>
         </MasterDb>
     </DbSosList>
+<!-- 
 -->
 
 <!-- 数据库配置: master/slave 模式的数据库配置-->

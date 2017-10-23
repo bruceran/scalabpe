@@ -477,7 +477,7 @@ class TlvCodec(val configFile: String) extends Logging {
                         val fieldTypeName = getStructType(f)
                         val fieldType = clsToInt(fieldTypeName)
                         if (!checkStructFieldCls(fieldType)) {
-                            throw new CodecException("not supported field type,name=%s,type=%s".format(name, clsToName(fieldType)))
+                            throw new CodecException("not supported field type,name=%s,type=%s,serviceId=%d".format(name, clsToName(fieldType),serviceId))
                         }
 
                         val fieldLen = getStructLen(f, fieldType)

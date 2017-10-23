@@ -52,6 +52,7 @@ object MsgDefine {
     val REPLACE_TYPE_OVERWRITE = 2
 
     val selectReg = """^select .*$""".r
+    val select2Reg = """^/\*[^/]*/[ ]*select .*$""".r
     val insertReg = """^insert .*$""".r
     val updateReg = """^update .*$""".r
     val deleteReg = """^delete .*$""".r
@@ -72,6 +73,7 @@ object MsgDefine {
         val prefix = trimedsql.toLowerCase
         prefix match {
             case selectReg()    => MsgDefine.SQLTYPE_SELECT
+            case select2Reg()   => MsgDefine.SQLTYPE_SELECT
             case insertReg()    => MsgDefine.SQLTYPE_UPDATE
             case updateReg()    => MsgDefine.SQLTYPE_UPDATE
             case deleteReg()    => MsgDefine.SQLTYPE_UPDATE
