@@ -113,6 +113,7 @@ class HttpAhtCfg(
         val method: String,
         val requestContentType: String,
         val charSet: String,
+        val parseContentOnError: String,
         val pluginObj: HttpPlugin,
         val wsReqSuffix: String = "",
         val wsResSuffix: String = "",
@@ -146,6 +147,7 @@ class HttpMsgDefine(
         val method: Int,
         val requestContentType: String,
         val charSet: String,
+        val parseContentOnError:Boolean,
         val pluginObj: HttpPlugin,
 
         val signatureKeyField: String,
@@ -174,7 +176,7 @@ class HttpClientImpl(
         val connectTimeout: Int = 15000,
         val timerInterval: Int = 100,
         val retryTimes: Int = 1,
-        val maxContentLength: Int = 1048576) extends HttpClient with HttpClient4Netty with Logging with Dumpable {
+        val maxContentLength: Int = 1048576 ) extends HttpClient with HttpClient4Netty with Logging with Dumpable {
 
     var nettyHttpClient: NettyHttpClient = _
     val generator = new AtomicInteger(1)
@@ -235,6 +237,7 @@ class HttpClientImpl(
             val method = (t \ "Method").text.toUpperCase
             val requestContentType = (t \ "RequestContentType").text
             val charSet = (t \ "CharSet").text
+            val parseContentOnError = (t \ "ParseContentOnError").text
 
             val wsReqSuffix = (t \ "WSReqSuffix").text
             val wsResSuffix = (t \ "WSResSuffix").text
@@ -268,7 +271,7 @@ class HttpClientImpl(
             val cfg = new HttpAhtCfg(
                 serviceId, msgId,
                 serverUrl, serverUrlSuffix,
-                needSignature, signatureKey, method, requestContentType, charSet, pluginObj,
+                needSignature, signatureKey, method, requestContentType, charSet, parseContentOnError, pluginObj,
                 wsReqSuffix, wsResSuffix, wsReqWrap, wsResWrap, wsWrapNs, wsSOAPAction, wsNs)
 
             ahtServiceIds.add(serviceId)
@@ -396,6 +399,13 @@ class HttpClientImpl(
                 if (ahtCfg != null && ahtCfg.pluginObj != null) pluginObj = ahtCfg.pluginObj
                 if (pluginObj == null && defaultAhtCfg != null && defaultAhtCfg.pluginObj != null) pluginObj = defaultAhtCfg.pluginObj
 
+                var parseContentOnErrorStr = "false"
+                if (ahtCfg != null && ahtCfg.parseContentOnError != "") parseContentOnErrorStr = ahtCfg.parseContentOnError
+                if (parseContentOnErrorStr == "" && defaultAhtCfg != null && defaultAhtCfg.parseContentOnError != "") parseContentOnErrorStr = defaultAhtCfg.parseContentOnError
+                if (parseContentOnErrorStr == "") parseContentOnErrorStr = "false"
+
+                val parseContentOnError = (parseContentOnErrorStr == "true" || parseContentOnErrorStr == "yes" || parseContentOnErrorStr == "t" || parseContentOnErrorStr == "y" || parseContentOnErrorStr == "1")
+
                 var wsReqSuffix = ""
                 if (ahtCfg != null && ahtCfg.wsReqSuffix != "") wsReqSuffix = ahtCfg.wsReqSuffix
                 if (wsReqSuffix == "" && defaultAhtCfg != null && defaultAhtCfg.wsReqSuffix != "") wsReqSuffix = defaultAhtCfg.wsReqSuffix
@@ -429,7 +439,7 @@ class HttpClientImpl(
                     serviceId, msgId, name,
                     reqs, ress,
                     ssl, host, path,
-                    needSignature, signatureKey, method, requestContentType, charSet, pluginObj,
+                    needSignature, signatureKey, method, requestContentType, charSet, parseContentOnError, pluginObj, 
                     signatureKeyField, customUrlField, resultCodeField,
                     wsReqSuffix, wsResSuffix, wsReqWrap, wsResWrap, wsWrapNs, wsSOAPAction, wsNs)
 
@@ -975,13 +985,14 @@ class HttpClientImpl(
         val status = httpRes.getStatus
         body.put("httpCode", status.getCode())
 
-        if (status.getCode() != 200 && status.getCode() != 201) {
+        if (status.getCode() != 200 && status.getCode() != 201 && !msg.parseContentOnError ) {
 
             if (log.isDebugEnabled()) {
                 log.debug("status code={}", status.getCode())
             }
 
             val errorTpl = (ResultCodes.SOC_NETWORKERROR, body)
+
             return errorTpl
         }
 
@@ -997,7 +1008,10 @@ class HttpClientImpl(
 
         if (msg.pluginObj != null && msg.pluginObj.isInstanceOf[HttpResponsePlugin]) {
             val resPlugin = msg.pluginObj.asInstanceOf[HttpResponsePlugin]
-            val code = resPlugin.parseContent(msg, contentStr, body)
+            var code = resPlugin.parseContent(msg, contentStr, body)
+            if (status.getCode() != 200 && status.getCode() != 201) {
+                code = ResultCodes.SOC_NETWORKERROR
+            }
             val succTpl = (code, body)
             return succTpl
         }
@@ -1014,6 +1028,9 @@ class HttpClientImpl(
                 log.error("unknown content type serviceId=%d,msgId=%d,contentType=%s".format(msg.serviceId, msg.msgId, contentType))
         }
 
+        if (status.getCode() != 200 && status.getCode() != 201) {
+            code = ResultCodes.SOC_NETWORKERROR
+        }
         val succTpl = (code, body)
         succTpl
     }

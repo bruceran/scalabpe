@@ -1079,6 +1079,7 @@
               <Method>GET</Method>
               <RequestContentType>application/x-www-form-urlencoded</RequestContentType>
               <CharSet>UTF-8</CharSet>
+              <ParseContentOnError>false</ParseContentOnError>
               <ServerUrl>http://xxx:xxxx/sdpp/payment/mobile/prepare</ServerUrl>
               <WSSOAPAction>http://tempuri.org/IDepositOrder/CheckDepositOrder</WSSOAPAction>
               <WSReqSuffix></WSReqSuffix>
@@ -1127,6 +1128,7 @@
       Method get还是post 默认为post
       RequestContentType 请求类型, 默认为form
       CharSet 默认为 utf-8
+      ParseContentOnError 默认为 false, 支持在http返回非200,201的时候也能解析返回的内容；主要用于rest调用
       Signature 签名密钥, 如消息中定义了code=10000的入参，则以入参为准
       ServerUrl 通知地址, 如消息中定义了code=10001的入参，则以入参为准
           如果非-1的消息里配置了ServerUrlSuffix, 则实际通知url是ServerUrl + ServerUrlSuffix, 

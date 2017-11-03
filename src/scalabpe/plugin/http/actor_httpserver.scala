@@ -2204,15 +2204,19 @@ application/x-gzip gz
         val classex = fields.getOrElse(key, null)
         classex match {
             case "json" =>
-                JsonCodec.parseJson(value.toString)
+                try {
+                    return JsonCodec.parseJson(value.toString)
+                } catch {
+                    case e:Throwable => return value.toString
+                }
             case "double" =>
-                value.toString.toDouble
+                return value.toString.toDouble
             case "long" =>
-                value.toString.toLong
+                return value.toString.toLong
             case "string" =>
-                value.toString
+                return value.toString
             case _ =>
-                value
+                return value
         }
 
     }

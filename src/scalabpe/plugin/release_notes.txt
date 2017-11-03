@@ -1,6 +1,8 @@
-1.2.6 (20171010)
+1.2.6 (20171030)
 ================
 
+* (1030)httpserver插件在处理classex:json若失败，直接返回原值，不报异常
+* (1025)aht插件增加ParseContentOnError配置参数，支持在http返回非200,201的时候也能解析返回的内容；主要用于rest调用
 * (1010)sql语句中支持前置的/* */ hint
 * (0926)删除httpserver插件里无用的osap配置加载功能和json rpc功能; requestUri参数去掉?后的参数
 * (0925)修改netty client里的拼写错误，reuserAddress 改成 reuseAddress
