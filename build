@@ -27,7 +27,7 @@ case "$1" in
 		;;
 	*)
 		if [ ! -d classes ] ; then mkdir classes; fi;
-        env JAVA_OPTS="-Dfile.encoding=UTF-8" scalac -deprecation -encoding UTF8 -cp "./lib/*:./lib/log/*:." -d "./classes" src/scalabpe/*.scala src/scalabpe/plugin/*.scala src/scalabpe/plugin/http/*.scala src/scalabpe/plugin/cache/*.scala
+        env JAVA_OPTS="-Dfile.encoding=UTF-8" scalac -deprecation -encoding UTF8 -cp "./lib/*:./lib/log/*:." -d "./classes" src/scalabpe/core/*.scala src/scalabpe/plugin/*.scala src/scalabpe/plugin/http/*.scala src/scalabpe/plugin/cache/*.scala
 		cp -f src/scalabpe/plugin/scalabpe.plugins.conf ./classes/
 		cp -f src/scalabpe/core/release_notes.txt ./classes/
 		jar cf ./lib/scalabpe-core-$version.jar -C ./classes/  ./scalabpe/core -C ./classes/ ./release_notes.txt
