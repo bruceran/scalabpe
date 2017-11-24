@@ -399,7 +399,7 @@ class HttpClientImpl(
                 if (ahtCfg != null && ahtCfg.pluginObj != null) pluginObj = ahtCfg.pluginObj
                 if (pluginObj == null && defaultAhtCfg != null && defaultAhtCfg.pluginObj != null) pluginObj = defaultAhtCfg.pluginObj
 
-                var parseContentOnErrorStr = "false"
+                var parseContentOnErrorStr = ""
                 if (ahtCfg != null && ahtCfg.parseContentOnError != "") parseContentOnErrorStr = ahtCfg.parseContentOnError
                 if (parseContentOnErrorStr == "" && defaultAhtCfg != null && defaultAhtCfg.parseContentOnError != "") parseContentOnErrorStr = defaultAhtCfg.parseContentOnError
                 if (parseContentOnErrorStr == "") parseContentOnErrorStr = "false"
